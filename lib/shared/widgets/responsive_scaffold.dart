@@ -4,7 +4,8 @@ import '../../web/widgets/web_sidebar.dart';
 import '../../mobile/widgets/mobile_bottom_nav.dart';
 import '../screens/home_screen.dart';
 import '../screens/polos_screen.dart';
-import '../../voice_chat_widget.dart'; // Asegúrate de que esta ruta sea correcta
+import '../screens/inversiones_screen.dart';
+import '../screens/voice_chat_widget.dart';
 
 class ResponsiveScaffold extends StatefulWidget {
   final ThemeProvider themeProvider;
@@ -21,7 +22,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
   final List<NavItem> _navItems = const [
     NavItem(icon: Icons.home_rounded, label: 'Inicio'),
     NavItem(icon: Icons.smart_toy_rounded, label: 'Asistente'),
-    NavItem(icon: Icons.analytics_rounded, label: 'Push'),
+    NavItem(icon: Icons.trending_up_rounded, label: 'Inversiones'),
     NavItem(icon: Icons.hub_rounded, label: 'Polos'),
     NavItem(icon: Icons.poll_rounded, label: 'Encuestas'),
   ];
@@ -40,6 +41,8 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
         // Nota: Aquí se muestra en pantalla completa si se selecciona en el menú.
         // Si prefieres que solo sea flotante, puedes cambiar esto.
         return const VoiceChatWidget();
+      case 2:
+        return const InversionesScreen();
       case 3:
         return const PolosScreen();
       default:

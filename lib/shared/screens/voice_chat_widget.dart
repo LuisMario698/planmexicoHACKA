@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:avatar_glow/avatar_glow.dart';
-import 'voice_chat_service.dart';
-import 'attractions.dart'; // Asegúrate de que este archivo exista y tenga kAttractions
+import '../../service/voice_chat_service.dart';
+import '../../attractions.dart'; // Asegúrate de que este archivo exista y tenga kAttractions
 
 class VoiceChatWidget extends StatefulWidget {
   final String defaultVoice;
