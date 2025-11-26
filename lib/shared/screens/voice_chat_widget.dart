@@ -5,11 +5,11 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:avatar_glow/avatar_glow.dart';
 import '../../service/voice_chat_service.dart';
-import '../../attractions.dart'; // Asegúrate de que este archivo exista y tenga kAttractions
+import '../../attractions.dart';
 
 class VoiceChatWidget extends StatefulWidget {
   final String defaultVoice;
-  final bool isDialog; // Para saber si estamos en modal
+  final bool isDialog;
 
   const VoiceChatWidget({
     super.key,
@@ -24,24 +24,42 @@ class VoiceChatWidget extends StatefulWidget {
 class _VoiceChatWidgetState extends State<VoiceChatWidget> {
   final service = VoiceChatService();
   final player = AudioPlayer();
+  final ScrollController _scrollController =
+      ScrollController(); // Para bajar automáticamente
 
-  // Recuperamos la variable de atracciones si la usas
   String? selectedAttraction = kAttractions.isNotEmpty
       ? kAttractions.first
       : null;
-  String? userText;
-  String? botText;
+
+  // CAMBIO 1: En lugar de strings sueltos, usamos una lista para el historial
+  // Cada item será un mapa: {'text':String, 'isUser':bool}
+  final List<Map<String, dynamic>> _messages = [];
+
   bool recording = false;
   bool loading = false;
 
   final Color primaryColor = const Color(0xFF9D2449);
-  final Color darkBackground = const Color(0xFF121212);
-  final Color botBubbleColor = const Color(0xFF2C3E50).withOpacity(0.8);
+  final Color _darkBackground = const Color(0xFF121212);
+  final Color _darkBotBubble = const Color(0xFF2C3E50).withOpacity(0.8);
 
   @override
   void dispose() {
     player.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  // Función para bajar el scroll al último mensaje
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Future<void> _askMicPermission() async {
@@ -61,7 +79,6 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
     }
   }
 
-  // --- AQUÍ ESTÁ LA CORRECCIÓN: Lógica Real Restaurada ---
   Future<void> _stopRecordingLogic() async {
     setState(() {
       recording = false;
@@ -69,31 +86,43 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
     });
 
     try {
-      // 1. Transcribir voz a texto
+      // 1. Transcribir
       final text = await service.stopAndTranscribe();
       if (text == null || text.isEmpty) throw 'No se pudo transcribir.';
-      setState(() => userText = text);
 
-      // 2. Verificar el tema (Gate)
+      // AGREGAR PREGUNTA AL HISTORIAL
+      setState(() {
+        _messages.add({'text': text, 'isUser': true});
+      });
+      _scrollToBottom(); // Bajar scroll
+
+      // 2. Gate
       final gateResp = await service.gate(text, attraction: selectedAttraction);
       final allowed = gateResp['allowed'] == true;
       final matched =
           (gateResp['matched'] as String?) ?? selectedAttraction ?? '';
 
       if (!allowed) {
-        setState(
-          () => botText =
-              'Fuera de tema: ${gateResp['reason'] ?? 'sin razón'}. Tema: $matched',
-        );
-        setState(() => loading = false);
+        final reason =
+            'Fuera de tema: ${gateResp['reason'] ?? 'sin razón'}. Tema: $matched';
+        setState(() {
+          _messages.add({'text': reason, 'isUser': false});
+          loading = false;
+        });
+        _scrollToBottom();
         return;
       }
 
-      // 3. Obtener respuesta del Chatbot
+      // 3. Chat
       final answer = await service.chat(text, attraction: matched);
-      setState(() => botText = answer);
 
-      // 4. Generar Audio (TTS) y reproducir
+      // AGREGAR RESPUESTA AL HISTORIAL
+      setState(() {
+        _messages.add({'text': answer, 'isUser': false});
+      });
+      _scrollToBottom();
+
+      // 4. TTS
       final bytes = await service.tts(answer, voice: widget.defaultVoice);
       final file = await service.saveBytesAsTempMp3(bytes);
       await player.play(DeviceFileSource(file.path));
@@ -108,7 +137,12 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
     }
   }
 
-  Widget _buildChatBubble(String text, {required bool isUser}) {
+  Widget _buildChatBubble(
+    String text, {
+    required bool isUser,
+    required Color botBgColor,
+    required Color textColor,
+  }) {
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -118,7 +152,7 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
         decoration: BoxDecoration(
-          color: isUser ? primaryColor.withOpacity(0.9) : botBubbleColor,
+          color: isUser ? primaryColor.withOpacity(0.9) : botBgColor,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(20),
             topRight: const Radius.circular(20),
@@ -128,8 +162,8 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
         ),
         child: Text(
           text,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: isUser ? Colors.white : textColor,
             fontSize: 15,
             height: 1.4,
           ),
@@ -140,21 +174,26 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final backgroundColor = isDark ? _darkBackground : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final botBubbleColorDynamic = isDark ? _darkBotBubble : Colors.grey[200]!;
+    final iconColor = isDark ? Colors.white70 : Colors.black54;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableWidth = constraints.maxWidth;
 
-        // Lógica de altura responsiva (Mantenemos lo que arreglamos visualmente)
         double bannerHeight;
         double ajoloteSize;
 
         if (availableWidth > 600) {
-          // Escritorio
           bannerHeight = availableWidth * 0.35;
           if (bannerHeight > 500) bannerHeight = 500;
           ajoloteSize = 300;
         } else {
-          // Móvil / Modal
           bannerHeight = availableWidth * 0.6;
           if (bannerHeight > 250) bannerHeight = 250;
           if (bannerHeight < 180) bannerHeight = 180;
@@ -162,11 +201,11 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
         }
 
         return Scaffold(
-          backgroundColor: darkBackground,
+          backgroundColor: backgroundColor,
           resizeToAvoidBottomInset: true,
           body: Column(
             children: [
-              // HEADER
+              // --- HEADER SUPERIOR (FIJO) ---
               SafeArea(
                 bottom: false,
                 child: Padding(
@@ -181,16 +220,16 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
                           availableWidth > 600
                               ? Icons.arrow_back_ios
                               : Icons.close_rounded,
-                          color: Colors.white70,
+                          color: iconColor,
                         ),
                         onPressed: () => Navigator.pop(context),
                       ),
                       const Spacer(),
                       if (availableWidth < 600)
-                        const Text(
+                        Text(
                           "Asistente IA",
                           style: TextStyle(
-                            color: Colors.white70,
+                            color: subTextColor,
                             fontWeight: FontWeight.w600,
                             fontSize: 16,
                           ),
@@ -202,99 +241,105 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
                 ),
               ),
 
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      // BANNER
-                      SizedBox(
-                        height: bannerHeight + 40,
-                        child: Stack(
-                          alignment: Alignment.topCenter,
-                          clipBehavior: Clip.none,
-                          children: [
-                            Container(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                              ),
-                              height: bannerHeight,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(30),
-                                image: const DecorationImage(
-                                  image: AssetImage('assets/images/Fondo.png'),
-                                  fit: BoxFit.cover,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.3),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 10),
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(bottom: 30),
-                                  child: Image.asset(
-                                    'assets/images/ajolotito.png',
-                                    height: ajoloteSize,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            Positioned(
-                              top: bannerHeight - 35,
-                              child: _buildMicButton(),
-                            ),
-                          ],
+              // --- BANNER + MICRÓFONO (FIJO - NO SCROLL) ---
+              // Al estar fuera del ListView, esto siempre se quedará arriba
+              SizedBox(
+                height: bannerHeight + 40,
+                child: Stack(
+                  alignment: Alignment.topCenter,
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      height: bannerHeight,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(30),
+                        image: const DecorationImage(
+                          image: AssetImage('assets/images/Fondo.png'),
+                          fit: BoxFit.cover,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(isDark ? 0.3 : 0.2),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 30),
+                          child: Image.asset(
+                            'assets/images/ajolotito.png',
+                            height: ajoloteSize,
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
+                    ),
 
-                      // CHAT AREA
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Column(
-                          children: [
-                            if (loading)
-                              const Padding(
-                                padding: EdgeInsets.all(20.0),
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                ),
-                              ),
-
-                            if (userText == null && botText == null && !loading)
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  top: 20.0,
-                                  bottom: 40,
-                                ),
-                                child: Text(
-                                  "Hola, soy tu asistente inteligente.\nToca el micrófono para hablar.",
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.7),
-                                    fontSize: 15,
-                                    height: 1.5,
-                                  ),
-                                ),
-                              ),
-
-                            if (userText != null)
-                              _buildChatBubble(userText!, isUser: true),
-                            if (botText != null && !loading)
-                              _buildChatBubble(botText!, isUser: false),
-
-                            const SizedBox(height: 30),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    Positioned(
+                      top: bannerHeight - 35,
+                      child: _buildMicButton(isDark),
+                    ),
+                  ],
                 ),
+              ),
+
+              // --- ZONA DE CHAT (SCROLLABLE) ---
+              // Usamos Expanded + ListView.builder para eficiencia y manejo de listas
+              Expanded(
+                child: _messages.isEmpty && !loading
+                    // Mensaje de Bienvenida si está vacío
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(40.0),
+                          child: Text(
+                            "Hola, soy tu asistente inteligente.\nMantén presionado el micrófono para preguntar.",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: subTextColor,
+                              fontSize: 15,
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                      )
+                    // Lista de mensajes si hay datos
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        itemCount:
+                            _messages.length +
+                            (loading
+                                ? 1
+                                : 0), // +1 para el loader si es necesario
+                        itemBuilder: (context, index) {
+                          // Si estamos cargando y es el último elemento, mostrar spinner
+                          if (loading && index == _messages.length) {
+                            return Padding(
+                              padding: const EdgeInsets.all(20.0),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: isDark ? Colors.white : primaryColor,
+                                ),
+                              ),
+                            );
+                          }
+
+                          final msg = _messages[index];
+                          return _buildChatBubble(
+                            msg['text'],
+                            isUser: msg['isUser'],
+                            botBgColor: botBubbleColorDynamic,
+                            textColor: textColor,
+                          );
+                        },
+                      ),
               ),
             ],
           ),
@@ -303,15 +348,22 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
     );
   }
 
-  Widget _buildMicButton() {
+  Widget _buildMicButton(bool isDark) {
+    Color btnColor;
+    Color iconColor;
+
+    if (recording) {
+      btnColor = primaryColor;
+      iconColor = Colors.white;
+    } else {
+      btnColor = isDark ? const Color(0xFF2C3E50) : Colors.white;
+      iconColor = isDark ? Colors.white : primaryColor;
+    }
+
     return GestureDetector(
-      onTap: () {
-        if (recording) {
-          _stopRecordingLogic();
-        } else {
-          _startRecordingLogic();
-        }
-      },
+      onTapDown: (_) => _startRecordingLogic(),
+      onTapUp: (_) => _stopRecordingLogic(),
+      onTapCancel: () => _stopRecordingLogic(),
       child: AvatarGlow(
         animate: recording,
         glowColor: primaryColor,
@@ -322,12 +374,12 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
           shape: const CircleBorder(),
           color: Colors.transparent,
           child: CircleAvatar(
-            backgroundColor: recording ? Colors.redAccent : const Color(0xFF2C3E50),
+            backgroundColor: btnColor,
             radius: 35.0,
             child: Icon(
               recording ? Icons.mic : Icons.mic_none_outlined,
               size: 30,
-              color: Colors.white,
+              color: iconColor,
             ),
           ),
         ),
