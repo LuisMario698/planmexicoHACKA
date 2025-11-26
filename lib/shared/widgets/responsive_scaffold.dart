@@ -5,6 +5,7 @@ import '../../mobile/widgets/mobile_bottom_nav.dart';
 import '../screens/home_screen.dart';
 import '../screens/polos_screen.dart';
 import '../screens/inversiones_screen.dart';
+import '../screens/asistente_screen.dart';
 import '../screens/voice_chat_widget.dart';
 
 class ResponsiveScaffold extends StatefulWidget {
@@ -38,9 +39,8 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
       case 0:
         return const HomeScreen();
       case 1:
-        // Nota: Aquí se muestra en pantalla completa si se selecciona en el menú.
-        // Si prefieres que solo sea flotante, puedes cambiar esto.
-        return const VoiceChatWidget();
+        // Pantalla del Asistente IA
+        return const AsistenteScreen();
       case 2:
         return const InversionesScreen();
       case 3:
