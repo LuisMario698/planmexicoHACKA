@@ -11,6 +11,7 @@ class PolosScreen extends StatefulWidget {
 class _PolosScreenState extends State<PolosScreen> {
   String? _selectedStateCode;
   String? _selectedStateName;
+  PoloInfo? _selectedPolo;
 
   @override
   Widget build(BuildContext context) {
@@ -174,6 +175,12 @@ class _PolosScreenState extends State<PolosScreen> {
                   // Si code está vacío, es una deselección
                   _selectedStateCode = code.isEmpty ? null : code;
                   _selectedStateName = name.isEmpty ? null : name;
+                  _selectedPolo = null; // Limpiar polo al cambiar estado
+                });
+              },
+              onPoloSelected: (polo) {
+                setState(() {
+                  _selectedPolo = polo;
                 });
               },
               onBackToMap: () {
@@ -251,9 +258,272 @@ class _PolosScreenState extends State<PolosScreen> {
         ],
       ),
       padding: const EdgeInsets.all(24),
-      child: _selectedStateName == null
-          ? _buildEmptyState(isDark)
-          : _buildStateInfo(isDark),
+      child: _selectedPolo != null
+          ? _buildPoloInfo(isDark)
+          : (_selectedStateName == null
+              ? _buildEmptyState(isDark)
+              : _buildStateInfo(isDark)),
+    );
+  }
+
+  Widget _buildPoloInfo(bool isDark) {
+    final polo = _selectedPolo!;
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Botón para volver
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedPolo = null;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.arrow_back_rounded,
+                    size: 20,
+                    color: isDark ? Colors.white : const Color(0xFF374151),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Información del Polo',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          
+          // Imagen principal
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: _buildPoloImage(
+                polo.imagenes.isNotEmpty ? polo.imagenes[0] : '',
+                isDark,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          
+          // Tipo de polo
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF2563EB),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Nuevo Polo',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF2563EB),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // Nombre del polo
+          Text(
+            polo.nombre,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+            ),
+          ),
+          const SizedBox(height: 8),
+          
+          // Ubicación
+          Row(
+            children: [
+              Icon(
+                Icons.location_on_outlined,
+                size: 16,
+                color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                polo.ubicacion,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // Descripción
+          Text(
+            'Descripción',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : const Color(0xFF374151),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            polo.descripcion,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.5,
+              color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+            ),
+          ),
+          const SizedBox(height: 24),
+          
+          // Botón "Ir al lugar"
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                // TODO: Abrir en Google Maps o navegador
+                _openLocation(polo.latitud, polo.longitud);
+              },
+              icon: const Icon(Icons.directions_rounded),
+              label: const Text('Ir al lugar'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openLocation(double lat, double lng) {
+    // Por ahora solo muestra un snackbar, pero aquí puedes implementar
+    // la navegación a Google Maps usando url_launcher
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Abriendo ubicación: $lat, $lng'),
+        backgroundColor: const Color(0xFF2563EB),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  Widget _buildPoloImage(String imagePath, bool isDark) {
+    if (imagePath.isEmpty) {
+      return Container(
+        color: isDark ? const Color(0xFF2D3748) : const Color(0xFFE5E7EB),
+        child: Center(
+          child: Icon(
+            Icons.image_rounded,
+            size: 48,
+            color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
+          ),
+        ),
+      );
+    }
+    
+    // Si es una imagen local (assets)
+    if (imagePath.startsWith('assets/')) {
+      return Image.asset(
+        imagePath,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('Error cargando imagen: $error');
+          return Container(
+            color: isDark ? const Color(0xFF2D3748) : const Color(0xFFE5E7EB),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline_rounded,
+                    size: 48,
+                    color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Error al cargar imagen',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
+    
+    // Si es una imagen de red
+    return Image.network(
+      imagePath,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          color: isDark ? const Color(0xFF2D3748) : const Color(0xFFE5E7EB),
+          child: Center(
+            child: Icon(
+              Icons.image_rounded,
+              size: 48,
+              color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
+            ),
+          ),
+        );
+      },
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          color: isDark ? const Color(0xFF2D3748) : const Color(0xFFE5E7EB),
+          child: const Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFF2563EB),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -262,17 +532,6 @@ class _PolosScreenState extends State<PolosScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Título de instrucción
-          Text(
-            'Presiona un botón para ver más información',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF691C32),
-            ),
-          ),
-          const SizedBox(height: 20),
-          
           // Fila 1: En marcha | A licitar o en proceso
           Row(
             children: [
@@ -300,7 +559,7 @@ class _PolosScreenState extends State<PolosScreen> {
             children: [
               Expanded(
                 child: _buildCategoryButton(isDark, 
-                  color: const Color(0xFFBC4749), 
+                  color: const Color(0xFF2563EB), 
                   label: 'Nuevos polos',
                   isSelected: true,
                 ),
@@ -335,16 +594,6 @@ class _PolosScreenState extends State<PolosScreen> {
           const SizedBox(height: 32),
           
           // Sectores estratégicos
-          Text(
-            'Sectores estratégicos',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF691C32),
-            ),
-          ),
-          const SizedBox(height: 16),
-          
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
