@@ -11,6 +11,7 @@ class PolosScreen extends StatefulWidget {
 class _PolosScreenState extends State<PolosScreen> {
   String? _selectedStateCode;
   String? _selectedStateName;
+  String? _hoveredStateName;
   PoloInfo? _selectedPolo;
 
   @override
@@ -186,6 +187,11 @@ class _PolosScreenState extends State<PolosScreen> {
               onBackToMap: () {
                 // Opcional: resetear selección al volver al mapa
               },
+              onStateHover: (code, name) {
+                setState(() {
+                  _hoveredStateName = name.isEmpty ? null : name;
+                });
+              },
             ),
             // Indicador de instrucciones
             Positioned(
@@ -224,7 +230,9 @@ class _PolosScreenState extends State<PolosScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Pasa el cursor sobre un estado para elevarlo',
+                          _hoveredStateName != null
+                              ? _hoveredStateName!
+                              : 'Pasa el cursor sobre un estado para elevarlo',
                           style: TextStyle(
                             fontSize: 12,
                             color: isDark ? Colors.white70 : const Color(0xFF6B7280),
@@ -419,7 +427,29 @@ class _PolosScreenState extends State<PolosScreen> {
                 _openLocation(polo.latitud, polo.longitud);
               },
               icon: const Icon(Icons.directions_rounded),
-              label: const Text('Ir al lugar'),
+              label: const Text('Visitar virtualmente'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+                    // Botón "Ir al lugar"
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                // TODO: Abrir en Google Maps o navegador
+                _openLocation(polo.latitud, polo.longitud);
+              },
+              icon: const Icon(Icons.feedback),
+              label: const Text('Dar mi punto de vista'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2563EB),
                 foregroundColor: Colors.white,
