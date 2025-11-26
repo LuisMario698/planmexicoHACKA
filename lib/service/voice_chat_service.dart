@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:record/record.dart' as rec;
 import 'package:path_provider/path_provider.dart';
-import 'app_config.dart';
+import '../app_config.dart';
 
 class VoiceChatService {
   final Dio _dio = Dio(

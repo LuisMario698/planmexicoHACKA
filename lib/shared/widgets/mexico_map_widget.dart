@@ -439,7 +439,7 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget> with TickerProviderSt
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      'Toca fuera para volver al mapa',
+                                      'Toca X para regresar al mapa',
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: isDark 
