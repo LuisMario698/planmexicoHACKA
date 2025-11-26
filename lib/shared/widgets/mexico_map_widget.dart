@@ -5,18 +5,45 @@ import 'package:flutter/services.dart';
 
 class MexicoMapWidget extends StatefulWidget {
   final Function(String stateCode, String stateName)? onStateSelected;
+  final Function(PoloInfo polo)? onPoloSelected;
   final String? selectedStateCode;
   final VoidCallback? onBackToMap;
 
   const MexicoMapWidget({
     super.key,
     this.onStateSelected,
+    this.onPoloSelected,
     this.selectedStateCode,
     this.onBackToMap,
   });
 
   @override
   State<MexicoMapWidget> createState() => _MexicoMapWidgetState();
+}
+
+// Clase para información del polo
+class PoloInfo {
+  final String id;
+  final String nombre;
+  final String estado;
+  final String descripcion;
+  final String tipo; // 'nuevo', 'en_marcha', 'en_proceso', etc.
+  final List<String> imagenes;
+  final String ubicacion;
+  final double latitud;
+  final double longitud;
+
+  PoloInfo({
+    required this.id,
+    required this.nombre,
+    required this.estado,
+    required this.descripcion,
+    required this.tipo,
+    required this.imagenes,
+    required this.ubicacion,
+    required this.latitud,
+    required this.longitud,
+  });
 }
 
 class _MexicoMapWidgetState extends State<MexicoMapWidget> with TickerProviderStateMixin {
@@ -293,6 +320,10 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget> with TickerProviderSt
                             ),
                           ),
                           
+                          // Marcador clickeable (solo para Campeche por ahora)
+                          if (state.code == 'CM' || state.name == 'Campeche')
+                            _buildClickableMarker(context, state, size, isDark),
+                          
                           // Header con nombre del estado
                           Positioned(
                             top: 0,
@@ -425,6 +456,107 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget> with TickerProviderSt
                       ),
                     ),
                   ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClickableMarker(BuildContext context, MexicoState state, Size size, bool isDark) {
+    // Calcular bounds del estado para posicionar el marcador
+    double minX = double.infinity;
+    double maxX = double.negativeInfinity;
+    double minY = double.infinity;
+    double maxY = double.negativeInfinity;
+    
+    for (final polygon in state.polygons) {
+      for (final point in polygon) {
+        if (point.dx < minX) minX = point.dx;
+        if (point.dx > maxX) maxX = point.dx;
+        if (point.dy < minY) minY = point.dy;
+        if (point.dy > maxY) maxY = point.dy;
+      }
+    }
+    
+    final stateWidth = maxX - minX;
+    final stateHeight = maxY - minY;
+    
+    // Calcular escala y offset (mismo cálculo que SingleStatePainter)
+    final padding = 30.0;
+    final availableWidth = size.width - padding * 2 - 48; // -48 por el padding del Positioned.fill
+    final availableHeight = size.height - padding * 2 - 48;
+    
+    final dataWidth = maxX - minX;
+    final dataHeight = maxY - minY;
+    
+    final scaleX = availableWidth / dataWidth;
+    final scaleY = availableHeight / dataHeight;
+    final scale = math.min(scaleX, scaleY);
+    
+    final offsetX = (size.width - dataWidth * scale) / 2;
+    final offsetY = (size.height - dataHeight * scale) / 2;
+    
+    // Posición del marcador: 55% desde la izquierda, 65% desde abajo
+    final markerGeoX = minX + stateWidth * 0.55;
+    final markerGeoY = minY + stateHeight * 0.65;
+    
+    final markerX = (markerGeoX - minX) * scale + offsetX;
+    final markerY = size.height - ((markerGeoY - minY) * scale + offsetY);
+    
+    return Positioned(
+      left: markerX - 20,
+      top: markerY - 20,
+      child: GestureDetector(
+        onTap: () {
+          // Crear información del polo
+          final poloInfo = PoloInfo(
+            id: 'campeche_polo_1',
+            nombre: 'Polo de Desarrollo Campeche',
+            estado: 'Campeche',
+            descripcion: 'Nuevo polo de desarrollo enfocado en energías renovables y desarrollo sustentable. '
+                'Este proyecto busca impulsar la economía local mediante la creación de empleos verdes '
+                'y la implementación de tecnologías limpias en la región.',
+            tipo: 'nuevo',
+            imagenes: [
+              'assets/images/marina_campeche.png',
+            ],
+            ubicacion: 'Campeche, México',
+            latitud: 19.8301,
+            longitud: -90.5349,
+          );
+          widget.onPoloSelected?.call(poloInfo);
+        },
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFF2563EB), // Azul - Nuevo polo
+                ),
+                child: const Icon(
+                  Icons.location_on,
+                  color: Colors.white,
+                  size: 16,
                 ),
               ),
             ),
@@ -642,9 +774,9 @@ class MexicoMapPainter extends CustomPainter {
         ..style = PaintingStyle.fill;
       canvas.drawCircle(Offset(markerX, markerY), markerSize + 2, borderPaint);
       
-      // Círculo interior (punto verde)
+      // Círculo interior (punto azul - nuevo polo)
       final markerPaint = Paint()
-        ..color = const Color(0xFF006847)
+        ..color = const Color(0xFF2563EB)
         ..style = PaintingStyle.fill;
       canvas.drawCircle(Offset(markerX, markerY), markerSize, markerPaint);
     }
@@ -909,9 +1041,9 @@ class SingleStatePainter extends CustomPainter {
         ..style = PaintingStyle.fill;
       canvas.drawCircle(Offset(markerX, markerY), 14, markerBorderPaint);
       
-      // Círculo interior (punto verde)
+      // Círculo interior (punto azul - nuevo polo)
       final markerPaint = Paint()
-        ..color = const Color(0xFF006847) // Verde
+        ..color = const Color(0xFF2563EB) // Azul - Nuevo polo
         ..style = PaintingStyle.fill;
       canvas.drawCircle(Offset(markerX, markerY), 10, markerPaint);
       
