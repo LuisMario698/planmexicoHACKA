@@ -273,7 +273,7 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
                                   bottom: 40,
                                 ),
                                 child: Text(
-                                  "Hola, soy tu asistente inteligente.\nMantén presionado el micrófono para preguntar.",
+                                  "Hola, soy tu asistente inteligente.\nToca el micrófono para hablar.",
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: Colors.white.withOpacity(0.7),
@@ -305,9 +305,13 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
 
   Widget _buildMicButton() {
     return GestureDetector(
-      onTapDown: (_) => _startRecordingLogic(),
-      onTapUp: (_) => _stopRecordingLogic(),
-      onTapCancel: () => _stopRecordingLogic(),
+      onTap: () {
+        if (recording) {
+          _stopRecordingLogic();
+        } else {
+          _startRecordingLogic();
+        }
+      },
       child: AvatarGlow(
         animate: recording,
         glowColor: primaryColor,
@@ -318,7 +322,7 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
           shape: const CircleBorder(),
           color: Colors.transparent,
           child: CircleAvatar(
-            backgroundColor: recording ? primaryColor : const Color(0xFF2C3E50),
+            backgroundColor: recording ? Colors.redAccent : const Color(0xFF2C3E50),
             radius: 35.0,
             child: Icon(
               recording ? Icons.mic : Icons.mic_none_outlined,

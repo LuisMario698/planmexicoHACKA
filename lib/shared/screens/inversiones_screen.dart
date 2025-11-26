@@ -78,6 +78,7 @@ class _InversionesScreenState extends State<InversionesScreen> {
   }
 
   Future<void> _cargarProyectos() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -85,11 +86,13 @@ class _InversionesScreenState extends State<InversionesScreen> {
 
     try {
       final proyectos = await _inversionesService.getProyectos();
+      if (!mounted) return;
       setState(() {
         _proyectos = proyectos;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Error al cargar proyectos: $e';
         _isLoading = false;
@@ -99,6 +102,7 @@ class _InversionesScreenState extends State<InversionesScreen> {
 
   void _startAutoScroll() {
     _autoScrollTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (!mounted) return;
       if (_pageController.hasClients) {
         final nextPage = (_currentPage + 1) % _carouselItems.length;
         _pageController.animateToPage(
@@ -1072,7 +1076,7 @@ class _InversionesScreenState extends State<InversionesScreen> {
           PageView.builder(
             controller: _pageController,
             onPageChanged: (index) {
-              setState(() => _currentPage = index);
+              if (mounted) setState(() => _currentPage = index);
             },
             itemCount: _carouselItems.length,
             itemBuilder: (context, index) {
