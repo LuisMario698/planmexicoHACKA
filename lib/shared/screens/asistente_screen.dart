@@ -7,21 +7,22 @@ import 'package:avatar_glow/avatar_glow.dart';
 import '../../service/voice_chat_service.dart';
 import '../../attractions.dart';
 
-class VoiceChatWidget extends StatefulWidget {
+/// Pantalla del Asistente IA
+class AsistenteScreen extends StatefulWidget {
   final String defaultVoice;
   final bool isDialog;
 
-  const VoiceChatWidget({
+  const AsistenteScreen({
     super.key,
     this.defaultVoice = 'verse',
     this.isDialog = false,
   });
 
   @override
-  State<VoiceChatWidget> createState() => _VoiceChatWidgetState();
+  State<AsistenteScreen> createState() => _AsistenteScreenState();
 }
 
-class _VoiceChatWidgetState extends State<VoiceChatWidget> {
+class _AsistenteScreenState extends State<AsistenteScreen> {
   final service = VoiceChatService();
   final player = AudioPlayer();
   final ScrollController _scrollController =
@@ -180,7 +181,6 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
     final textColor = isDark ? Colors.white : Colors.black87;
     final subTextColor = isDark ? Colors.white70 : Colors.black54;
     final botBubbleColorDynamic = isDark ? _darkBotBubble : Colors.grey[200]!;
-    final iconColor = isDark ? Colors.white70 : Colors.black54;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -215,27 +215,16 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
                   ),
                   child: Row(
                     children: [
-                      IconButton(
-                        icon: Icon(
-                          availableWidth > 600
-                              ? Icons.arrow_back_ios
-                              : Icons.close_rounded,
-                          color: iconColor,
+                      const Spacer(),
+                      Text(
+                        "Asistente IA",
+                        style: TextStyle(
+                          color: subTextColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
                         ),
-                        onPressed: () => Navigator.pop(context),
                       ),
                       const Spacer(),
-                      if (availableWidth < 600)
-                        Text(
-                          "Asistente IA",
-                          style: TextStyle(
-                            color: subTextColor,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                      const Spacer(),
-                      const SizedBox(width: 48),
                     ],
                   ),
                 ),
