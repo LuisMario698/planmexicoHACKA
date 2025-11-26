@@ -64,6 +64,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
   // Animación de expansión del mini mapa
   late AnimationController _expandController;
   bool _isExpanding = false;
+  bool _isCollapsing = false; // Para animación inversa
   
   @override
   void initState() {
@@ -533,9 +534,12 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
   }
 
   Widget _buildMobileLayout(bool isDark) {
-    // Animación de expansión en progreso - muestra la transición completa
+    // Animación de expansión o colapso en progreso
     if (_isExpanding) {
       return _buildExpandingMapAnimation(isDark);
+    }
+    if (_isCollapsing) {
+      return _buildCollapsingMapAnimation(isDark);
     }
     
     // Si hay un polo seleccionado, mostrar layout scrolleable con mini preview
@@ -713,6 +717,57 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
           Opacity(
             opacity: panelOpacity,
             child: _buildStateInfoPanel(isDark),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+  
+  // Animación de colapso - transición inversa (de estado a mini preview)
+  Widget _buildCollapsingMapAnimation(bool isDark) {
+    // Usar curva suave inversa
+    final curvedProgress = Curves.easeInCubic.transform(_expandController.value);
+    
+    // Animar la altura del contenedor de forma inversa
+    final mapHeight = 110.0 + (curvedProgress * 240.0); // 350 -> 110
+    
+    return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Contenedor del mapa que se colapsa suavemente
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 50),
+            height: mapHeight,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E2029) : Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: MexicoMapWidget(
+                key: const ValueKey('collapsing_state'),
+                selectedStateCode: _selectedStateCode,
+                highlightedStates: _statePoloData.keys.toList(),
+                showOnlySelected: true,
+                hidePoloMarkers: false,
+                skipInitialAnimation: true,
+                onStateSelected: (_, __) {},
+                onPoloSelected: (_) {},
+                onBackToMap: () {},
+                onStateHover: (_) {},
+              ),
+            ),
           ),
           const SizedBox(height: 20),
         ],
@@ -1296,13 +1351,24 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
             children: [
               GestureDetector(
                 onTap: () {
-                  setState(() {
-                    if (_showDetailedInfo) {
+                  if (_showDetailedInfo) {
+                    setState(() {
                       _showDetailedInfo = false;
-                    } else {
-                      _selectedPolo = null;
-                    }
-                  });
+                    });
+                  } else {
+                    // Animación de colapso al volver
+                    setState(() {
+                      _isCollapsing = true;
+                    });
+                    _expandController.reverse(from: 1.0).then((_) {
+                      if (mounted) {
+                        setState(() {
+                          _selectedPolo = null;
+                          _isCollapsing = false;
+                        });
+                      }
+                    });
+                  }
                 },
                 child: Container(
                   padding: const EdgeInsets.all(10),
@@ -1428,13 +1494,24 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
             children: [
               GestureDetector(
                 onTap: () {
-                  setState(() {
-                    if (_showDetailedInfo) {
+                  if (_showDetailedInfo) {
+                    setState(() {
                       _showDetailedInfo = false;
-                    } else {
-                      _selectedPolo = null;
-                    }
-                  });
+                    });
+                  } else {
+                    // Animación de colapso al volver
+                    setState(() {
+                      _isCollapsing = true;
+                    });
+                    _expandController.reverse(from: 1.0).then((_) {
+                      if (mounted) {
+                        setState(() {
+                          _selectedPolo = null;
+                          _isCollapsing = false;
+                        });
+                      }
+                    });
+                  }
                 },
                 child: Container(
                   padding: const EdgeInsets.all(10),
@@ -1623,44 +1700,46 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
     );
   }
 
-  // Card horizontal de ancho completo con icono a la izquierda
+  // Card horizontal de ancho completo con icono a la izquierda - Estilo sobrio
   Widget _buildDashboardCardHorizontal({
     required IconData icon,
     required String title,
     required String value,
     required List<Color> gradientColors,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = gradientColors[0]; // El icono mantiene su color
+    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: gradientColors,
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
+        color: isDark ? const Color(0xFF262830) : Colors.white,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? const Color(0xFF3A3D47) : const Color(0xFFE5E7EB),
+        ),
         boxShadow: [
           BoxShadow(
-            color: gradientColors[0].withValues(alpha: 0.3),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
-            offset: const Offset(0, 3),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Row(
         children: [
-          // Icono
+          // Icono con color correspondiente
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.25),
+              color: iconColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               icon,
               size: 22,
-              color: Colors.white,
+              color: iconColor,
             ),
           ),
           const SizedBox(width: 14),
@@ -1674,17 +1753,17 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
-                    color: Colors.white.withValues(alpha: 0.85),
+                    color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF6B7280),
                     letterSpacing: 0.3,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                     height: 1.3,
                   ),
                   maxLines: 2,
