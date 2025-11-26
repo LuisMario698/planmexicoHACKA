@@ -15,22 +15,50 @@ class StatePoloData {
   const StatePoloData({required this.count, required this.descriptions});
 }
 
+class StateDetailData {
+  final String poloOficial;
+  final List<String> sectoresFuertes;
+  final String poblacion;
+  final String conectividad;
+  final String superficie;
+  final String inversion;
+  final String poblacionBeneficiada;
+  final String empleos;
+  final String nombrePolo;
+  final String municipio;
+  final String sectorPolo;
+  final String vocacion;
+  final String organismos;
+  final String oportunidades;
+  final String beneficios;
+  final List<String> proyectosFederales;
+
+  const StateDetailData({
+    required this.poloOficial,
+    required this.sectoresFuertes,
+    required this.poblacion,
+    required this.conectividad,
+    this.superficie = 'N.D.',
+    this.inversion = 'N.D.',
+    this.poblacionBeneficiada = 'N.D.',
+    this.empleos = 'En integración',
+    required this.nombrePolo,
+    required this.municipio,
+    required this.sectorPolo,
+    required this.vocacion,
+    required this.organismos,
+    this.oportunidades = '',
+    this.beneficios = '',
+    required this.proyectosFederales,
+  });
+}
+
 class _PolosScreenState extends State<PolosScreen> {
   String? _selectedStateCode;
   String? _selectedStateName;
   String? _hoveredStateName;
   PoloInfo? _selectedPolo;
-  
-  // Estado para móvil con zoom y confirmación
-  String? _pendingStateCode;
-  String? _pendingStateName;
-  bool _showMobileConfirmation = false;
-  final TransformationController _transformationController = TransformationController();
-  double _currentZoom = 1.0;
-  
-  // Límites de zoom
-  static const double _minScale = 0.5;
-  static const double _maxScale = 6.0;
+  bool _showDetailedInfo = false;
 
   final Map<String, StatePoloData> _statePoloData = {
     'Sonora': const StatePoloData(
@@ -181,27 +209,195 @@ class _PolosScreenState extends State<PolosScreen> {
     ],
   };
 
-  @override
-  void initState() {
-    super.initState();
-    _transformationController.addListener(_onZoomChanged);
-  }
-
-  void _onZoomChanged() {
-    final scale = _transformationController.value.getMaxScaleOnAxis();
-    if (scale != _currentZoom) {
-      setState(() {
-        _currentZoom = scale;
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _transformationController.removeListener(_onZoomChanged);
-    _transformationController.dispose();
-    super.dispose();
-  }
+  final Map<String, StateDetailData> _stateDetailData = {
+    'Sonora': const StateDetailData(
+      poloOficial:
+          'PODECOBI Hermosillo – Polo de Desarrollo Económico para el Bienestar e Innovación',
+      sectoresFuertes: [
+        'Minería (cobre, oro)',
+        'Energía solar',
+        'Manufactura',
+        'Agroindustria',
+        'Logística fronteriza',
+      ],
+      poblacion: '2.94 millones',
+      conectividad:
+          'Puerto de Guaymas, aeropuertos de Hermosillo y Ciudad Obregón, corredor carretero hacia Nogales y Cd. Juárez',
+      superficie: 'En proceso de publicación',
+      poblacionBeneficiada: '+1 millón de hab.',
+      nombrePolo:
+          'Polo de Desarrollo Económico para el Bienestar e Innovación de Hermosillo',
+      municipio: 'Hermosillo',
+      sectorPolo:
+          'Manufactura avanzada, servicios tecnológicos, energía limpia',
+      vocacion:
+          'Innovación, tecnología, electromovilidad, semiconductores y cadenas de suministro ligadas a EE.UU.',
+      organismos:
+          'Secretaría de Economía federal, Gobierno de Sonora; se coordina con la agenda de Plan Sonora',
+      oportunidades:
+          'Parques industriales con energía solar, proveedores automotrices/EV, centros de datos, ensamble electrónico',
+      beneficios:
+          'Empleo calificado, infraestructura industrial, fortalecimiento de universidades y centros de I+D',
+      proyectosFederales: [
+        'PODECOBI Hermosillo',
+        'Terminal especializada en graneles minerales en el puerto de Guaymas',
+      ],
+    ),
+    'Tamaulipas': const StateDetailData(
+      poloOficial: 'PODECOBI Altamira',
+      sectoresFuertes: [
+        'Energético (gas, petróleo)',
+        'Petroquímico',
+        'Automotriz/autopartes',
+        'Logística portuaria',
+        'Manufactura',
+      ],
+      poblacion: '3.53 millones',
+      conectividad:
+          'Puerto industrial de Altamira, cercanía con Tampico-Madero, corredor carretero Altamira–Monterrey, aeropuerto internacional de Tampico',
+      superficie: '≈ 1,637.78 ha',
+      poblacionBeneficiada: '≈ 905 mil habitantes',
+      nombrePolo: 'PODECOBI Altamira',
+      municipio: 'Altamira',
+      sectorPolo: 'Industria / logística',
+      vocacion: 'Clúster energético-industrial con salida marítima',
+      organismos:
+          'Secretaría de Economía, Gobierno de Tamaulipas; coordinación con SEMARNAT y autoridades portuarias',
+      beneficios:
+          'Consolidar el corredor industrial del sur de Tamaulipas, atracción de empresas de nearshoring, más empleo y derrama en servicios',
+      proyectosFederales: [
+        'PODECOBI Altamira',
+        'Proyectos de infraestructura portuaria y energética en Tampico/Altamira',
+      ],
+    ),
+    'Durango': const StateDetailData(
+      poloOficial: 'PODECOBI Centro Logístico e Industrial de Durango (CLID)',
+      sectoresFuertes: [
+        'Automotriz-autopartes',
+        'Agroindustria',
+        'Manufactura ligera',
+        'Logística hacia el norte y al puerto de Mazatlán',
+      ],
+      poblacion: 'N.D.',
+      conectividad: 'Corredor económico del norte',
+      superficie: '315.41 ha',
+      nombrePolo: 'CLID Durango',
+      municipio: 'Durango',
+      sectorPolo: 'Industria / logística',
+      vocacion:
+          'Parque logístico-industrial con enfoque en manufactura y distribución hacia el norte y Golfo de California',
+      organismos: 'Secretaría de Economía, Gobierno de Durango',
+      proyectosFederales: ['CLID Durango (PODECOBI)'],
+    ),
+    'Puebla': const StateDetailData(
+      poloOficial:
+          'PODECOBI Futura Capital de la Tecnología y la Sostenibilidad',
+      sectoresFuertes: [
+        'Automotriz (VW y proveedores)',
+        'Electrónica',
+        'Agroindustria',
+        'Servicios',
+        'Tecnologías avanzadas',
+      ],
+      poblacion: 'N.D.',
+      conectividad: 'Conectividad regional centro',
+      superficie: '~220 ha',
+      nombrePolo: 'Futura Capital de la Tecnología y la Sostenibilidad',
+      municipio: 'San José Chiapa y Nopalucan',
+      sectorPolo: 'Industria / tecnología',
+      vocacion:
+          'Electromovilidad, manufactura avanzada, economía verde y servicios tecnológicos',
+      organismos: 'Secretaría de Economía, Gobierno de Puebla',
+      proyectosFederales: [
+        'PODECOBI Futura Capital de la Tecnología y la Sostenibilidad',
+      ],
+    ),
+    'Guanajuato': const StateDetailData(
+      poloOficial: 'PODECOBI Puerta Logística del Bajío (Celaya)',
+      sectoresFuertes: [
+        'Automotriz',
+        'Autopartes',
+        'Agroindustria',
+        'Cuero-calzado',
+        'Plásticos',
+        'Logística',
+      ],
+      poblacion: '≈ 6.17 millones',
+      conectividad: 'Logística multimodal para el Bajío',
+      superficie: '52.40 ha',
+      nombrePolo: 'Puerta Logística del Bajío',
+      municipio: 'Celaya',
+      sectorPolo: 'Logística / Industrial',
+      vocacion:
+          'Logística multimodal para el Bajío, manufactura y cadenas de suministro automotrices y agroindustriales',
+      organismos: 'Secretaría de Economía, Gobierno de Guanajuato',
+      proyectosFederales: ['PODECOBI Puerta Logística del Bajío'],
+    ),
+    'Estado de México': const StateDetailData(
+      poloOficial: 'PODECOBI Nezahualcóyotl',
+      sectoresFuertes: [
+        'Manufactura (automotriz, química, alimentos)',
+        'Logística metropolitana',
+        'Servicios',
+        'Comercio',
+      ],
+      poblacion: 'N.D.',
+      conectividad: 'Logística metropolitana ZMVM',
+      superficie: 'En publicación',
+      nombrePolo: 'PODECOBI Nezahualcóyotl',
+      municipio: 'Nezahualcóyotl',
+      sectorPolo: 'Servicios / Logística',
+      vocacion:
+          'Servicios, logística urbana, reconversión industrial y economía circular para el oriente del Valle de México',
+      organismos: 'Secretaría de Economía, Gobierno del Estado de México',
+      proyectosFederales: [
+        'PODECOBI Nezahualcóyotl',
+        'Tren México-Toluca (asociado)',
+      ],
+    ),
+    'Veracruz': const StateDetailData(
+      poloOficial: 'PODECOBI Tuxpan',
+      sectoresFuertes: [
+        'Petróleo y petroquímica',
+        'Energético',
+        'Agroindustria',
+        'Portuario-logístico',
+      ],
+      poblacion: 'N.D.',
+      conectividad: 'Puerto de Tuxpan, Corredor Interoceánico',
+      superficie: '≈ 235 ha',
+      nombrePolo: 'PODECOBI Tuxpan',
+      municipio: 'Tuxpan',
+      sectorPolo: 'Industria / logística portuaria',
+      vocacion:
+          'Polo energético-logístico para el norte de Veracruz (hidrocarburos, carga general, agroexportación)',
+      organismos: 'Secretaría de Economía, Gobierno de Veracruz',
+      proyectosFederales: [
+        'PODECOBI Tuxpan',
+        'Proyectos del Corredor Interoceánico',
+      ],
+    ),
+    'Campeche': const StateDetailData(
+      poloOficial: 'PODECOBI Seybaplaya I',
+      sectoresFuertes: [
+        'Hidrocarburos costa afuera',
+        'Logística portuaria',
+        'Pesca',
+        'Agroindustria',
+        'Turismo',
+      ],
+      poblacion: 'N.D.',
+      conectividad: 'Puerto de Seybaplaya',
+      superficie: '≈ 99.98 ha',
+      nombrePolo: 'PODECOBI Seybaplaya I',
+      municipio: 'Seybaplaya',
+      sectorPolo: 'Industria / logística',
+      vocacion:
+          'Logística ligada al Golfo de México, industrias vinculadas a energía, agroindustria y manufactura ligera',
+      organismos: 'Secretaría de Economía, Gobierno de Campeche',
+      proyectosFederales: ['PODECOBI Seybaplaya I'],
+    ),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -316,480 +512,15 @@ class _PolosScreenState extends State<PolosScreen> {
   }
 
   Widget _buildMobileLayout(bool isDark) {
-    // Si hay un polo seleccionado, dar más espacio al panel de información
-    final mapFlex = _selectedPolo != null ? 2 : 3;
-    final infoFlex = _selectedPolo != null ? 3 : 1;
-    
     return Column(
       children: [
-        // Mapa con zoom
-        Expanded(
-          flex: mapFlex,
-          child: _buildMobileMapContainer(isDark),
-        ),
-        const SizedBox(height: 12),
-        // Panel de información - más grande cuando hay polo seleccionado
-        Expanded(
-          flex: infoFlex,
-          child: _buildInfoPanel(isDark),
-        ),
+        // Mapa
+        Expanded(flex: 2, child: _buildMapContainer(isDark)),
+        const SizedBox(height: 16),
+        // Panel de información
+        Expanded(flex: 1, child: _buildInfoPanel(isDark)),
       ],
     );
-  }
-
-  Widget _buildMobileMapContainer(bool isDark) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Stack(
-          children: [
-            // Mapa general con InteractiveViewer (cuando no hay estado confirmado)
-            if (_selectedStateCode == null)
-              InteractiveViewer(
-                transformationController: _transformationController,
-                minScale: _minScale,
-                maxScale: _maxScale,
-                boundaryMargin: const EdgeInsets.all(100),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: double.infinity,
-                  child: MexicoMapWidget(
-                    selectedStateCode: null,
-                    highlightedStates: _statePoloData.keys.toList(),
-                    autoShowDetail: false, // En móvil NO mostrar detalle automático
-                    zoomScale: _currentZoom, // Pasar el zoom para escalar tooltips
-                    onStateSelected: (code, name) {
-                      // En móvil, mostrar confirmación antes de navegar
-                      if (code.isNotEmpty && name.isNotEmpty) {
-                        setState(() {
-                          _pendingStateCode = code;
-                          _pendingStateName = name;
-                          _showMobileConfirmation = true;
-                        });
-                      }
-                    },
-                    onPoloSelected: (polo) {
-                      setState(() {
-                        _selectedPolo = polo;
-                      });
-                    },
-                    onBackToMap: () {},
-                    onStateHover: (stateName) {
-                      setState(() {
-                        _hoveredStateName = stateName;
-                      });
-                    },
-                  ),
-                ),
-              )
-            else
-              // Mapa del estado seleccionado SIN zoom (solo después de confirmar)
-              SizedBox(
-                width: double.infinity,
-                height: double.infinity,
-                child: Stack(
-                  children: [
-                    MexicoMapWidget(
-                      selectedStateCode: _selectedStateCode,
-                      highlightedStates: _statePoloData.keys.toList(),
-                      autoShowDetail: true, // En el estado confirmado SÍ mostrar detalle
-                      onStateSelected: (code, name) {},
-                      onPoloSelected: (polo) {
-                        setState(() {
-                          _selectedPolo = polo;
-                        });
-                      },
-                      onBackToMap: () {
-                        setState(() {
-                          _selectedStateCode = null;
-                          _selectedStateName = null;
-                          _selectedPolo = null;
-                        });
-                      },
-                      onStateHover: (stateName) {
-                        setState(() {
-                          _hoveredStateName = stateName;
-                        });
-                      },
-                    ),
-                    // Botón X para deseleccionar el estado
-                    // Positioned(
-                    //   top: 12,
-                    //   right: 12,
-                    //   child: GestureDetector(
-                    //     onTap: () {
-                    //       setState(() {
-                    //         _selectedStateCode = null;
-                    //         _selectedStateName = null;
-                    //         _selectedPolo = null;
-                    //       });
-                    //     },
-                    //     child: Container(
-                    //       padding: const EdgeInsets.all(8),
-                    //       decoration: BoxDecoration(
-                    //         color: isDark
-                    //             ? Colors.black.withValues(alpha: 0.6)
-                    //             : Colors.white.withValues(alpha: 0.95),
-                    //         borderRadius: BorderRadius.circular(10),
-                    //         boxShadow: [
-                    //           BoxShadow(
-                    //             color: Colors.black.withValues(alpha: 0.1),
-                    //             blurRadius: 6,
-                    //             offset: const Offset(0, 2),
-                    //           ),
-                    //         ],
-                    //       ),
-                    //       // child: Icon(
-                    //       //   Icons.close_rounded,
-                    //       //   size: 20,
-                    //       //   color: isDark ? Colors.white70 : const Color(0xFF6B7280),
-                    //       // ),
-                    //     ),
-                    //   ),
-                    // ),
-                    // Nombre del estado seleccionado
-                    // Positioned(
-                    //   top: 12,
-                    //   left: 12,
-                    //   child: Container(
-                    //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    //     decoration: BoxDecoration(
-                    //       gradient: const LinearGradient(
-                    //         begin: Alignment.topLeft,
-                    //         end: Alignment.bottomRight,
-                    //         colors: [Color(0xFF691C32), Color(0xFF4A1525)],
-                    //       ),
-                    //       borderRadius: BorderRadius.circular(10),
-                    //       boxShadow: [
-                    //         BoxShadow(
-                    //           color: const Color(0xFF691C32).withValues(alpha: 0.3),
-                    //           blurRadius: 8,
-                    //           offset: const Offset(0, 2),
-                    //         ),
-                    //       ],
-                    //     ),
-                    //     child: Text(
-                    //       _selectedStateName ?? '',
-                    //       style: const TextStyle(
-                    //         fontSize: 13,
-                    //         fontWeight: FontWeight.w600,
-                    //         color: Colors.white,
-                    //       ),
-                    //     ),
-                    //   ),
-                    // ),
-                  ],
-                ),
-              ),
-            
-            // Nombre del estado pendiente de confirmar (solo cuando hay confirmación pendiente)
-            if (_showMobileConfirmation && _pendingStateName != null && _selectedStateCode == null)
-              Positioned(
-                top: 16,
-                left: 16,
-                right: 16,
-                child: _buildMobileStateLabel(isDark),
-              ),
-            
-            // Botones de confirmación para móvil (solo cuando no hay estado seleccionado)
-            if (_showMobileConfirmation && _selectedStateCode == null)
-              Positioned(
-                bottom: 20,
-                left: 16,
-                right: 16,
-                child: _buildMobileConfirmationButtons(isDark),
-              ),
-            
-            // Instrucciones de zoom (solo cuando no hay selección pendiente ni estado seleccionado)
-            if (!_showMobileConfirmation && _selectedStateCode == null)
-              Positioned(
-                bottom: 16,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 300),
-                    opacity: _selectedStateName == null ? 1.0 : 0.0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.black.withValues(alpha: 0.6)
-                            : Colors.white.withValues(alpha: 0.95),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.pinch_rounded,
-                            size: 14,
-                            color: isDark
-                                ? Colors.white70
-                                : const Color(0xFF6B7280),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Pellizca para hacer zoom',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark
-                                  ? Colors.white70
-                                  : const Color(0xFF6B7280),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              
-            // Botón para restablecer zoom (solo cuando no hay estado seleccionado)
-            if (_selectedStateCode == null)
-              Positioned(
-                top: 12,
-                right: 12,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 200),
-                  opacity: !_showMobileConfirmation ? 1.0 : 0.3,
-                  child: GestureDetector(
-                    onTap: _resetZoom,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.black.withValues(alpha: 0.5)
-                            : Colors.white.withValues(alpha: 0.95),
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.zoom_out_map_rounded,
-                        size: 18,
-                        color: isDark ? Colors.white70 : const Color(0xFF6B7280),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMobileStateLabel(bool isDark) {
-    // Escalar inversamente al zoom (más zoom = más pequeño)
-    // Cuando zoom es 1.0, escala es 1.0
-    // Cuando zoom es 6.0, escala es ~0.4
-    final scale = (1.0 / _currentZoom).clamp(0.3, 1.0);
-    
-    return Center(
-      child: Transform.scale(
-        scale: scale,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFF691C32),
-                const Color(0xFF691C32).withValues(alpha: 0.9),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF691C32).withValues(alpha: 0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Icon(
-                  Icons.location_on_rounded,
-                  color: Colors.white,
-                  size: 12,
-                ),
-              ),
-            const SizedBox(width: 6),
-            Text(
-              _pendingStateName ?? '',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMobileConfirmationButtons(bool isDark) {
-    return Row(
-      children: [
-        // Botón Cancelar
-        Expanded(
-          child: GestureDetector(
-            onTap: _cancelMobileSelection,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.1)
-                    : Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.2)
-                      : const Color(0xFFE5E7EB),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.close_rounded,
-                    size: 18,
-                    color: isDark ? Colors.white70 : const Color(0xFF6B7280),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Cancelar',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white70 : const Color(0xFF6B7280),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        // Botón Confirmar
-        Expanded(
-          child: GestureDetector(
-            onTap: _confirmMobileSelection,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF691C32), Color(0xFF4A1525)],
-                ),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF691C32).withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.check_rounded,
-                    size: 18,
-                    color: Colors.white,
-                  ),
-                  SizedBox(width: 6),
-                  Text(
-                    'Confirmar',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _resetZoom() {
-    _transformationController.value = Matrix4.identity();
-  }
-
-  void _cancelMobileSelection() {
-    setState(() {
-      _pendingStateCode = null;
-      _pendingStateName = null;
-      _showMobileConfirmation = false;
-    });
-    // Restablecer el zoom
-    _resetZoom();
-  }
-
-  void _confirmMobileSelection() {
-    if (_pendingStateCode != null && _pendingStateName != null) {
-      // Restablecer el zoom antes de mostrar el estado
-      _resetZoom();
-      setState(() {
-        _selectedStateCode = _pendingStateCode;
-        _selectedStateName = _pendingStateName;
-        _pendingStateCode = null;
-        _pendingStateName = null;
-        _showMobileConfirmation = false;
-        _selectedPolo = null;
-      });
-    }
   }
 
   Widget _buildMapContainer(bool isDark) {
@@ -817,6 +548,7 @@ class _PolosScreenState extends State<PolosScreen> {
                   _selectedStateCode = code.isEmpty ? null : code;
                   _selectedStateName = name.isEmpty ? null : name;
                   _selectedPolo = null;
+                  _showDetailedInfo = false;
                 });
               },
               onPoloSelected: (polo) {
@@ -1550,6 +1282,15 @@ class _PolosScreenState extends State<PolosScreen> {
     final poloData = _selectedStateName != null
         ? _statePoloData[_selectedStateName]
         : null;
+    final detailData = _selectedStateName != null
+        ? _stateDetailData[_selectedStateName]
+        : null;
+
+    if (_showDetailedInfo && detailData != null) {
+      return _buildDetailedStateInfo(detailData, isDark);
+    } else if (_showDetailedInfo && detailData == null) {
+      return _buildNoInfoFound(isDark);
+    }
 
     return SingleChildScrollView(
       child: Column(
@@ -1611,7 +1352,7 @@ class _PolosScreenState extends State<PolosScreen> {
             isDark,
             icon: Icons.people_rounded,
             title: 'Población beneficiada',
-            value: '--',
+            value: detailData?.poblacionBeneficiada ?? '--',
             subtitle: 'Habitantes',
           ),
           const SizedBox(height: 12),
@@ -1619,7 +1360,7 @@ class _PolosScreenState extends State<PolosScreen> {
             isDark,
             icon: Icons.trending_up_rounded,
             title: 'Inversión proyectada',
-            value: '--',
+            value: detailData?.inversion ?? '--',
             subtitle: 'MXN',
           ),
 
@@ -1683,7 +1424,9 @@ class _PolosScreenState extends State<PolosScreen> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                // TODO: Navegar a detalle del estado
+                setState(() {
+                  _showDetailedInfo = true;
+                });
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF691C32),
@@ -1698,6 +1441,222 @@ class _PolosScreenState extends State<PolosScreen> {
                 'Ver detalles del estado',
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailedStateInfo(StateDetailData data, bool isDark) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header con botón de regreso
+          Row(
+            children: [
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _showDetailedInfo = false;
+                  });
+                },
+                icon: Icon(
+                  Icons.arrow_back_rounded,
+                  color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  data.nombrePolo,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          _buildDetailSection(isDark, 'Resumen del Estado', [
+            _buildDetailItem(isDark, 'Polo Oficial', data.poloOficial),
+            _buildDetailItem(
+              isDark,
+              'Sectores Fuertes',
+              data.sectoresFuertes.join(', '),
+            ),
+            _buildDetailItem(isDark, 'Población', data.poblacion),
+            _buildDetailItem(isDark, 'Conectividad', data.conectividad),
+          ]),
+
+          const SizedBox(height: 20),
+
+          _buildDetailSection(isDark, 'Indicadores Clave', [
+            _buildDetailItem(isDark, 'Superficie', data.superficie),
+            _buildDetailItem(isDark, 'Inversión Estimada', data.inversion),
+            _buildDetailItem(
+              isDark,
+              'Población Beneficiada',
+              data.poblacionBeneficiada,
+            ),
+            _buildDetailItem(isDark, 'Empleos / Empresas Ancla', data.empleos),
+          ]),
+
+          const SizedBox(height: 20),
+
+          _buildDetailSection(isDark, 'Detalle del Polo', [
+            _buildDetailItem(isDark, 'Municipio', data.municipio),
+            _buildDetailItem(isDark, 'Sector', data.sectorPolo),
+            _buildDetailItem(isDark, 'Vocación', data.vocacion),
+            _buildDetailItem(isDark, 'Organismos', data.organismos),
+            if (data.oportunidades.isNotEmpty)
+              _buildDetailItem(isDark, 'Oportunidades', data.oportunidades),
+            if (data.beneficios.isNotEmpty)
+              _buildDetailItem(isDark, 'Beneficios', data.beneficios),
+          ]),
+
+          const SizedBox(height: 20),
+
+          _buildDetailSection(isDark, 'Proyectos Federales Asociados', [
+            ...data.proyectosFederales.map(
+              (p) => Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline_rounded,
+                      size: 16,
+                      color: const Color(0xFF691C32),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        p,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDark
+                              ? Colors.white70
+                              : const Color(0xFF374151),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoInfoFound(bool isDark) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.search_off_rounded,
+          size: 64,
+          color: isDark ? Colors.white24 : const Color(0xFF9CA3AF),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Información no encontrada',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'No se encontró información detallada en PODECOBI para este estado.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 14,
+            color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+          ),
+        ),
+        const SizedBox(height: 24),
+        ElevatedButton(
+          onPressed: () {
+            setState(() {
+              _showDetailedInfo = false;
+            });
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF691C32),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: const Text('Regresar'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailSection(bool isDark, String title, List<Widget> children) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.1)
+              : const Color(0xFFE5E7EB),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF691C32),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailItem(bool isDark, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+              height: 1.4,
             ),
           ),
         ],
