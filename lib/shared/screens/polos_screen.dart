@@ -171,8 +171,9 @@ class _PolosScreenState extends State<PolosScreen> {
               selectedStateCode: _selectedStateCode,
               onStateSelected: (code, name) {
                 setState(() {
-                  _selectedStateCode = code;
-                  _selectedStateName = name;
+                  // Si code está vacío, es una deselección
+                  _selectedStateCode = code.isEmpty ? null : code;
+                  _selectedStateName = name.isEmpty ? null : name;
                 });
               },
               onBackToMap: () {
@@ -257,35 +258,240 @@ class _PolosScreenState extends State<PolosScreen> {
   }
 
   Widget _buildEmptyState(bool isDark) {
-    return Center(
+    return SingleChildScrollView(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.touch_app_rounded,
-            size: 48,
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.3)
-                : const Color(0xFF9CA3AF),
-          ),
-          const SizedBox(height: 16),
+          // Título de instrucción
           Text(
-            'Selecciona un estado',
+            'Presiona un botón para ver más información',
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF691C32),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 20),
+          
+          // Fila 1: En marcha | A licitar o en proceso
+          Row(
+            children: [
+              Expanded(
+                child: _buildCategoryButton(isDark, 
+                  color: const Color(0xFF006847), 
+                  label: 'En marcha',
+                  isSelected: false,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildCategoryButton(isDark, 
+                  color: const Color(0xFFB8D4B8), 
+                  label: 'A licitar o en proceso',
+                  isSelected: false,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Fila 2: Nuevos polos | En proceso de evaluación
+          Row(
+            children: [
+              Expanded(
+                child: _buildCategoryButton(isDark, 
+                  color: const Color(0xFFBC4749), 
+                  label: 'Nuevos polos',
+                  isSelected: true,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildCategoryButton(isDark, 
+                  color: const Color(0xFFE89005), 
+                  label: 'En proceso de evaluación',
+                  isSelected: false,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Fila 3: Tercera etapa
+          Row(
+            children: [
+              Expanded(
+                child: _buildCategoryButton(isDark, 
+                  color: const Color(0xFFD4B896), 
+                  label: 'Tercera etapa: en evaluación',
+                  isSelected: false,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(child: SizedBox()), // Espacio vacío
+            ],
+          ),
+          
+          const SizedBox(height: 32),
+          
+          // Sectores estratégicos
           Text(
-            'Haz clic en el mapa para ver\nla información del estado',
-            textAlign: TextAlign.center,
+            'Sectores estratégicos',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF691C32),
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.6)
-                  : const Color(0xFF6B7280),
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : const Color(0xFFE5E7EB),
+              ),
+            ),
+            child: Column(
+              children: [
+                _buildSectorRow([
+                  _buildSectorItem(Icons.agriculture_rounded, 'Agroindustria', isDark),
+                  _buildSectorItem(Icons.recycling_rounded, 'Economía circular', isDark),
+                ]),
+                const SizedBox(height: 12),
+                _buildSectorRow([
+                  _buildSectorItem(Icons.flight_rounded, 'Aeroespacial', isDark),
+                  _buildSectorItem(Icons.wb_sunny_rounded, 'Energías limpias', isDark),
+                ]),
+                const SizedBox(height: 12),
+                _buildSectorRow([
+                  _buildSectorItem(Icons.electric_car_rounded, 'Automotriz y electromovilidad', isDark),
+                  _buildSectorItem(Icons.factory_rounded, 'Industrias metálicas básicas', isDark),
+                ]),
+                const SizedBox(height: 12),
+                _buildSectorRow([
+                  _buildSectorItem(Icons.shopping_bag_rounded, 'Bienes de consumo', isDark),
+                  _buildSectorItem(Icons.description_rounded, 'Industria del papel', isDark),
+                ]),
+                const SizedBox(height: 12),
+                _buildSectorRow([
+                  _buildSectorItem(Icons.medical_services_rounded, 'Farmacéutica y dispositivos médicos', isDark),
+                  _buildSectorItem(Icons.science_rounded, 'Industria del plástico', isDark),
+                ]),
+                const SizedBox(height: 12),
+                _buildSectorRow([
+                  _buildSectorItem(Icons.memory_rounded, 'Electrónica y semiconductores', isDark),
+                  _buildSectorItem(Icons.local_shipping_rounded, 'Logística', isDark),
+                ]),
+                const SizedBox(height: 12),
+                _buildSectorRow([
+                  _buildSectorItem(Icons.bolt_rounded, 'Energía', isDark),
+                  _buildSectorItem(Icons.precision_manufacturing_rounded, 'Metalmecánica', isDark),
+                ]),
+                const SizedBox(height: 12),
+                _buildSectorRow([
+                  _buildSectorItem(Icons.science_outlined, 'Química y petroquímica', isDark),
+                  const Expanded(child: SizedBox()),
+                ]),
+                const SizedBox(height: 12),
+                _buildSectorRow([
+                  _buildSectorItem(Icons.checkroom_rounded, 'Textil y calzado', isDark),
+                  const Expanded(child: SizedBox()),
+                ]),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryButton(bool isDark, {
+    required Color color,
+    required String label,
+    required bool isSelected,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: isSelected 
+            ? color.withValues(alpha: 0.15)
+            : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected 
+              ? color 
+              : (isDark ? Colors.white.withValues(alpha: 0.1) : const Color(0xFFE5E7EB)),
+          width: isSelected ? 2 : 1,
+        ),
+        boxShadow: isSelected ? [
+          BoxShadow(
+            color: color.withValues(alpha: 0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ] : null,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectorRow(List<Widget> children) {
+    return Row(
+      children: children,
+    );
+  }
+
+  Widget _buildSectorItem(IconData icon, String label, bool isDark) {
+    return Expanded(
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: isDark 
+                ? Colors.white.withValues(alpha: 0.7)
+                : const Color(0xFF6B7280),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.8)
+                    : const Color(0xFF374151),
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

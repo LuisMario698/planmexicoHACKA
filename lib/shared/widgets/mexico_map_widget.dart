@@ -256,8 +256,8 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget> with TickerProviderSt
                 child: Opacity(
                   opacity: animationValue.clamp(0.0, 1.0),
                   child: Container(
-                    width: size.width * 0.85,
-                    height: size.height * 0.75,
+                    width: size.width,
+                    height: size.height,
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF1E2029) : Colors.white,
                       borderRadius: BorderRadius.circular(24),
@@ -440,6 +440,8 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget> with TickerProviderSt
         _showStateDetail = false;
         _detailState = null;
       });
+      // Notificar que se deseleccionó el estado
+      widget.onStateSelected?.call('', '');
       widget.onBackToMap?.call();
     });
   }
@@ -590,6 +592,61 @@ class MexicoMapPainter extends CustomPainter {
         final hoverValue = hoverAnimations[hoveredStateCode]?.value ?? 0;
         _drawState(canvas, size, hoveredState, scale, offsetX, offsetY, hoverValue);
       }
+    }
+
+    // Dibujar marcadores de polos
+    _drawMarkers(canvas, size, scale, offsetX, offsetY);
+  }
+
+  void _drawMarkers(Canvas canvas, Size size, double scale, double offsetX, double offsetY) {
+    // Encontrar Campeche para calcular la posición del marcador
+    final campeche = states.where((s) => s.code == 'CM' || s.name == 'Campeche').firstOrNull;
+    if (campeche != null) {
+      // Calcular bounds de Campeche
+      double stateMinX = double.infinity;
+      double stateMaxX = double.negativeInfinity;
+      double stateMinY = double.infinity;
+      double stateMaxY = double.negativeInfinity;
+      
+      for (final polygon in campeche.polygons) {
+        for (final point in polygon) {
+          if (point.dx < stateMinX) stateMinX = point.dx;
+          if (point.dx > stateMaxX) stateMaxX = point.dx;
+          if (point.dy < stateMinY) stateMinY = point.dy;
+          if (point.dy > stateMaxY) stateMaxY = point.dy;
+        }
+      }
+      
+      final stateWidth = stateMaxX - stateMinX;
+      final stateHeight = stateMaxY - stateMinY;
+      
+      // Posición del marcador: 55% desde la izquierda, 65% desde abajo
+      final markerGeoX = stateMinX + stateWidth * 0.55;
+      final markerGeoY = stateMinY + stateHeight * 0.65;
+      
+      final markerX = (markerGeoX - minX) * scale + offsetX;
+      final markerY = size.height - ((markerGeoY - minY) * scale + offsetY);
+      
+      // Tamaño pequeño para el mapa completo
+      final markerSize = 6.0;
+      
+      // Sombra del marcador
+      final shadowPaint = Paint()
+        ..color = Colors.black.withValues(alpha: 0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+      canvas.drawCircle(Offset(markerX + 1, markerY + 1), markerSize, shadowPaint);
+      
+      // Círculo exterior (borde blanco)
+      final borderPaint = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(Offset(markerX, markerY), markerSize + 2, borderPaint);
+      
+      // Círculo interior (punto verde)
+      final markerPaint = Paint()
+        ..color = const Color(0xFF006847)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(Offset(markerX, markerY), markerSize, markerPaint);
     }
   }
 
@@ -750,7 +807,7 @@ class SingleStatePainter extends CustomPainter {
       }
     }
     
-    final padding = 60.0;
+    final padding = 30.0;
     final availableWidth = size.width - padding * 2;
     final availableHeight = size.height - padding * 2;
     
@@ -824,6 +881,45 @@ class SingleStatePainter extends CustomPainter {
       // Dibujar estado
       canvas.drawPath(path, fillPaint);
       canvas.drawPath(path, borderPaint);
+    }
+
+    // Dibujar marcador si es Campeche
+    if (state.code == 'CM' || state.name == 'Campeche') {
+      // Calcular posición del marcador como porcentaje del estado
+      // El círculo verde está en la muesca superior del estado
+      final stateWidth = maxX - minX;
+      final stateHeight = maxY - minY;
+      
+      // Posición aproximada: 55% desde la izquierda, 65% desde abajo
+      final markerGeoX = minX + stateWidth * 0.55;
+      final markerGeoY = minY + stateHeight * 0.65;
+      
+      final markerX = (markerGeoX - minX) * scale + offsetX;
+      final markerY = size.height - ((markerGeoY - minY) * scale + offsetY);
+      
+      // Sombra del marcador
+      final markerShadowPaint = Paint()
+        ..color = Colors.black.withValues(alpha: 0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+      canvas.drawCircle(Offset(markerX + 2, markerY + 3), 12, markerShadowPaint);
+      
+      // Círculo exterior (borde)
+      final markerBorderPaint = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(Offset(markerX, markerY), 14, markerBorderPaint);
+      
+      // Círculo interior (punto verde)
+      final markerPaint = Paint()
+        ..color = const Color(0xFF006847) // Verde
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(Offset(markerX, markerY), 10, markerPaint);
+      
+      // Pequeño destello
+      final highlightPaint = Paint()
+        ..color = Colors.white.withValues(alpha: 0.4)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(Offset(markerX - 3, markerY - 3), 4, highlightPaint);
     }
   }
 
