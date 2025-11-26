@@ -5,11 +5,17 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:avatar_glow/avatar_glow.dart';
 import 'voice_chat_service.dart';
-import 'attractions.dart'; // Asegúrate de que este archivo exista
+import 'attractions.dart'; // Asegúrate de que este archivo exista y tenga kAttractions
 
 class VoiceChatWidget extends StatefulWidget {
   final String defaultVoice;
-  const VoiceChatWidget({super.key, this.defaultVoice = 'verse'});
+  final bool isDialog; // Para saber si estamos en modal
+
+  const VoiceChatWidget({
+    super.key,
+    this.defaultVoice = 'verse',
+    this.isDialog = false,
+  });
 
   @override
   State<VoiceChatWidget> createState() => _VoiceChatWidgetState();
@@ -19,8 +25,10 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
   final service = VoiceChatService();
   final player = AudioPlayer();
 
-  // Mantenemos la variable para la lógica interna, aunque ya no haya selector visual
-  String? selectedAttraction = kAttractions.first;
+  // Recuperamos la variable de atracciones si la usas
+  String? selectedAttraction = kAttractions.isNotEmpty
+      ? kAttractions.first
+      : null;
   String? userText;
   String? botText;
   bool recording = false;
@@ -53,6 +61,7 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
     }
   }
 
+  // --- AQUÍ ESTÁ LA CORRECCIÓN: Lógica Real Restaurada ---
   Future<void> _stopRecordingLogic() async {
     setState(() {
       recording = false;
@@ -60,10 +69,12 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
     });
 
     try {
+      // 1. Transcribir voz a texto
       final text = await service.stopAndTranscribe();
       if (text == null || text.isEmpty) throw 'No se pudo transcribir.';
       setState(() => userText = text);
 
+      // 2. Verificar el tema (Gate)
       final gateResp = await service.gate(text, attraction: selectedAttraction);
       final allowed = gateResp['allowed'] == true;
       final matched =
@@ -78,17 +89,20 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
         return;
       }
 
+      // 3. Obtener respuesta del Chatbot
       final answer = await service.chat(text, attraction: matched);
       setState(() => botText = answer);
 
+      // 4. Generar Audio (TTS) y reproducir
       final bytes = await service.tts(answer, voice: widget.defaultVoice);
       final file = await service.saveBytesAsTempMp3(bytes);
       await player.play(DeviceFileSource(file.path));
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -126,118 +140,166 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: darkBackground,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // --- 1. HEADER LIMPIO (Solo botón atrás) ---
-            SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                child: Row(
-                  // Al quitar el selector, alineamos el botón atrás a la izquierda
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    IconButton(
-                      icon: const Icon(
-                        Icons.arrow_back_ios,
-                        color: Colors.white70,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+
+        // Lógica de altura responsiva (Mantenemos lo que arreglamos visualmente)
+        double bannerHeight;
+        double ajoloteSize;
+
+        if (availableWidth > 600) {
+          // Escritorio
+          bannerHeight = availableWidth * 0.35;
+          if (bannerHeight > 500) bannerHeight = 500;
+          ajoloteSize = 300;
+        } else {
+          // Móvil / Modal
+          bannerHeight = availableWidth * 0.6;
+          if (bannerHeight > 250) bannerHeight = 250;
+          if (bannerHeight < 180) bannerHeight = 180;
+          ajoloteSize = bannerHeight * 0.75;
+        }
+
+        return Scaffold(
+          backgroundColor: darkBackground,
+          resizeToAvoidBottomInset: true,
+          body: Column(
+            children: [
+              // HEADER
+              SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          availableWidth > 600
+                              ? Icons.arrow_back_ios
+                              : Icons.close_rounded,
+                          color: Colors.white70,
+                        ),
+                        onPressed: () => Navigator.pop(context),
                       ),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    // Aquí estaba el dropdown, eliminado.
-                  ],
+                      const Spacer(),
+                      if (availableWidth < 600)
+                        const Text(
+                          "Asistente IA",
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      const Spacer(),
+                      const SizedBox(width: 48),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 10),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      // BANNER
+                      SizedBox(
+                        height: bannerHeight + 40,
+                        child: Stack(
+                          alignment: Alignment.topCenter,
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              height: bannerHeight,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(30),
+                                image: const DecorationImage(
+                                  image: AssetImage('assets/images/Fondo.png'),
+                                  fit: BoxFit.cover,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.3),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 30),
+                                  child: Image.asset(
+                                    'assets/images/ajolotito.png',
+                                    height: ajoloteSize,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              ),
+                            ),
 
-            // --- 2. ZONA DEL BANNER Y MICRÓFONO ---
-            Stack(
-              alignment: Alignment.bottomCenter,
-              clipBehavior: Clip.none,
-              children: [
-                // Fondo y Ajolote
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  height: 280,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(30),
-                    image: const DecorationImage(
-                      image: AssetImage('assets/images/Fondo.png'),
-                      fit: BoxFit.cover,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
+                            Positioned(
+                              top: bannerHeight - 35,
+                              child: _buildMicButton(),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // CHAT AREA
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          children: [
+                            if (loading)
+                              const Padding(
+                                padding: EdgeInsets.all(20.0),
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
+                              ),
+
+                            if (userText == null && botText == null && !loading)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 20.0,
+                                  bottom: 40,
+                                ),
+                                child: Text(
+                                  "Hola, soy tu asistente inteligente.\nMantén presionado el micrófono para preguntar.",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.7),
+                                    fontSize: 15,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+
+                            if (userText != null)
+                              _buildChatBubble(userText!, isUser: true),
+                            if (botText != null && !loading)
+                              _buildChatBubble(botText!, isUser: false),
+
+                            const SizedBox(height: 30),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 40),
-                      child: Image.asset(
-                        'assets/images/ajolotito.png',
-                        height: 200,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
                 ),
-
-                // Botón Micrófono
-                Positioned(bottom: -40, child: _buildMicButton()),
-              ],
-            ),
-
-            const SizedBox(height: 60),
-
-            // --- 3. CHAT ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  if (loading)
-                    const Padding(
-                      padding: EdgeInsets.all(20.0),
-                      child: CircularProgressIndicator(color: Colors.white),
-                    ),
-
-                  if (userText == null && botText == null && !loading)
-                    Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Text(
-                        "Hola, soy tu asistente inteligente.\nMantén presionado el micrófono para preguntar.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
-                          fontSize: 16,
-                          height: 1.5,
-                        ),
-                      ),
-                    ),
-
-                  if (userText != null)
-                    _buildChatBubble(userText!, isUser: true),
-                  if (botText != null && !loading)
-                    _buildChatBubble(botText!, isUser: false),
-
-                  const SizedBox(height: 30),
-                ],
               ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -251,17 +313,16 @@ class _VoiceChatWidgetState extends State<VoiceChatWidget> {
         glowColor: primaryColor,
         duration: const Duration(milliseconds: 2000),
         repeat: true,
-        glowRadiusFactor: 0.6,
         child: Material(
-          elevation: 15.0,
+          elevation: 8.0,
           shape: const CircleBorder(),
           color: Colors.transparent,
           child: CircleAvatar(
             backgroundColor: recording ? primaryColor : const Color(0xFF2C3E50),
-            radius: 40.0,
+            radius: 35.0,
             child: Icon(
               recording ? Icons.mic : Icons.mic_none_outlined,
-              size: 35,
+              size: 30,
               color: Colors.white,
             ),
           ),

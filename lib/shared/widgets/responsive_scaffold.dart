@@ -4,7 +4,7 @@ import '../../web/widgets/web_sidebar.dart';
 import '../../mobile/widgets/mobile_bottom_nav.dart';
 import '../screens/home_screen.dart';
 import '../screens/polos_screen.dart';
-import '../../voice_chat_widget.dart';
+import '../../voice_chat_widget.dart'; // Asegúrate de que esta ruta sea correcta
 
 class ResponsiveScaffold extends StatefulWidget {
   final ThemeProvider themeProvider;
@@ -33,11 +33,12 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
   Widget _buildContent(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Mostrar pantalla según el índice seleccionado
     switch (_selectedIndex) {
       case 0:
         return const HomeScreen();
       case 1:
+        // Nota: Aquí se muestra en pantalla completa si se selecciona en el menú.
+        // Si prefieres que solo sea flotante, puedes cambiar esto.
         return const VoiceChatWidget();
       case 3:
         return const PolosScreen();
@@ -55,36 +56,130 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
     }
   }
 
+  // --- 1. WIDGET DEL BOTÓN (AJOLOTE) ---
+  Widget _buildAjoloteFab(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _openChatModal(context),
+      child: Container(
+        width: 65,
+        height: 65,
+        decoration: BoxDecoration(
+          color: const Color(0xFF9D2449),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Image.asset(
+            'assets/images/ajolotito.png',
+            fit: BoxFit.contain,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- 2. LÓGICA DE LA VENTANA FLOTANTE (MODAL) ---
+  void _openChatModal(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            // Ancho: 450px fijo en escritorio, o 90% en móvil
+            final double width = constraints.maxWidth > 600
+                ? 450
+                : constraints.maxWidth * 0.90;
+
+            // Alto: 700px fijo en pantallas grandes, o 85% en laptops/móviles
+            final double height = constraints.maxHeight > 800
+                ? 700
+                : constraints.maxHeight * 0.85;
+
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.all(10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: Container(
+                width: width,
+                height: height,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(25),
+                  // Opcional: Sombra extra para el modal
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.5),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(25),
+                  // Importante: VoiceChatWidget debe tener el LayoutBuilder interno
+                  // que te pasé antes para que la imagen de fondo no se corte.
+                  child: const VoiceChatWidget(),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= 768;
 
+    // --- MODO ESCRITORIO ---
     if (isDesktop) {
       return Scaffold(
-        body: Row(
+        body: Stack(
           children: [
-            WebSidebar(
-              items: _navItems,
-              selectedIndex: _selectedIndex,
-              onItemSelected: _onItemSelected,
-              themeProvider: widget.themeProvider,
+            Row(
+              children: [
+                WebSidebar(
+                  items: _navItems,
+                  selectedIndex: _selectedIndex,
+                  onItemSelected: _onItemSelected,
+                  themeProvider: widget.themeProvider,
+                ),
+                Expanded(child: _buildContent(context)),
+              ],
             ),
-            Expanded(child: _buildContent(context)),
+            // Botón flotante Ajolote (Escritorio)
+            Positioned(bottom: 30, right: 30, child: _buildAjoloteFab(context)),
           ],
         ),
       );
     }
 
+    // --- MODO MÓVIL ---
     return Scaffold(
       body: Stack(
         children: [
           _buildContent(context),
-          // Botón de configuración flotante arriba a la derecha
+
+          // Botón de configuración (Arriba derecha)
           Positioned(
             top: MediaQuery.of(context).padding.top + 12,
             right: 16,
             child: _buildSettingsButton(context),
           ),
+
+          // Botón flotante Ajolote (Móvil)
+          Positioned(bottom: 20, right: 16, child: _buildAjoloteFab(context)),
         ],
       ),
       bottomNavigationBar: MobileBottomNav(
@@ -95,6 +190,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
     );
   }
 
+  // --- BOTÓN DE CONFIGURACIÓN ---
   Widget _buildSettingsButton(BuildContext context) {
     return GestureDetector(
       onTap: () => _showSettingsModal(context),
@@ -109,7 +205,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF691C32).withValues(alpha: 0.4),
+              color: const Color(0xFF691C32).withOpacity(0.4),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -124,6 +220,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
     );
   }
 
+  // --- MODAL DE CONFIGURACIÓN ---
   void _showSettingsModal(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -143,7 +240,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.3),
+                color: Colors.grey.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -157,7 +254,8 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
               ),
             ),
             const SizedBox(height: 24),
-            // Theme toggle
+
+            // Opción de Tema
             Material(
               color: Colors.transparent,
               child: InkWell(
@@ -170,13 +268,13 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.black.withValues(alpha: 0.03),
+                        ? Colors.white.withOpacity(0.05)
+                        : Colors.black.withOpacity(0.03),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isDark
-                          ? Colors.white.withValues(alpha: 0.1)
-                          : Colors.black.withValues(alpha: 0.08),
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.black.withOpacity(0.08),
                     ),
                   ),
                   child: Row(
@@ -221,18 +319,19 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                               style: TextStyle(
                                 fontSize: 13,
                                 color: isDark
-                                    ? Colors.white.withValues(alpha: 0.6)
-                                    : Colors.black.withValues(alpha: 0.5),
+                                    ? Colors.white.withOpacity(0.6)
+                                    : Colors.black.withOpacity(0.5),
                               ),
                             ),
                           ],
                         ),
                       ),
+                      // Switch visual
                       Container(
                         width: 52,
                         height: 28,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF691C32).withValues(alpha: 0.3),
+                          color: const Color(0xFF691C32).withOpacity(0.3),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: AnimatedAlign(
@@ -256,8 +355,8 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            // Info row
+            const SizedBox(height: 24),
+            // Info Row (Pie de página del modal)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -270,7 +369,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                 children: [
                   Icon(
                     Icons.verified_rounded,
-                    color: const Color(0xFFBC955C).withValues(alpha: 0.9),
+                    color: const Color(0xFFBC955C).withOpacity(0.9),
                     size: 22,
                   ),
                   const SizedBox(width: 12),
@@ -288,13 +387,12 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                     'Plan México',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white.withValues(alpha: 0.7),
+                      color: Colors.white.withOpacity(0.7),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
           ],
         ),
       ),
