@@ -10,6 +10,8 @@ class MexicoMapWidget extends StatefulWidget {
   final String? selectedStateCode;
   final VoidCallback? onBackToMap;
   final List<String>? highlightedStates;
+  final bool autoShowDetail; // Si es false, no muestra detalle al hacer tap
+  final double zoomScale; // Escala actual del zoom para ajustar tooltips
 
   const MexicoMapWidget({
     super.key,
@@ -19,6 +21,8 @@ class MexicoMapWidget extends StatefulWidget {
     this.selectedStateCode,
     this.onBackToMap,
     this.highlightedStates,
+    this.autoShowDetail = true,
+    this.zoomScale = 1.0,
   });
 
   @override
@@ -130,6 +134,58 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(MexicoMapWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // Si selectedStateCode cambió de null a un valor, mostrar el detalle
+    if (widget.selectedStateCode != null && 
+        oldWidget.selectedStateCode == null) {
+      _showStateDetailForCode(widget.selectedStateCode!);
+    }
+    
+    // Si selectedStateCode cambió a null, ocultar el detalle
+    if (widget.selectedStateCode == null && oldWidget.selectedStateCode != null) {
+      _selectionController.reverse().then((_) {
+        if (mounted) {
+          setState(() {
+            _showStateDetail = false;
+            _detailState = null;
+          });
+        }
+      });
+    }
+  }
+  
+  void _showStateDetailForCode(String stateCode) {
+    if (_states.isEmpty) {
+      // Si los estados no han cargado, esperar y reintentar
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted && widget.selectedStateCode != null) {
+          _showStateDetailForCode(widget.selectedStateCode!);
+        }
+      });
+      return;
+    }
+    
+    // Buscar el estado correspondiente por código o nombre
+    MexicoState? foundState;
+    for (final state in _states) {
+      if (state.code == stateCode || state.name == stateCode) {
+        foundState = state;
+        break;
+      }
+    }
+    
+    if (foundState != null) {
+      setState(() {
+        _detailState = foundState;
+        _showStateDetail = true;
+      });
+      _selectionController.forward(from: 0);
+    }
+  }
+
   void _initHoverAnimationForState(String stateCode) {
     if (!_stateHoverControllers.containsKey(stateCode)) {
       final controller = AnimationController(
@@ -202,6 +258,11 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
         _states = states;
         _isLoading = false;
       });
+      
+      // Si hay un selectedStateCode inicial, mostrar el detalle
+      if (widget.selectedStateCode != null) {
+        _showStateDetailForCode(widget.selectedStateCode!);
+      }
     } catch (e) {
       debugPrint('Error loading GeoJSON: $e');
       setState(() => _isLoading = false);
@@ -684,11 +745,14 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
     if (state != null) {
       widget.onStateSelected?.call(state.code, state.name);
 
-      setState(() {
-        _detailState = state;
-        _showStateDetail = true;
-      });
-      _selectionController.forward(from: 0);
+      // Solo mostrar detalle automáticamente si autoShowDetail es true
+      if (widget.autoShowDetail) {
+        setState(() {
+          _detailState = state;
+          _showStateDetail = true;
+        });
+        _selectionController.forward(from: 0);
+      }
     }
   }
 
@@ -756,63 +820,74 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
       orElse: () => _states.first,
     );
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Escalar inversamente al zoom
+    final tooltipScale = (1.0 / widget.zoomScale).clamp(0.25, 1.0);
+    
+    // Ajustar el offset base según el zoom para que el tooltip quede cerca del cursor
+    final baseOffsetX = 60 * tooltipScale;
+    final baseOffsetY = 50 * tooltipScale;
 
     // Ajustar posición para que el tooltip no se salga de la pantalla o tape el cursor
-    double left = _hoverPosition!.dx - 60; // Centrado horizontalmente (aprox)
-    double top = _hoverPosition!.dy - 50; // Arriba del cursor
+    double left = _hoverPosition!.dx - baseOffsetX;
+    double top = _hoverPosition!.dy - baseOffsetY;
 
     return Positioned(
       left: left,
       top: top,
       child: IgnorePointer(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.8)
-                : Colors.white.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-            border: Border.all(
+        child: Transform.scale(
+          scale: tooltipScale,
+          alignment: Alignment.topLeft,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : Colors.black.withValues(alpha: 0.1),
-              width: 0.5,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                state.name,
-                style: TextStyle(
-                  color: isDark ? Colors.white : Colors.black87,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  decoration: TextDecoration.none,
+                  ? Colors.black.withValues(alpha: 0.8)
+                  : Colors.white.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
+              ],
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
+                width: 0.5,
               ),
-              if (_poloCounts.containsKey(state.name)) ...[
-                const SizedBox(height: 4),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  'Polos: ${_poloCounts[state.name]}',
+                  state.name,
                   style: TextStyle(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.8)
-                        : Colors.black.withValues(alpha: 0.7),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
+                    color: isDark ? Colors.white : Colors.black87,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                     decoration: TextDecoration.none,
                   ),
                 ),
+                if (_poloCounts.containsKey(state.name)) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Polos: ${_poloCounts[state.name]}',
+                    style: TextStyle(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.8)
+                          : Colors.black.withValues(alpha: 0.7),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

@@ -20,6 +20,17 @@ class _PolosScreenState extends State<PolosScreen> {
   String? _selectedStateName;
   String? _hoveredStateName;
   PoloInfo? _selectedPolo;
+  
+  // Estado para móvil con zoom y confirmación
+  String? _pendingStateCode;
+  String? _pendingStateName;
+  bool _showMobileConfirmation = false;
+  final TransformationController _transformationController = TransformationController();
+  double _currentZoom = 1.0;
+  
+  // Límites de zoom
+  static const double _minScale = 0.5;
+  static const double _maxScale = 6.0;
 
   final Map<String, StatePoloData> _statePoloData = {
     'Sonora': const StatePoloData(
@@ -171,6 +182,28 @@ class _PolosScreenState extends State<PolosScreen> {
   };
 
   @override
+  void initState() {
+    super.initState();
+    _transformationController.addListener(_onZoomChanged);
+  }
+
+  void _onZoomChanged() {
+    final scale = _transformationController.value.getMaxScaleOnAxis();
+    if (scale != _currentZoom) {
+      setState(() {
+        _currentZoom = scale;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _transformationController.removeListener(_onZoomChanged);
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final screenWidth = MediaQuery.of(context).size.width;
@@ -285,13 +318,474 @@ class _PolosScreenState extends State<PolosScreen> {
   Widget _buildMobileLayout(bool isDark) {
     return Column(
       children: [
-        // Mapa
-        Expanded(flex: 2, child: _buildMapContainer(isDark)),
-        const SizedBox(height: 16),
-        // Panel de información
-        Expanded(flex: 1, child: _buildInfoPanel(isDark)),
+        // Mapa con zoom - más grande
+        Expanded(
+          flex: 3,
+          child: _buildMobileMapContainer(isDark),
+        ),
+        const SizedBox(height: 12),
+        // Panel de información - más pequeño
+        Expanded(
+          flex: 1,
+          child: _buildInfoPanel(isDark),
+        ),
       ],
     );
+  }
+
+  Widget _buildMobileMapContainer(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          children: [
+            // Mapa general con InteractiveViewer (cuando no hay estado confirmado)
+            if (_selectedStateCode == null)
+              InteractiveViewer(
+                transformationController: _transformationController,
+                minScale: _minScale,
+                maxScale: _maxScale,
+                boundaryMargin: const EdgeInsets.all(100),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: double.infinity,
+                  child: MexicoMapWidget(
+                    selectedStateCode: null,
+                    highlightedStates: _statePoloData.keys.toList(),
+                    autoShowDetail: false, // En móvil NO mostrar detalle automático
+                    zoomScale: _currentZoom, // Pasar el zoom para escalar tooltips
+                    onStateSelected: (code, name) {
+                      // En móvil, mostrar confirmación antes de navegar
+                      if (code.isNotEmpty && name.isNotEmpty) {
+                        setState(() {
+                          _pendingStateCode = code;
+                          _pendingStateName = name;
+                          _showMobileConfirmation = true;
+                        });
+                      }
+                    },
+                    onPoloSelected: (polo) {
+                      setState(() {
+                        _selectedPolo = polo;
+                      });
+                    },
+                    onBackToMap: () {},
+                    onStateHover: (stateName) {
+                      setState(() {
+                        _hoveredStateName = stateName;
+                      });
+                    },
+                  ),
+                ),
+              )
+            else
+              // Mapa del estado seleccionado SIN zoom (solo después de confirmar)
+              SizedBox(
+                width: double.infinity,
+                height: double.infinity,
+                child: Stack(
+                  children: [
+                    MexicoMapWidget(
+                      selectedStateCode: _selectedStateCode,
+                      highlightedStates: _statePoloData.keys.toList(),
+                      autoShowDetail: true, // En el estado confirmado SÍ mostrar detalle
+                      onStateSelected: (code, name) {},
+                      onPoloSelected: (polo) {
+                        setState(() {
+                          _selectedPolo = polo;
+                        });
+                      },
+                      onBackToMap: () {
+                        setState(() {
+                          _selectedStateCode = null;
+                          _selectedStateName = null;
+                          _selectedPolo = null;
+                        });
+                      },
+                      onStateHover: (stateName) {
+                        setState(() {
+                          _hoveredStateName = stateName;
+                        });
+                      },
+                    ),
+                    // Botón X para deseleccionar el estado
+                    // Positioned(
+                    //   top: 12,
+                    //   right: 12,
+                    //   child: GestureDetector(
+                    //     onTap: () {
+                    //       setState(() {
+                    //         _selectedStateCode = null;
+                    //         _selectedStateName = null;
+                    //         _selectedPolo = null;
+                    //       });
+                    //     },
+                    //     child: Container(
+                    //       padding: const EdgeInsets.all(8),
+                    //       decoration: BoxDecoration(
+                    //         color: isDark
+                    //             ? Colors.black.withValues(alpha: 0.6)
+                    //             : Colors.white.withValues(alpha: 0.95),
+                    //         borderRadius: BorderRadius.circular(10),
+                    //         boxShadow: [
+                    //           BoxShadow(
+                    //             color: Colors.black.withValues(alpha: 0.1),
+                    //             blurRadius: 6,
+                    //             offset: const Offset(0, 2),
+                    //           ),
+                    //         ],
+                    //       ),
+                    //       // child: Icon(
+                    //       //   Icons.close_rounded,
+                    //       //   size: 20,
+                    //       //   color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+                    //       // ),
+                    //     ),
+                    //   ),
+                    // ),
+                    // Nombre del estado seleccionado
+                    // Positioned(
+                    //   top: 12,
+                    //   left: 12,
+                    //   child: Container(
+                    //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    //     decoration: BoxDecoration(
+                    //       gradient: const LinearGradient(
+                    //         begin: Alignment.topLeft,
+                    //         end: Alignment.bottomRight,
+                    //         colors: [Color(0xFF691C32), Color(0xFF4A1525)],
+                    //       ),
+                    //       borderRadius: BorderRadius.circular(10),
+                    //       boxShadow: [
+                    //         BoxShadow(
+                    //           color: const Color(0xFF691C32).withValues(alpha: 0.3),
+                    //           blurRadius: 8,
+                    //           offset: const Offset(0, 2),
+                    //         ),
+                    //       ],
+                    //     ),
+                    //     child: Text(
+                    //       _selectedStateName ?? '',
+                    //       style: const TextStyle(
+                    //         fontSize: 13,
+                    //         fontWeight: FontWeight.w600,
+                    //         color: Colors.white,
+                    //       ),
+                    //     ),
+                    //   ),
+                    // ),
+                  ],
+                ),
+              ),
+            
+            // Nombre del estado pendiente de confirmar (solo cuando hay confirmación pendiente)
+            if (_showMobileConfirmation && _pendingStateName != null && _selectedStateCode == null)
+              Positioned(
+                top: 16,
+                left: 16,
+                right: 16,
+                child: _buildMobileStateLabel(isDark),
+              ),
+            
+            // Botones de confirmación para móvil (solo cuando no hay estado seleccionado)
+            if (_showMobileConfirmation && _selectedStateCode == null)
+              Positioned(
+                bottom: 20,
+                left: 16,
+                right: 16,
+                child: _buildMobileConfirmationButtons(isDark),
+              ),
+            
+            // Instrucciones de zoom (solo cuando no hay selección pendiente ni estado seleccionado)
+            if (!_showMobileConfirmation && _selectedStateCode == null)
+              Positioned(
+                bottom: 16,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 300),
+                    opacity: _selectedStateName == null ? 1.0 : 0.0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.black.withValues(alpha: 0.6)
+                            : Colors.white.withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.pinch_rounded,
+                            size: 14,
+                            color: isDark
+                                ? Colors.white70
+                                : const Color(0xFF6B7280),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Pellizca para hacer zoom',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark
+                                  ? Colors.white70
+                                  : const Color(0xFF6B7280),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              
+            // Botón para restablecer zoom (solo cuando no hay estado seleccionado)
+            if (_selectedStateCode == null)
+              Positioned(
+                top: 12,
+                right: 12,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: !_showMobileConfirmation ? 1.0 : 0.3,
+                  child: GestureDetector(
+                    onTap: _resetZoom,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.black.withValues(alpha: 0.5)
+                            : Colors.white.withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.zoom_out_map_rounded,
+                        size: 18,
+                        color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileStateLabel(bool isDark) {
+    // Escalar inversamente al zoom (más zoom = más pequeño)
+    // Cuando zoom es 1.0, escala es 1.0
+    // Cuando zoom es 6.0, escala es ~0.4
+    final scale = (1.0 / _currentZoom).clamp(0.3, 1.0);
+    
+    return Center(
+      child: Transform.scale(
+        scale: scale,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF691C32),
+                const Color(0xFF691C32).withValues(alpha: 0.9),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF691C32).withValues(alpha: 0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(
+                  Icons.location_on_rounded,
+                  color: Colors.white,
+                  size: 12,
+                ),
+              ),
+            const SizedBox(width: 6),
+            Text(
+              _pendingStateName ?? '',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileConfirmationButtons(bool isDark) {
+    return Row(
+      children: [
+        // Botón Cancelar
+        Expanded(
+          child: GestureDetector(
+            onTap: _cancelMobileSelection,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.2)
+                      : const Color(0xFFE5E7EB),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Cancelar',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Botón Confirmar
+        Expanded(
+          child: GestureDetector(
+            onTap: _confirmMobileSelection,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF691C32), Color(0xFF4A1525)],
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF691C32).withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.check_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    'Confirmar',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _resetZoom() {
+    _transformationController.value = Matrix4.identity();
+  }
+
+  void _cancelMobileSelection() {
+    setState(() {
+      _pendingStateCode = null;
+      _pendingStateName = null;
+      _showMobileConfirmation = false;
+    });
+    // Restablecer el zoom
+    _resetZoom();
+  }
+
+  void _confirmMobileSelection() {
+    if (_pendingStateCode != null && _pendingStateName != null) {
+      // Restablecer el zoom antes de mostrar el estado
+      _resetZoom();
+      setState(() {
+        _selectedStateCode = _pendingStateCode;
+        _selectedStateName = _pendingStateName;
+        _pendingStateCode = null;
+        _pendingStateName = null;
+        _showMobileConfirmation = false;
+        _selectedPolo = null;
+      });
+    }
   }
 
   Widget _buildMapContainer(bool isDark) {
