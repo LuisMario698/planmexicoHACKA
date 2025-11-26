@@ -23,7 +23,7 @@ class _MainAppState extends State<MainApp> {
       listenable: _themeProvider,
       builder: (context, _) {
         return MaterialApp(
-          title: 'Plan México',
+          title: 'Plan Méxicoo',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
