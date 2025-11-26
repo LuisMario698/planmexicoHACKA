@@ -1,38 +1,28 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../service/inversiones_service.dart';
+import 'inversiones_info.dart'; // Importación necesaria
 
-/// Card individual de proyecto de inversión
 class ProyectoCard extends StatelessWidget {
   final ProyectoInversion proyecto;
   final VoidCallback? onTap;
-  
-  const ProyectoCard({
-    super.key,
-    required this.proyecto,
-    this.onTap,
-  });
 
-  /// Obtiene el ícono según el sector
+  const ProyectoCard({super.key, required this.proyecto, this.onTap});
+
   IconData _getIconForSector(String sector) {
-    switch (sector.toLowerCase()) {
-      case 'transporte':
-        return Icons.directions_bus_rounded;
-      case 'electricidad':
-        return Icons.bolt_rounded;
-      case 'agua y medio ambiente':
-        return Icons.water_drop_rounded;
-      case 'inmobiliario y turismo':
-        return Icons.beach_access_rounded;
-      case 'telecomunicaciones':
-        return Icons.cell_tower_rounded;
-      case 'hidrocarburos':
-        return Icons.oil_barrel_rounded;
-      case 'social':
-        return Icons.people_rounded;
-      default:
-        return Icons.business_rounded;
-    }
+    final s = sector.toLowerCase();
+    if (s.contains('transporte')) return Icons.directions_bus_rounded;
+    if (s.contains('electricidad') || s.contains('cfe'))
+      return Icons.bolt_rounded;
+    if (s.contains('agua')) return Icons.water_drop_rounded;
+    if (s.contains('turismo') || s.contains('inmobiliario'))
+      return Icons.beach_access_rounded;
+    if (s.contains('telecom')) return Icons.cell_tower_rounded;
+    if (s.contains('hidrocarburos') || s.contains('pemex'))
+      return Icons.oil_barrel_rounded;
+    if (s.contains('social')) return Icons.people_rounded;
+    if (s.contains('industria')) return Icons.factory_rounded;
+    return Icons.business_rounded;
   }
 
   @override
@@ -40,31 +30,38 @@ class ProyectoCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 768;
-    
-    // Tamaños responsivos
+
     final bool isExtraSmall = screenWidth < 400;
     final bool isSmall = screenWidth >= 400 && screenWidth < 600;
-    
-    final double iconSize = isExtraSmall ? 16 : (isSmall ? 18 : (isDesktop ? 22 : 20));
+
+    final double iconSize = isExtraSmall
+        ? 16
+        : (isSmall ? 18 : (isDesktop ? 22 : 20));
     final double iconPadding = isExtraSmall ? 6 : (isSmall ? 8 : 10);
-    final double cardPadding = isExtraSmall ? 8 : (isSmall ? 10 : (isDesktop ? 16 : 12));
-    final double titleSize = isExtraSmall ? 11 : (isSmall ? 12 : (isDesktop ? 14 : 13));
-    final double montoSize = isExtraSmall ? 12 : (isSmall ? 14 : (isDesktop ? 18 : 15));
+    final double cardPadding = isExtraSmall
+        ? 8
+        : (isSmall ? 10 : (isDesktop ? 16 : 12));
+    final double titleSize = isExtraSmall
+        ? 11
+        : (isSmall ? 12 : (isDesktop ? 14 : 13));
+    final double montoSize = isExtraSmall
+        ? 12
+        : (isSmall ? 14 : (isDesktop ? 18 : 15));
     final double sectorFontSize = isExtraSmall ? 7 : (isSmall ? 8 : 9);
     final double descFontSize = isExtraSmall ? 8 : (isSmall ? 9 : 10);
     final double tipoFontSize = isExtraSmall ? 7 : (isSmall ? 8 : 9);
-    
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final bool isCompact = constraints.maxHeight < 180;
-        
+
         return Container(
           decoration: BoxDecoration(
             color: isDark ? AppTheme.darkSurface : Colors.white,
             borderRadius: BorderRadius.circular(isExtraSmall ? 10 : 14),
             border: Border.all(
-              color: isDark 
-                  ? Colors.white.withValues(alpha: 0.08) 
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
                   : const Color(0xFFE8E8E8),
             ),
             boxShadow: [
@@ -78,7 +75,14 @@ class ProyectoCard extends StatelessWidget {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: onTap,
+              // AQUI SE ABRE LA VENTANA EMERGENTE
+              onTap: () {
+                showDialog(
+                  context: context,
+                  barrierColor: Colors.black54,
+                  builder: (context) => InversionesInfo(proyecto: proyecto),
+                );
+              },
               borderRadius: BorderRadius.circular(isExtraSmall ? 10 : 14),
               child: Padding(
                 padding: EdgeInsets.all(cardPadding),
@@ -94,7 +98,9 @@ class ProyectoCard extends StatelessWidget {
                           padding: EdgeInsets.all(iconPadding),
                           decoration: BoxDecoration(
                             color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(isExtraSmall ? 6 : 10),
+                            borderRadius: BorderRadius.circular(
+                              isExtraSmall ? 6 : 10,
+                            ),
                           ),
                           child: Icon(
                             _getIconForSector(proyecto.sector),
@@ -106,11 +112,13 @@ class ProyectoCard extends StatelessWidget {
                         Expanded(
                           child: Container(
                             padding: EdgeInsets.symmetric(
-                              horizontal: isExtraSmall ? 4 : 6, 
+                              horizontal: isExtraSmall ? 4 : 6,
                               vertical: isExtraSmall ? 2 : 3,
                             ),
                             decoration: BoxDecoration(
-                              color: AppTheme.accentColor.withValues(alpha: 0.15),
+                              color: AppTheme.accentColor.withValues(
+                                alpha: 0.15,
+                              ),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -150,7 +158,9 @@ class ProyectoCard extends StatelessWidget {
                         proyecto.descripcion,
                         style: TextStyle(
                           fontSize: descFontSize,
-                          color: isDark ? Colors.white60 : AppTheme.lightTextSecondary,
+                          color: isDark
+                              ? Colors.white60
+                              : AppTheme.lightTextSecondary,
                           height: 1.3,
                         ),
                         maxLines: 2,
@@ -158,7 +168,6 @@ class ProyectoCard extends StatelessWidget {
                       ),
                     ],
 
-                    // Espacio flexible
                     const Expanded(child: SizedBox(height: 4)),
 
                     // Monto
@@ -184,17 +193,21 @@ class ProyectoCard extends StatelessWidget {
                         Icon(
                           Icons.category_rounded,
                           size: isExtraSmall ? 10 : 12,
-                          color: isDark ? Colors.white54 : AppTheme.lightTextSecondary,
+                          color: isDark
+                              ? Colors.white54
+                              : AppTheme.lightTextSecondary,
                         ),
                         const SizedBox(width: 3),
                         Flexible(
                           child: Text(
-                            proyecto.tipoProyecto.isNotEmpty 
-                                ? proyecto.tipoProyecto 
+                            proyecto.tipoProyecto.isNotEmpty
+                                ? proyecto.tipoProyecto
                                 : 'Sin clasificar',
                             style: TextStyle(
                               fontSize: tipoFontSize,
-                              color: isDark ? Colors.white54 : AppTheme.lightTextSecondary,
+                              color: isDark
+                                  ? Colors.white54
+                                  : AppTheme.lightTextSecondary,
                             ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,

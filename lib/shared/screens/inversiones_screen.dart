@@ -21,11 +21,11 @@ class _InversionesScreenState extends State<InversionesScreen> {
 
   // Paginación de cards
   int _currentCardsPage = 0;
-  
+
   // Búsqueda
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  
+
   // Filtros
   String _selectedSector = 'Todos';
   String _selectedMontoRange = 'Todos';
@@ -81,7 +81,7 @@ class _InversionesScreenState extends State<InversionesScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final screenWidth = MediaQuery.of(context).size.width;
-    
+
     // Breakpoints responsivos
     final isExtraSmall = screenWidth < 400;
     final isSmall = screenWidth >= 400 && screenWidth < 600;
@@ -118,7 +118,9 @@ class _InversionesScreenState extends State<InversionesScreen> {
     // Si está cargando
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: isDark ? AppTheme.darkBackground : const Color(0xFFF5F5F5),
+        backgroundColor: isDark
+            ? AppTheme.darkBackground
+            : const Color(0xFFF5F5F5),
         body: const Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -135,7 +137,9 @@ class _InversionesScreenState extends State<InversionesScreen> {
     // Si hay error
     if (_errorMessage != null) {
       return Scaffold(
-        backgroundColor: isDark ? AppTheme.darkBackground : const Color(0xFFF5F5F5),
+        backgroundColor: isDark
+            ? AppTheme.darkBackground
+            : const Color(0xFFF5F5F5),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -156,8 +160,15 @@ class _InversionesScreenState extends State<InversionesScreen> {
     }
 
     // Obtener sectores únicos para el filtro
-    final sectores = ['Todos', ..._proyectos.map((p) => p.sector).where((s) => s.isNotEmpty).toSet().toList()];
-    
+    final sectores = [
+      'Todos',
+      ..._proyectos
+          .map((p) => p.sector)
+          .where((s) => s.isNotEmpty)
+          .toSet()
+          .toList(),
+    ];
+
     // Filtrar proyectos
     List<ProyectoInversion> proyectosFiltrados = _filtrarProyectos();
 
@@ -166,15 +177,24 @@ class _InversionesScreenState extends State<InversionesScreen> {
     final int cardsPerPage = gridColumns * rowsPerPage;
     final int totalPages = (proyectosFiltrados.length / cardsPerPage).ceil();
     final int startIndex = _currentCardsPage * cardsPerPage;
-    final int endIndex = (startIndex + cardsPerPage).clamp(0, proyectosFiltrados.length);
+    final int endIndex = (startIndex + cardsPerPage).clamp(
+      0,
+      proyectosFiltrados.length,
+    );
     final proyectosPagina = proyectosFiltrados.sublist(startIndex, endIndex);
 
     // Espaciado responsivo
-    final double gridSpacing = isExtraSmall ? 8 : (isSmall ? 10 : (isMedium ? 12 : 16));
-    final double pagePadding = isExtraSmall ? 12 : (isSmall ? 16 : (isDesktop ? 32 : 20));
+    final double gridSpacing = isExtraSmall
+        ? 8
+        : (isSmall ? 10 : (isMedium ? 12 : 16));
+    final double pagePadding = isExtraSmall
+        ? 12
+        : (isSmall ? 16 : (isDesktop ? 32 : 20));
 
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkBackground : const Color(0xFFF5F5F5),
+      backgroundColor: isDark
+          ? AppTheme.darkBackground
+          : const Color(0xFFF5F5F5),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -230,14 +250,15 @@ class _InversionesScreenState extends State<InversionesScreen> {
                       },
                     ),
                   ),
-                  
+
                   // Paginación
                   if (totalPages > 1) ...[
                     const SizedBox(height: 24),
                     InversionesPagination(
                       currentPage: _currentCardsPage,
                       totalPages: totalPages,
-                      onPageChanged: (page) => setState(() => _currentCardsPage = page),
+                      onPageChanged: (page) =>
+                          setState(() => _currentCardsPage = page),
                     ),
                   ],
                 ],
@@ -256,13 +277,14 @@ class _InversionesScreenState extends State<InversionesScreen> {
       // Filtro de búsqueda
       if (_searchQuery.isNotEmpty) {
         final query = _searchQuery.toLowerCase();
-        if (!p.proyecto.toLowerCase().contains(query) && 
+        if (!p.proyecto.toLowerCase().contains(query) &&
             !p.sector.toLowerCase().contains(query) &&
             !p.descripcion.toLowerCase().contains(query)) {
           return false;
         }
       }
-      if (_selectedSector != 'Todos' && p.sector != _selectedSector) return false;
+      if (_selectedSector != 'Todos' && p.sector != _selectedSector)
+        return false;
       if (_selectedMontoRange != 'Todos') {
         final monto = p.inversionMXN ?? 0;
         switch (_selectedMontoRange) {

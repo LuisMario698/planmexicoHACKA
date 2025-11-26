@@ -17,7 +17,7 @@ dependencies:
   speech_to_text: ^7.3.0
   avatar_glow: ^3.0.0 # Para la animación de ondas del micrófono
   google_fonts: ^6.1.0
-
+  url_launcher: ^6.3.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
