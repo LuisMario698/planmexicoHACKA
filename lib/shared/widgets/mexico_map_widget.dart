@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../data/polos_data.dart';
 
 class MexicoMapWidget extends StatefulWidget {
   final Function(String stateCode, String stateName)? onStateSelected;
@@ -12,6 +13,9 @@ class MexicoMapWidget extends StatefulWidget {
   final List<String>? highlightedStates;
   final bool autoShowDetail; // Si es false, no muestra detalle al hacer tap
   final double zoomScale; // Escala actual del zoom para ajustar tooltips
+  final bool showOnlySelected; // Si es true, solo muestra el estado seleccionado (para mini preview)
+  final bool hidePoloMarkers; // Si es true, no muestra los markers de polos
+  final bool skipInitialAnimation; // Si es true, no ejecuta la animación al mostrar el estado
 
   const MexicoMapWidget({
     super.key,
@@ -23,6 +27,9 @@ class MexicoMapWidget extends StatefulWidget {
     this.highlightedStates,
     this.autoShowDetail = true,
     this.zoomScale = 1.0,
+    this.showOnlySelected = false,
+    this.hidePoloMarkers = false,
+    this.skipInitialAnimation = false,
   });
 
   @override
@@ -141,7 +148,12 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
     // Si selectedStateCode cambió de null a un valor, mostrar el detalle
     if (widget.selectedStateCode != null && 
         oldWidget.selectedStateCode == null) {
-      _showStateDetailForCode(widget.selectedStateCode!);
+      // Si skipInitialAnimation es true, mostrar sin animación
+      if (widget.skipInitialAnimation) {
+        _showStateDetailForCodeNoAnimation(widget.selectedStateCode!);
+      } else {
+        _showStateDetailForCode(widget.selectedStateCode!);
+      }
     }
     
     // Si selectedStateCode cambió a null, ocultar el detalle
@@ -183,6 +195,35 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
         _showStateDetail = true;
       });
       _selectionController.forward(from: 0);
+    }
+  }
+  
+  // Versión sin animación para cuando venimos de la animación de expansión
+  void _showStateDetailForCodeNoAnimation(String stateCode) {
+    if (_states.isEmpty) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted && widget.selectedStateCode != null) {
+          _showStateDetailForCodeNoAnimation(widget.selectedStateCode!);
+        }
+      });
+      return;
+    }
+    
+    MexicoState? foundState;
+    for (final state in _states) {
+      if (state.code == stateCode || state.name == stateCode) {
+        foundState = state;
+        break;
+      }
+    }
+    
+    if (foundState != null) {
+      setState(() {
+        _detailState = foundState;
+        _showStateDetail = true;
+      });
+      // Saltar la animación, ir directo al final
+      _selectionController.value = 1.0;
     }
   }
 
@@ -289,6 +330,11 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
       return const Center(child: Text('No se pudo cargar el mapa'));
     }
 
+    // Modo mini preview - solo muestra el estado seleccionado
+    if (widget.showOnlySelected && widget.selectedStateCode != null) {
+      return _buildMiniStatePreview(context);
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         return Stack(
@@ -350,6 +396,42 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
     );
   }
 
+  // Widget para mostrar solo la silueta del estado seleccionado (mini preview)
+  Widget _buildMiniStatePreview(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Buscar el estado seleccionado
+    final selectedState = _states.firstWhere(
+      (s) => s.code == widget.selectedStateCode,
+      orElse: () => _states.first,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = Size(constraints.maxWidth, constraints.maxHeight);
+        
+        return Stack(
+          children: [
+            // Silueta del estado - SIEMPRE ocultar marcadores del painter
+            // porque los widgets clickeables los manejan
+            CustomPaint(
+              size: size,
+              painter: SingleStatePainter(
+                state: selectedState,
+                isDark: isDark,
+                animationValue: 1.0,
+                hideMarkers: true, // Siempre true - los widgets manejan los markers
+              ),
+            ),
+            // Marcadores clickeables como widgets (si no están ocultos)
+            if (!widget.hidePoloMarkers)
+              ..._buildClickableMarkers(context, selectedState, size, isDark),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildStateDetailView(
     BuildContext context,
     BoxConstraints constraints,
@@ -400,7 +482,7 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
                       borderRadius: BorderRadius.circular(24),
                       child: Stack(
                         children: [
-                          // Mapa del estado individual
+                          // Mapa del estado individual - hideMarkers porque widgets los manejan
                           Positioned.fill(
                             child: Padding(
                               padding: const EdgeInsets.all(24),
@@ -409,14 +491,14 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
                                   state: state,
                                   isDark: isDark,
                                   animationValue: animationValue,
+                                  hideMarkers: true, // Widgets manejan los markers
                                 ),
                               ),
                             ),
                           ),
 
-                          // Marcador clickeable (solo para Campeche por ahora)
-                          if (state.code == 'CM' || state.name == 'Campeche')
-                            _buildClickableMarker(context, state, size, isDark),
+                          // Marcadores clickeables para todos los polos del estado
+                          ..._buildClickableMarkers(context, state, size, isDark),
 
                           // Header con nombre del estado
                           Positioned(
@@ -580,13 +662,21 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
     );
   }
 
-  Widget _buildClickableMarker(
+  /// Construye los marcadores clickeables para todos los polos de un estado
+  List<Widget> _buildClickableMarkers(
     BuildContext context,
     MexicoState state,
     Size size,
     bool isDark,
   ) {
-    // Calcular bounds del estado para posicionar el marcador
+    // Obtener los polos del estado
+    final polos = PolosData.getPolosByEstado(state.code).isNotEmpty
+        ? PolosData.getPolosByEstado(state.code)
+        : PolosData.getPolosByEstado(state.name);
+
+    if (polos.isEmpty) return [];
+
+    // Calcular bounds del estado para posicionar los marcadores
     double minX = double.infinity;
     double maxX = double.negativeInfinity;
     double minY = double.infinity;
@@ -606,8 +696,7 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
 
     // Calcular escala y offset (mismo cálculo que SingleStatePainter)
     final padding = 30.0;
-    final availableWidth =
-        size.width - padding * 2 - 48; // -48 por el padding del Positioned.fill
+    final availableWidth = size.width - padding * 2 - 48;
     final availableHeight = size.height - padding * 2 - 48;
 
     final dataWidth = maxX - minX;
@@ -620,70 +709,98 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
     final offsetX = (size.width - dataWidth * scale) / 2;
     final offsetY = (size.height - dataHeight * scale) / 2;
 
-    // Posición del marcador: 55% desde la izquierda, 65% desde abajo
-    final markerGeoX = minX + stateWidth * 0.55;
-    final markerGeoY = minY + stateHeight * 0.65;
+    // Crear un marcador clickeable para cada polo
+    return polos.map((polo) {
+      final markerGeoX = minX + stateWidth * polo.relativeX;
+      final markerGeoY = minY + stateHeight * polo.relativeY;
 
-    final markerX = (markerGeoX - minX) * scale + offsetX;
-    final markerY = size.height - ((markerGeoY - minY) * scale + offsetY);
+      final markerX = (markerGeoX - minX) * scale + offsetX;
+      final markerY = size.height - ((markerGeoY - minY) * scale + offsetY);
 
-    return Positioned(
-      left: markerX - 20,
-      top: markerY - 20,
-      child: GestureDetector(
-        onTap: () {
-          // Crear información del polo
-          final poloInfo = PoloInfo(
-            id: 'campeche_polo_1',
-            nombre: 'Polo de Desarrollo Campeche',
-            estado: 'Campeche',
-            descripcion:
-                'Nuevo polo de desarrollo enfocado en energías renovables y desarrollo sustentable. '
-                'Este proyecto busca impulsar la economía local mediante la creación de empleos verdes '
-                'y la implementación de tecnologías limpias en la región.',
-            tipo: 'nuevo',
-            imagenes: ['assets/images/marina_campeche.png'],
-            ubicacion: 'Campeche, México',
-            latitud: 19.8301,
-            longitud: -90.5349,
-          );
-          widget.onPoloSelected?.call(poloInfo);
-        },
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Center(
-              child: Container(
-                width: 28,
-                height: 28,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFF2563EB), // Azul - Nuevo polo
-                ),
-                child: const Icon(
-                  Icons.location_on,
-                  color: Colors.white,
-                  size: 16,
+      return Positioned(
+        left: markerX - 20,
+        top: markerY - 20,
+        child: GestureDetector(
+          onTap: () {
+            // Crear información del polo desde PoloMarker
+            final poloInfo = PoloInfo(
+              id: polo.idString,
+              nombre: polo.nombre,
+              estado: polo.estado,
+              descripcion: _buildPoloDescription(polo),
+              tipo: polo.tipo,
+              imagenes: [],
+              ubicacion: '${polo.estado}, México',
+              latitud: 0,
+              longitud: 0,
+            );
+            widget.onPoloSelected?.call(poloInfo);
+          },
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: polo.color,
+                  ),
+                  child: const Icon(
+                    Icons.location_on,
+                    color: Colors.white,
+                    size: 16,
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
-    );
+      );
+    }).toList();
+  }
+
+  /// Construye la descripción completa del polo
+  String _buildPoloDescription(PoloMarker polo) {
+    final buffer = StringBuffer();
+    
+    if (polo.vocacion.isNotEmpty) {
+      buffer.writeln('📍 Vocación: ${polo.vocacion}');
+      buffer.writeln();
+    }
+    
+    if (polo.sectoresClave.isNotEmpty) {
+      buffer.writeln('🏭 Sectores Clave:');
+      for (final sector in polo.sectoresClave) {
+        buffer.writeln('  • $sector');
+      }
+      buffer.writeln();
+    }
+    
+    if (polo.infraestructura.isNotEmpty) {
+      buffer.writeln('🏗️ Infraestructura: ${polo.infraestructura}');
+      buffer.writeln();
+    }
+    
+    if (polo.descripcion.isNotEmpty) {
+      buffer.writeln(polo.descripcion);
+    }
+    
+    return buffer.toString().trim();
   }
 
   void _closeStateDetail() {
@@ -971,61 +1088,85 @@ class MexicoMapPainter extends CustomPainter {
     double offsetX,
     double offsetY,
   ) {
-    // Encontrar Campeche para calcular la posición del marcador
-    final campeche = states
-        .where((s) => s.code == 'CM' || s.name == 'Campeche')
-        .firstOrNull;
-    if (campeche != null) {
-      // Calcular bounds de Campeche
-      double stateMinX = double.infinity;
-      double stateMaxX = double.negativeInfinity;
-      double stateMinY = double.infinity;
-      double stateMaxY = double.negativeInfinity;
-
-      for (final polygon in campeche.polygons) {
-        for (final point in polygon) {
-          if (point.dx < stateMinX) stateMinX = point.dx;
-          if (point.dx > stateMaxX) stateMaxX = point.dx;
-          if (point.dy < stateMinY) stateMinY = point.dy;
-          if (point.dy > stateMaxY) stateMaxY = point.dy;
-        }
+    // Dibujar todos los polos desde PolosData
+    for (final polo in PolosData.polos) {
+      final state = states
+          .where((s) => s.code == polo.estadoCodigo || s.name == polo.estado)
+          .firstOrNull;
+      
+      if (state != null) {
+        _drawStateMarker(
+          canvas, size, scale, offsetX, offsetY,
+          state: state,
+          relativeX: polo.relativeX,
+          relativeY: polo.relativeY,
+          color: polo.color,
+        );
       }
-
-      final stateWidth = stateMaxX - stateMinX;
-      final stateHeight = stateMaxY - stateMinY;
-
-      // Posición del marcador: 55% desde la izquierda, 65% desde abajo
-      final markerGeoX = stateMinX + stateWidth * 0.55;
-      final markerGeoY = stateMinY + stateHeight * 0.65;
-
-      final markerX = (markerGeoX - minX) * scale + offsetX;
-      final markerY = size.height - ((markerGeoY - minY) * scale + offsetY);
-
-      // Tamaño pequeño para el mapa completo
-      final markerSize = 6.0;
-
-      // Sombra del marcador
-      final shadowPaint = Paint()
-        ..color = Colors.black.withValues(alpha: 0.3)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
-      canvas.drawCircle(
-        Offset(markerX + 1, markerY + 1),
-        markerSize,
-        shadowPaint,
-      );
-
-      // Círculo exterior (borde blanco)
-      final borderPaint = Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(Offset(markerX, markerY), markerSize + 2, borderPaint);
-
-      // Círculo interior (punto azul - nuevo polo)
-      final markerPaint = Paint()
-        ..color = const Color(0xFF2563EB)
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(Offset(markerX, markerY), markerSize, markerPaint);
     }
+  }
+
+  /// Dibuja un marcador circular en una posición relativa dentro de un estado
+  void _drawStateMarker(
+    Canvas canvas,
+    Size size,
+    double scale,
+    double offsetX,
+    double offsetY, {
+    required MexicoState state,
+    required double relativeX, // 0.0 = izquierda, 1.0 = derecha
+    required double relativeY, // 0.0 = abajo, 1.0 = arriba
+    required Color color,
+  }) {
+    // Calcular bounds del estado
+    double stateMinX = double.infinity;
+    double stateMaxX = double.negativeInfinity;
+    double stateMinY = double.infinity;
+    double stateMaxY = double.negativeInfinity;
+
+    for (final polygon in state.polygons) {
+      for (final point in polygon) {
+        if (point.dx < stateMinX) stateMinX = point.dx;
+        if (point.dx > stateMaxX) stateMaxX = point.dx;
+        if (point.dy < stateMinY) stateMinY = point.dy;
+        if (point.dy > stateMaxY) stateMaxY = point.dy;
+      }
+    }
+
+    final stateWidth = stateMaxX - stateMinX;
+    final stateHeight = stateMaxY - stateMinY;
+
+    // Posición del marcador según porcentajes relativos
+    final markerGeoX = stateMinX + stateWidth * relativeX;
+    final markerGeoY = stateMinY + stateHeight * relativeY;
+
+    final markerX = (markerGeoX - minX) * scale + offsetX;
+    final markerY = size.height - ((markerGeoY - minY) * scale + offsetY);
+
+    // Tamaño pequeño para el mapa completo
+    final markerSize = 6.0;
+
+    // Sombra del marcador
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.3)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+    canvas.drawCircle(
+      Offset(markerX + 1, markerY + 1),
+      markerSize,
+      shadowPaint,
+    );
+
+    // Círculo exterior (borde blanco)
+    final borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(markerX, markerY), markerSize + 2, borderPaint);
+
+    // Círculo interior (punto de color)
+    final markerPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(markerX, markerY), markerSize, markerPaint);
   }
 
   void _drawState(
@@ -1070,7 +1211,7 @@ class MexicoMapPainter extends CustomPainter {
         isHighlighted
             ? (isDark
                   ? const Color(0xFF691C32).withValues(alpha: 0.5)
-                  : const Color(0xFF691C32).withValues(alpha: 0.3))
+                  : const Color(0xFF691C32).withValues(alpha: 0.55))
             : (isDark ? const Color(0xFF2D3748) : const Color(0xFFE8D5B7)),
         const Color(0xFF8B2942),
         hoverValue,
@@ -1078,7 +1219,7 @@ class MexicoMapPainter extends CustomPainter {
     } else if (isHighlighted) {
       fillColor = isDark
           ? const Color(0xFF691C32).withValues(alpha: 0.4)
-          : const Color(0xFF691C32).withValues(alpha: 0.2);
+          : const Color(0xFF691C32).withValues(alpha: 0.45);
     } else {
       fillColor = isDark ? const Color(0xFF2D3748) : const Color(0xFFE8D5B7);
     }
@@ -1127,14 +1268,14 @@ class MexicoMapPainter extends CustomPainter {
 
     final borderPaint = Paint()
       ..color = isHovered
-          ? Colors.white.withValues(alpha: 0.8)
+          ? Colors.white.withValues(alpha: 0.9)
           : (isHighlighted
-                ? const Color(0xFF691C32).withValues(alpha: 0.6)
+                ? Colors.white.withValues(alpha: 0.8)
                 : (isDark
                       ? Colors.white.withValues(alpha: 0.3)
                       : const Color(0xFF8B7355)))
       ..style = PaintingStyle.stroke
-      ..strokeWidth = isHovered ? 2.5 : (isSelected ? 2.0 : 0.8);
+      ..strokeWidth = isHovered ? 2.5 : (isHighlighted ? 1.5 : (isSelected ? 2.0 : 0.8));
 
     for (final polygon in state.polygons) {
       final path = Path();
@@ -1173,11 +1314,13 @@ class SingleStatePainter extends CustomPainter {
   final MexicoState state;
   final bool isDark;
   final double animationValue;
+  final bool hideMarkers; // Para ocultar los markers de polos
 
   SingleStatePainter({
     required this.state,
     required this.isDark,
     required this.animationValue,
+    this.hideMarkers = false,
   });
 
   @override
@@ -1197,7 +1340,8 @@ class SingleStatePainter extends CustomPainter {
       }
     }
 
-    final padding = 30.0;
+    // Padding más pequeño para mini preview
+    final padding = hideMarkers ? 5.0 : 30.0;
     final availableWidth = size.width - padding * 2;
     final availableHeight = size.height - padding * 2;
 
@@ -1273,16 +1417,37 @@ class SingleStatePainter extends CustomPainter {
       canvas.drawPath(path, borderPaint);
     }
 
-    // Dibujar marcador si es Campeche
-    if (state.code == 'CM' || state.name == 'Campeche') {
-      // Calcular posición del marcador como porcentaje del estado
-      // El círculo verde está en la muesca superior del estado
-      final stateWidth = maxX - minX;
-      final stateHeight = maxY - minY;
+    // Dibujar marcadores según el estado (solo si no están ocultos)
+    if (!hideMarkers) {
+      _drawDetailMarkers(canvas, size, state, minX, minY, maxX, maxY, scale, offsetX, offsetY);
+    }
+  }
 
-      // Posición aproximada: 55% desde la izquierda, 65% desde abajo
-      final markerGeoX = minX + stateWidth * 0.55;
-      final markerGeoY = minY + stateHeight * 0.65;
+  /// Dibuja los marcadores de polos en la vista de detalle del estado
+  void _drawDetailMarkers(
+    Canvas canvas,
+    Size size,
+    MexicoState state,
+    double minX,
+    double minY,
+    double maxX,
+    double maxY,
+    double scale,
+    double offsetX,
+    double offsetY,
+  ) {
+    final stateWidth = maxX - minX;
+    final stateHeight = maxY - minY;
+
+    // Obtener polos del estado desde PolosData
+    final polos = PolosData.getPolosByEstado(state.code).isNotEmpty
+        ? PolosData.getPolosByEstado(state.code)
+        : PolosData.getPolosByEstado(state.name);
+
+    // Dibujar cada marcador
+    for (final polo in polos) {
+      final markerGeoX = minX + stateWidth * polo.relativeX;
+      final markerGeoY = minY + stateHeight * polo.relativeY;
 
       final markerX = (markerGeoX - minX) * scale + offsetX;
       final markerY = size.height - ((markerGeoY - minY) * scale + offsetY);
@@ -1297,16 +1462,15 @@ class SingleStatePainter extends CustomPainter {
         markerShadowPaint,
       );
 
-      // Círculo exterior (borde)
+      // Círculo exterior (borde blanco)
       final markerBorderPaint = Paint()
         ..color = Colors.white
         ..style = PaintingStyle.fill;
       canvas.drawCircle(Offset(markerX, markerY), 14, markerBorderPaint);
 
-      // Círculo interior (punto azul - nuevo polo)
+      // Círculo interior (punto de color)
       final markerPaint = Paint()
-        ..color =
-            const Color(0xFF2563EB) // Azul - Nuevo polo
+        ..color = polo.color
         ..style = PaintingStyle.fill;
       canvas.drawCircle(Offset(markerX, markerY), 10, markerPaint);
 

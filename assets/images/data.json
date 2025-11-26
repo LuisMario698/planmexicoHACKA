@@ -1,0 +1,326 @@
+[
+  {
+    "id": 1,
+    "estado": "Sonora",
+    "polo": "Golfo de California / Hermosillo",
+    "area_ha": "555 ha",
+    "coordenadas": {
+      "lat": 29.072967,
+      "lng": -110.955919
+    },
+    "tipo": "energy",
+    "descripcion": "Hub de Electromovilidad y Semiconductores.",
+    "detalles": {
+      "empleo_estimado": "Est. 15,000+ empleos especializados (Ingeniería/Técnicos).",
+      "infraestructura": "Modernización Carretera Guaymas-Chihuahua y Aeropuerto.",
+      "sectores": "Automotriz (Ford), Minería (Litio), Semiconductores.",
+      "beneficios": "Integración al 'Arizona Chip Corridor' y nearshoring tecnológico."
+    }
+  },
+  {
+    "id": 2,
+    "estado": "Sonora",
+    "polo": "Plan Sonora (Puerto Peñasco)",
+    "area_ha": "Estratégico",
+    "coordenadas": {
+      "lat": 31.3268,
+      "lng": -113.5312
+    },
+    "tipo": "energy",
+    "descripcion": "Corazón Energético del Plan Nacional.",
+    "detalles": {
+      "empleo_estimado": "Est. 2,500 directos en operación + Construcción masiva.",
+      "infraestructura": "Planta Solar (1GW), Línea de Transmisión a Baja California.",
+      "sectores": "Energía Renovable, Gas Natural Licuado (GNL).",
+      "beneficios": "Soberanía energética y exportación de energía limpia a EE.UU."
+    }
+  },
+  {
+    "id": 3,
+    "estado": "Tamaulipas",
+    "polo": "Nuevo Laredo",
+    "area_ha": "300 ha",
+    "coordenadas": {
+      "lat": 27.4806,
+      "lng": -99.5083
+    },
+    "tipo": "logistics",
+    "descripcion": "Aduana Terrestre #1 de América.",
+    "detalles": {
+      "empleo_estimado": "Est. 12,000 directos en logística y aduanas.",
+      "infraestructura": "Expansión Puente Comercio Mundial, Recinto Fiscalizado.",
+      "sectores": "Logística 4.0, Comercio Exterior, Almacenamiento.",
+      "beneficios": "Agilización de cruces fronterizos y reducción de costos logísticos."
+    }
+  },
+  {
+    "id": 4,
+    "estado": "Tamaulipas",
+    "polo": "Puerto Seco / Golfo",
+    "area_ha": "935 ha",
+    "coordenadas": {
+      "lat": 22.2618,
+      "lng": -97.8636
+    },
+    "tipo": "logistics",
+    "descripcion": "Conectividad marítima Europa/Costa Este.",
+    "detalles": {
+      "empleo_estimado": "Est. 8,000 empleos en sector petroquímico y portuario.",
+      "infraestructura": "Dragado Puerto Altamira, nuevas terminales de fluidos.",
+      "sectores": "Petroquímica, Plásticos, Componentes Eólicos.",
+      "beneficios": "Consolidación del corredor petroquímico más importante del país."
+    }
+  },
+  {
+    "id": 5,
+    "estado": "Puebla",
+    "polo": "Centro",
+    "area_ha": "462 ha",
+    "coordenadas": {
+      "lat": 19.0414,
+      "lng": -98.2063
+    },
+    "tipo": "industry",
+    "descripcion": "Transición a Electromovilidad (VW/Audi).",
+    "detalles": {
+      "empleo_estimado": "Est. 20,000 empleos en reconversión industrial.",
+      "infraestructura": "Conexión ferroviaria y Ciudad Modelo.",
+      "sectores": "Automotriz Eléctrica, Textil Técnico, Agroindustria.",
+      "beneficios": "Modernización de la fuerza laboral automotriz del centro."
+    }
+  },
+  {
+    "id": 6,
+    "estado": "Durango",
+    "polo": "Durango Capital",
+    "area_ha": "470 ha",
+    "coordenadas": {
+      "lat": 24.0277,
+      "lng": -104.6532
+    },
+    "tipo": "industry",
+    "descripcion": "Minería y Valor Agregado.",
+    "detalles": {
+      "empleo_estimado": "Est. 5,000 directos en manufactura pesada.",
+      "infraestructura": "Ferrocarril Durango-Mazatlán (Proyecto).",
+      "sectores": "Metalmecánica, Minería, Mueblera.",
+      "beneficios": "Desarrollo de proveedores locales para industria pesada."
+    }
+  },
+  {
+    "id": 7,
+    "estado": "Yucatán",
+    "polo": "Maya (Mérida y Progreso)",
+    "area_ha": "223 ha",
+    "coordenadas": {
+      "lat": 20.9674,
+      "lng": -89.5926
+    },
+    "tipo": "tourism",
+    "descripcion": "Renacimiento Maya: Tech & Logistics.",
+    "detalles": {
+      "empleo_estimado": "Est. 30,000 empleos (Tech y Turismo).",
+      "infraestructura": "Ampliación Puerto Progreso, Tren Maya Carga.",
+      "sectores": "TICs, Ciberseguridad, Turismo, Agroindustria.",
+      "beneficios": "Diversificación económica del sureste más allá del turismo."
+    }
+  },
+  {
+    "id": 8,
+    "estado": "Coahuila",
+    "polo": "Norte – AHMSA",
+    "area_ha": "740 ha",
+    "coordenadas": {
+      "lat": 26.8997,
+      "lng": -101.4181
+    },
+    "tipo": "industry",
+    "descripcion": "Acero para la Industria Nacional.",
+    "detalles": {
+      "empleo_estimado": "Recuperación de 15,000 empleos siderúrgicos.",
+      "infraestructura": "Modernización de hornos y logística ferroviaria.",
+      "sectores": "Siderurgia, Metalmecánica, Vagones de tren.",
+      "beneficios": "Insumos base para la industria de la construcción y auto."
+    }
+  },
+  {
+    "id": 9,
+    "estado": "Coahuila",
+    "polo": "Piedras Negras",
+    "area_ha": "300 ha",
+    "coordenadas": {
+      "lat": 28.7001,
+      "lng": -100.5235
+    },
+    "tipo": "logistics",
+    "descripcion": "Cruce Ferroviario Estratégico.",
+    "detalles": {
+      "empleo_estimado": "Est. 7,000 empleos en manufactura de autopartes.",
+      "infraestructura": "Patio ferroviario binacional expandido.",
+      "sectores": "Autopartes (Seguridad), Logística Ferroviaria.",
+      "beneficios": "Alternativa eficiente al cruce de Laredo para carga pesada."
+    }
+  },
+  {
+    "id": 10,
+    "estado": "Nuevo León",
+    "polo": "Colombia / Frontera",
+    "area_ha": "Multinodal",
+    "coordenadas": {
+      "lat": 25.6866,
+      "lng": -100.3161
+    },
+    "tipo": "industry",
+    "descripcion": "Hub de Nearshoring Tecnológico.",
+    "detalles": {
+      "empleo_estimado": "Est. 50,000+ empleos alta tecnología (Largo Plazo).",
+      "infraestructura": "Carretera La Gloria-Colombia, Aduana Colombia.",
+      "sectores": "Electromovilidad (Tesla ecosystem), IA, Baterías.",
+      "beneficios": "Creación del hub de manufactura avanzada más grande de LatAm."
+    }
+  },
+  {
+    "id": 11,
+    "estado": "Chihuahua",
+    "polo": "Norte (Región Multinodal)",
+    "area_ha": "Cadena",
+    "coordenadas": {
+      "lat": 31.6904,
+      "lng": -106.4245
+    },
+    "tipo": "industry",
+    "descripcion": "Manufactura de Exportación.",
+    "detalles": {
+      "empleo_estimado": "Est. 40,000 empleos en maquila avanzada.",
+      "infraestructura": "Modernización cruces fronterizos y libramientos.",
+      "sectores": "Aeroespacial, Dispositivos Médicos, Electrónica.",
+      "beneficios": "Consolidación de la cadena de suministro 'Just-in-Time'."
+    }
+  },
+  {
+    "id": 12,
+    "estado": "Guanajuato",
+    "polo": "Bajío (Celaya)",
+    "area_ha": "52 ha",
+    "coordenadas": {
+      "lat": 20.5298,
+      "lng": -100.8167
+    },
+    "tipo": "industry",
+    "descripcion": "Puerto Seco del Bajío.",
+    "detalles": {
+      "empleo_estimado": "Est. 6,000 empleos logísticos y ensamble.",
+      "infraestructura": "Ferroférico de Celaya (Conexión KCSM/Ferromex).",
+      "sectores": "Automotriz, Logística Intermodal, Granos.",
+      "beneficios": "Optimización del flujo de mercancías del centro al norte."
+    }
+  },
+  {
+    "id": 13,
+    "estado": "Edomex",
+    "polo": "AIFA (Corredor)",
+    "area_ha": "300 ha",
+    "coordenadas": {
+      "lat": 19.7447,
+      "lng": -99.0172
+    },
+    "tipo": "logistics",
+    "descripcion": "Hub de Carga Aérea Central.",
+    "detalles": {
+      "empleo_estimado": "Est. 100,000 empleos (Directos/Indirectos zona AIFA).",
+      "infraestructura": "Terminal de Carga AIFA, Tren Suburbano.",
+      "sectores": "Logística Farmacéutica, E-commerce, Aeroespacial.",
+      "beneficios": "Descongestión del AICM y polo logístico metropolitano."
+    }
+  },
+  {
+    "id": 14,
+    "estado": "CDMX",
+    "polo": "Polígono AIFA (Zona Metro)",
+    "area_ha": "Indirecto",
+    "coordenadas": {
+      "lat": 19.4326,
+      "lng": -99.1332
+    },
+    "tipo": "logistics",
+    "descripcion": "Servicios Corporativos.",
+    "detalles": {
+      "empleo_estimado": "Generación de empleos administrativos y financieros.",
+      "infraestructura": "Conectividad digital y oficinas corporativas.",
+      "sectores": "Fintech, Servicios HQ, Centros de Datos.",
+      "beneficios": "Centralización de la toma de decisiones empresariales."
+    }
+  },
+  {
+    "id": 15,
+    "estado": "Oaxaca",
+    "polo": "Istmo (Salina Cruz)",
+    "area_ha": "CIIT",
+    "coordenadas": {
+      "lat": 16.1843,
+      "lng": -95.1956
+    },
+    "tipo": "logistics",
+    "descripcion": "Puerta al Pacífico (Corredor Interoceánico).",
+    "detalles": {
+      "empleo_estimado": "Proyección Regional: 150,000 empleos al 2030.",
+      "infraestructura": "Rompeolas Oeste, Modernización Ferroviaria.",
+      "sectores": "Agroindustria, Componentes Eólicos, Textil.",
+      "beneficios": "Alternativa real al Canal de Panamá y desarrollo del Sur."
+    }
+  },
+  {
+    "id": 16,
+    "estado": "Veracruz",
+    "polo": "Istmo (Coatzacoalcos)",
+    "area_ha": "CIIT",
+    "coordenadas": {
+      "lat": 18.1501,
+      "lng": -94.4208
+    },
+    "tipo": "logistics",
+    "descripcion": "Puerta al Atlántico (Corredor Interoceánico).",
+    "detalles": {
+      "empleo_estimado": "Parte de la proyección regional CIIT.",
+      "infraestructura": "Terminales de Contenedores y Químicos.",
+      "sectores": "Petroquímica, Fertilizantes, Gas.",
+      "beneficios": "Conexión energética y de materias primas con EE.UU."
+    }
+  },
+  {
+    "id": 17,
+    "estado": "Tabasco",
+    "polo": "Istmo (Polo Sur)",
+    "area_ha": "Indirecto",
+    "coordenadas": {
+      "lat": 17.9895,
+      "lng": -92.9281
+    },
+    "tipo": "energy",
+    "descripcion": "Soberanía Energética.",
+    "detalles": {
+      "empleo_estimado": "Mantenimiento de 2,000+ empleos operativos.",
+      "infraestructura": "Refinería Olmeca, Gasoductos.",
+      "sectores": "Refinación, Servicios Petroleros.",
+      "beneficios": "Autosuficiencia en combustibles."
+    }
+  },
+  {
+    "id": 18,
+    "estado": "Campeche",
+    "polo": "Maya / Regiones SE",
+    "area_ha": "Conexión",
+    "coordenadas": {
+      "lat": 19.8301,
+      "lng": -90.5349
+    },
+    "tipo": "tourism",
+    "descripcion": "Turismo y Economía Verde.",
+    "detalles": {
+      "empleo_estimado": "Est. 10,000 empleos en turismo y campo.",
+      "infraestructura": "Tren Maya, Acueductos.",
+      "sectores": "Turismo Sostenible, Agroforestería.",
+      "beneficios": "Conservación ambiental y desarrollo rural."
+    }
+  }
+]

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/mexico_map_widget.dart';
+import '../data/polos_data.dart';
 
 class PolosScreen extends StatefulWidget {
   const PolosScreen({super.key});
@@ -53,12 +54,32 @@ class StateDetailData {
   });
 }
 
-class _PolosScreenState extends State<PolosScreen> {
+class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin {
   String? _selectedStateCode;
   String? _selectedStateName;
   String? _hoveredStateName;
   PoloInfo? _selectedPolo;
   bool _showDetailedInfo = false;
+  
+  // Animación de expansión del mini mapa
+  late AnimationController _expandController;
+  bool _isExpanding = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    _expandController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _expandController.addListener(() => setState(() {}));
+  }
+  
+  @override
+  void dispose() {
+    _expandController.dispose();
+    super.dispose();
+  }
 
   final Map<String, StatePoloData> _statePoloData = {
     'Sonora': const StatePoloData(
@@ -411,7 +432,7 @@ class _PolosScreenState extends State<PolosScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: isDark
-              ? [const Color(0xFF1A1A2E), const Color(0xFF16213E)]
+              ? [const Color(0xFF13151A), const Color(0xFF1E2029)]
               : [const Color(0xFFF8F9FA), const Color(0xFFE9ECEF)],
         ),
       ),
@@ -512,21 +533,346 @@ class _PolosScreenState extends State<PolosScreen> {
   }
 
   Widget _buildMobileLayout(bool isDark) {
-    return Column(
-      children: [
-        // Mapa
-        Expanded(flex: 2, child: _buildMapContainer(isDark)),
-        const SizedBox(height: 16),
-        // Panel de información
-        Expanded(flex: 1, child: _buildInfoPanel(isDark)),
-      ],
+    // Animación de expansión en progreso - muestra la transición completa
+    if (_isExpanding) {
+      return _buildExpandingMapAnimation(isDark);
+    }
+    
+    // Si hay un polo seleccionado, mostrar layout scrolleable con mini preview
+    if (_selectedPolo != null) {
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Mini mapa preview
+            _buildMiniMapPreview(isDark),
+            const SizedBox(height: 12),
+            // Panel de información expandido (sin scroll interno)
+            _buildInfoPanelNoScroll(isDark),
+            // Espacio extra al final para mejor scroll
+            const SizedBox(height: 20),
+          ],
+        ),
+      );
+    } 
+    // Si hay un estado seleccionado (pero no polo), mostrar mapa del estado + info scrolleable
+    else if (_selectedStateName != null) {
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Mapa del estado (altura fija) - usa showOnlySelected para evitar animación de México
+            SizedBox(
+              height: 350,
+              child: _buildStateOnlyMapContainer(isDark),
+            ),
+            const SizedBox(height: 16),
+            // Panel de información del estado desplegado
+            _buildStateInfoPanel(isDark),
+            // Espacio extra al final
+            const SizedBox(height: 20),
+          ],
+        ),
+      );
+    }
+    // Sin nada seleccionado: mapa + leyenda + sectores todo scrolleable
+    else {
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Mapa con altura fija
+            SizedBox(
+              height: 380,
+              child: _buildMapContainer(isDark),
+            ),
+            const SizedBox(height: 16),
+            // Panel inicial expandido (leyenda + sectores)
+            _buildInitialInfoPanel(isDark),
+            // Espacio extra al final
+            const SizedBox(height: 20),
+          ],
+        ),
+      );
+    }
+  }
+  
+  // Contenedor del mapa que solo muestra el estado seleccionado (sin animación de México)
+  Widget _buildStateOnlyMapContainer(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2029) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: MexicoMapWidget(
+          selectedStateCode: _selectedStateCode,
+          highlightedStates: _statePoloData.keys.toList(),
+          showOnlySelected: true, // CLAVE: Solo muestra el estado, no México
+          hidePoloMarkers: false,
+          skipInitialAnimation: true,
+          onStateSelected: (code, name) {
+            // Volver al mapa completo
+            setState(() {
+              _selectedStateCode = null;
+              _selectedStateName = null;
+              _selectedPolo = null;
+              _showDetailedInfo = false;
+            });
+          },
+          onPoloSelected: (polo) {
+            setState(() {
+              _selectedPolo = polo;
+              _showDetailedInfo = false;
+            });
+          },
+          onBackToMap: () {
+            setState(() {
+              _selectedStateCode = null;
+              _selectedStateName = null;
+            });
+          },
+          onStateHover: (stateName) {
+            setState(() {
+              _hoveredStateName = stateName;
+            });
+          },
+        ),
+      ),
+    );
+  }
+  
+  // Animación de expansión del mini mapa - transición simple y fluida
+  Widget _buildExpandingMapAnimation(bool isDark) {
+    // Usar curva suave
+    final curvedProgress = Curves.easeOutCubic.transform(_expandController.value);
+    
+    // Solo animar la altura del contenedor y opacidad
+    final mapHeight = 110.0 + (curvedProgress * 240.0); // 110 -> 350
+    final panelOpacity = Curves.easeIn.transform(
+      ((_expandController.value - 0.4) / 0.6).clamp(0.0, 1.0)
+    );
+    
+    return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Contenedor del mapa que se expande suavemente
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 50),
+            height: mapHeight,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E2029) : Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: MexicoMapWidget(
+                key: const ValueKey('expanding_state'),
+                selectedStateCode: _selectedStateCode,
+                highlightedStates: _statePoloData.keys.toList(),
+                showOnlySelected: true,
+                hidePoloMarkers: false,
+                skipInitialAnimation: true,
+                onStateSelected: (_, __) {},
+                onPoloSelected: (polo) {
+                  _expandController.stop();
+                  setState(() {
+                    _selectedPolo = polo;
+                    _isExpanding = false;
+                  });
+                },
+                onBackToMap: () {},
+                onStateHover: (_) {},
+              ),
+            ),
+          ),
+          
+          // Panel de información del estado (aparece con fade)
+          const SizedBox(height: 16),
+          Opacity(
+            opacity: panelOpacity,
+            child: _buildStateInfoPanel(isDark),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  // Mini preview del mapa cuando hay polo seleccionado en móvil
+  Widget _buildMiniMapPreview(bool isDark) {
+    return Container(
+      height: 110,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2029) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // Info del estado
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF691C32), Color(0xFF4A1525)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.location_on_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _selectedStateName ?? 'Estado',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Código: ${_selectedStateCode ?? 'N/A'}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark 
+                                ? Colors.white.withValues(alpha: 0.6) 
+                                : const Color(0xFF6B7280),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Botón con silueta del estado para volver al mapa completo
+              GestureDetector(
+                onTap: () {
+                  // Iniciar animación de expansión
+                  setState(() {
+                    _isExpanding = true;
+                  });
+                  _expandController.forward(from: 0).then((_) {
+                    // Al terminar la animación, simplemente desactivar el modo expansión
+                    // El layout ya está mostrando el estado final
+                    if (mounted) {
+                      setState(() {
+                        _selectedPolo = null;
+                        _showDetailedInfo = false;
+                        _isExpanding = false;
+                      });
+                    }
+                  });
+                },
+                child: Container(
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    color: isDark 
+                      ? const Color(0xFF262830) 
+                      : const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark 
+                        ? const Color(0xFF3A3D47) 
+                        : const Color(0xFFE5E7EB),
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child: Stack(
+                      children: [
+                        // Mini silueta del estado
+                        Positioned.fill(
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: MexicoMapWidget(
+                              selectedStateCode: _selectedStateCode,
+                              highlightedStates: const [],
+                              showOnlySelected: true,
+                              hidePoloMarkers: true,
+                              onStateSelected: (_, __) {},
+                            ),
+                          ),
+                        ),
+                        // Overlay con icono de expandir
+                        Positioned(
+                          right: 4,
+                          bottom: 4,
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF691C32),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(
+                              Icons.fullscreen_rounded,
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildMapContainer(bool isDark) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+        color: isDark ? const Color(0xFF1E2029) : Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
@@ -554,6 +900,7 @@ class _PolosScreenState extends State<PolosScreen> {
               onPoloSelected: (polo) {
                 setState(() {
                   _selectedPolo = polo;
+                  _showDetailedInfo = false;
                 });
               },
               onBackToMap: () {},
@@ -579,7 +926,7 @@ class _PolosScreenState extends State<PolosScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: isDark
-                          ? Colors.black.withValues(alpha: 0.5)
+                          ? const Color(0xFF262830).withValues(alpha: 0.95)
                           : Colors.white.withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
@@ -625,7 +972,7 @@ class _PolosScreenState extends State<PolosScreen> {
   Widget _buildInfoPanel(bool isDark) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+        color: isDark ? const Color(0xFF1E2029) : Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
@@ -644,194 +991,1296 @@ class _PolosScreenState extends State<PolosScreen> {
     );
   }
 
-  Widget _buildPoloInfo(bool isDark) {
-    final polo = _selectedPolo!;
-    return SingleChildScrollView(
+  // Panel de información sin scroll interno (para móvil con scroll de pantalla completa)
+  Widget _buildInfoPanelNoScroll(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2029) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(24),
+      child: _selectedPolo != null
+          ? _buildPoloInfoNoScroll(isDark)
+          : (_selectedStateName == null
+                ? _buildEmptyState(isDark)
+                : _buildStateInfo(isDark)),
+    );
+  }
+
+  // Panel inicial para móvil - leyenda + sectores desplegados
+  Widget _buildInitialInfoPanel(bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2029) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Botón para volver
+          // Título
+          Text(
+            'Leyenda de Polos',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Fila 1: En marcha | A licitar o en proceso
           Row(
+            children: [
+              Expanded(
+                child: _buildCategoryButton(
+                  isDark,
+                  color: const Color(0xFF006847),
+                  label: 'En marcha',
+                  isSelected: false,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildCategoryButton(
+                  isDark,
+                  color: const Color(0xFFB8D4B8),
+                  label: 'A licitar o en proceso',
+                  isSelected: false,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Fila 2: Nuevos polos | En proceso de evaluación
+          Row(
+            children: [
+              Expanded(
+                child: _buildCategoryButton(
+                  isDark,
+                  color: const Color(0xFF2563EB),
+                  label: 'Nuevos polos',
+                  isSelected: true,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildCategoryButton(
+                  isDark,
+                  color: const Color(0xFFE89005),
+                  label: 'En proceso de evaluación',
+                  isSelected: false,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Fila 3: Tercera etapa
+          Row(
+            children: [
+              Expanded(
+                child: _buildCategoryButton(
+                  isDark,
+                  color: const Color(0xFFD4B896),
+                  label: 'Tercera etapa: en evaluación',
+                  isSelected: false,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(child: SizedBox()), // Espacio vacío
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Título sectores
+          Text(
+            'Sectores Estratégicos',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Sectores estratégicos
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF262830)
+                  : const Color(0xFFF8F9FA),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0xFF3A3D47)
+                    : const Color(0xFFE5E7EB),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_hoveredStateName != null &&
+                    _stateSectors.containsKey(_hoveredStateName)) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      'Sectores en $_hoveredStateName',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? Colors.white
+                            : const Color(0xFF1A1A2E),
+                      ),
+                    ),
+                  ),
+                  ..._buildDynamicSectors(
+                    _stateSectors[_hoveredStateName]!,
+                    isDark,
+                  ),
+                ] else ...[
+                  _buildSectorRow([
+                    _buildSectorItem(
+                      Icons.agriculture_rounded,
+                      'Agroindustria',
+                      isDark,
+                    ),
+                    _buildSectorItem(
+                      Icons.recycling_rounded,
+                      'Economía circular',
+                      isDark,
+                    ),
+                  ]),
+                  const SizedBox(height: 12),
+                  _buildSectorRow([
+                    _buildSectorItem(
+                      Icons.flight_rounded,
+                      'Aeroespacial',
+                      isDark,
+                    ),
+                    _buildSectorItem(
+                      Icons.wb_sunny_rounded,
+                      'Energías limpias',
+                      isDark,
+                    ),
+                  ]),
+                  const SizedBox(height: 12),
+                  _buildSectorRow([
+                    _buildSectorItem(
+                      Icons.electric_car_rounded,
+                      'Automotriz y electromovilidad',
+                      isDark,
+                    ),
+                    _buildSectorItem(
+                      Icons.factory_rounded,
+                      'Industrias metálicas básicas',
+                      isDark,
+                    ),
+                  ]),
+                  const SizedBox(height: 12),
+                  _buildSectorRow([
+                    _buildSectorItem(
+                      Icons.shopping_bag_rounded,
+                      'Bienes de consumo',
+                      isDark,
+                    ),
+                    _buildSectorItem(
+                      Icons.description_rounded,
+                      'Industria del papel',
+                      isDark,
+                    ),
+                  ]),
+                  const SizedBox(height: 12),
+                  _buildSectorRow([
+                    _buildSectorItem(
+                      Icons.medical_services_rounded,
+                      'Farmacéutica y dispositivos médicos',
+                      isDark,
+                    ),
+                    _buildSectorItem(
+                      Icons.science_rounded,
+                      'Industria del plástico',
+                      isDark,
+                    ),
+                  ]),
+                  const SizedBox(height: 12),
+                  _buildSectorRow([
+                    _buildSectorItem(
+                      Icons.memory_rounded,
+                      'Electrónica y semiconductores',
+                      isDark,
+                    ),
+                    _buildSectorItem(
+                      Icons.local_shipping_rounded,
+                      'Logística',
+                      isDark,
+                    ),
+                  ]),
+                  const SizedBox(height: 12),
+                  _buildSectorRow([
+                    _buildSectorItem(Icons.bolt_rounded, 'Energía', isDark),
+                    _buildSectorItem(
+                      Icons.precision_manufacturing_rounded,
+                      'Metalmecánica',
+                      isDark,
+                    ),
+                  ]),
+                  const SizedBox(height: 12),
+                  _buildSectorRow([
+                    _buildSectorItem(
+                      Icons.science_outlined,
+                      'Química y petroquímica',
+                      isDark,
+                    ),
+                    _buildSectorItem(
+                      Icons.checkroom_rounded,
+                      'Textil y calzado',
+                      isDark,
+                    ),
+                  ]),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Versión de PoloInfo sin scroll interno
+  Widget _buildPoloInfoNoScroll(bool isDark) {
+    final polo = _selectedPolo!;
+    
+    // Obtener información adicional del polo desde PolosData
+    final poloData = PolosData.getPoloByStringId(polo.id);
+    
+    // Colores del tema del programa
+    final cardColor = isDark ? const Color(0xFF262830) : Colors.white;
+    final surfaceColor = isDark ? const Color(0xFF1E2029) : const Color(0xFFF8F9FA);
+    final borderColor = isDark ? const Color(0xFF3A3D47) : const Color(0xFFE5E7EB);
+    
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: borderColor.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+          ),
+          child: Row(
             children: [
               GestureDetector(
                 onTap: () {
                   setState(() {
-                    _selectedPolo = null;
+                    if (_showDetailedInfo) {
+                      _showDetailedInfo = false;
+                    } else {
+                      _selectedPolo = null;
+                    }
                   });
                 },
                 child: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.1)
-                        : const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(8),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF691C32), Color(0xFF4A1525)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF691C32).withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.arrow_back_rounded,
                     size: 20,
-                    color: isDark ? Colors.white : const Color(0xFF374151),
+                    color: Colors.white,
                   ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  'Información del Polo',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      polo.nombre,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF1A1A2E),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _showDetailedInfo ? 'Información detallada' : polo.estado,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-
-          // Imagen principal
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: AspectRatio(
-              aspectRatio: 16 / 9,
-              child: _buildPoloImage(
-                polo.imagenes.isNotEmpty ? polo.imagenes[0] : '',
-                isDark,
+        ),
+        
+        // Contenido (sin scroll, se despliega completo)
+        Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: _showDetailedInfo 
+              ? _buildDetailedContent(isDark, poloData, polo, cardColor, borderColor)
+              : _buildSummaryContent(isDark, poloData, polo, cardColor, borderColor),
+        ),
+        
+        // Botones
+        Container(
+          padding: const EdgeInsets.only(top: 16),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: borderColor.withValues(alpha: 0.5),
+                width: 1,
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildActionButton(
+                  icon: Icons.explore_rounded,
+                  label: 'Explorar',
+                  color: const Color(0xFF691C32),
+                  onTap: () => _openLocation(polo.latitud, polo.longitud),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildActionButton(
+                  icon: Icons.rate_review_rounded,
+                  label: 'Opinar',
+                  color: const Color(0xFF2563EB),
+                  onTap: () => _showFeedbackDialog(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
-          // Tipo de polo
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2563EB).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+  Widget _buildPoloInfo(bool isDark) {
+    final polo = _selectedPolo!;
+    
+    // Obtener información adicional del polo desde PolosData
+    final poloData = PolosData.getPoloByStringId(polo.id);
+    
+    // Colores del tema del programa
+    final cardColor = isDark ? const Color(0xFF262830) : Colors.white;
+    final surfaceColor = isDark ? const Color(0xFF1E2029) : const Color(0xFFF8F9FA);
+    final borderColor = isDark ? const Color(0xFF3A3D47) : const Color(0xFFE5E7EB);
+    
+    return Column(
+      children: [
+        // Header fijo
+        Container(
+          padding: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            border: Border(
+              bottom: BorderSide(
+                color: borderColor.withValues(alpha: 0.5),
+                width: 1,
               ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF2563EB),
-                    shape: BoxShape.circle,
+          ),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (_showDetailedInfo) {
+                      _showDetailedInfo = false;
+                    } else {
+                      _selectedPolo = null;
+                    }
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF691C32), Color(0xFF4A1525)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF691C32).withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_rounded,
+                    size: 20,
+                    color: Colors.white,
                   ),
                 ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Nuevo Polo',
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      polo.nombre,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF1A1A2E),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _showDetailedInfo ? 'Información detallada' : polo.estado,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        // Contenido scrolleable
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(top: 16),
+            child: _showDetailedInfo 
+                ? _buildDetailedContent(isDark, poloData, polo, cardColor, borderColor)
+                : _buildSummaryContent(isDark, poloData, polo, cardColor, borderColor),
+          ),
+        ),
+        
+        // Botones fijos en la parte inferior
+        Container(
+          padding: const EdgeInsets.only(top: 16),
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            border: Border(
+              top: BorderSide(
+                color: borderColor.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildActionButton(
+                  icon: Icons.explore_rounded,
+                  label: 'Explorar',
+                  color: const Color(0xFF691C32),
+                  onTap: () => _openLocation(polo.latitud, polo.longitud),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildActionButton(
+                  icon: Icons.rate_review_rounded,
+                  label: 'Opinar',
+                  color: const Color(0xFF2563EB),
+                  onTap: () => _showFeedbackDialog(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Contenido resumido (vista inicial) - Mini Dashboard
+  Widget _buildSummaryContent(bool isDark, PoloMarker? poloData, PoloInfo polo, Color cardColor, Color borderColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header con Tipo, Región y botón Saber más
+        Row(
+          children: [
+            _buildTypeBadge(poloData?.tipo ?? polo.tipo, poloData?.color),
+            const SizedBox(width: 8),
+            if (poloData?.region.isNotEmpty ?? false)
+              _buildRegionBadge(poloData!.region, isDark),
+            const Spacer(),
+            // Botón Saber más pequeño a la derecha
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showDetailedInfo = true;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFBC955C), Color(0xFFD4AF37)],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFBC955C).withValues(alpha: 0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Text(
+                  'Saber más',
                   style: TextStyle(
                     fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Dashboard - Cards horizontales de ancho completo
+        // Card Empleo - Verde
+        _buildDashboardCardHorizontal(
+          icon: Icons.groups_rounded,
+          title: 'Empleo Estimado',
+          value: poloData?.empleoEstimado ?? '+10,000 empleos',
+          gradientColors: [const Color(0xFF16A34A), const Color(0xFF15803D)],
+        ),
+        const SizedBox(height: 10),
+        
+        // Card Sectores - Naranja
+        _buildDashboardCardHorizontal(
+          icon: Icons.factory_rounded,
+          title: 'Sectores Clave',
+          value: (poloData?.sectoresClave ?? ['Industrial', 'Tecnológico']).take(3).map((s) => s.split('(').first.trim()).join(', '),
+          gradientColors: [const Color(0xFFF59E0B), const Color(0xFFD97706)],
+        ),
+        const SizedBox(height: 10),
+        
+        // Card Infraestructura - Azul
+        _buildDashboardCardHorizontal(
+          icon: Icons.construction_rounded,
+          title: 'Infraestructura',
+          value: poloData?.infraestructura ?? 'En desarrollo',
+          gradientColors: [const Color(0xFF2563EB), const Color(0xFF1D4ED8)],
+        ),
+        const SizedBox(height: 10),
+        
+        // Card Beneficios - Morado
+        _buildDashboardCardHorizontal(
+          icon: Icons.trending_up_rounded,
+          title: 'Beneficios',
+          value: poloData?.beneficiosLargoPlazo ?? 'Desarrollo regional',
+          gradientColors: [const Color(0xFF7C3AED), const Color(0xFF6D28D9)],
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  // Card horizontal de ancho completo con icono a la izquierda
+  Widget _buildDashboardCardHorizontal({
+    required IconData icon,
+    required String title,
+    required String value,
+    required List<Color> gradientColors,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors[0].withValues(alpha: 0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Icono
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              size: 22,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 14),
+          // Contenido
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.85),
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    height: 1.3,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Altura fija para todas las cards del dashboard (ya no se usa pero lo mantengo por si acaso)
+  static const double _dashboardCardHeight = 140.0;
+
+  // Card estilo dashboard con gradiente de color
+  Widget _buildDashboardCard({
+    required bool isDark,
+    required IconData icon,
+    required String title,
+    required String value,
+    required List<Color> gradientColors,
+    required Color iconBgColor,
+  }) {
+    return SizedBox(
+      height: _dashboardCardHeight,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: gradientColors,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: gradientColors[0].withValues(alpha: 0.35),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            // Icono en círculo
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                size: 20,
+                color: Colors.white,
+              ),
+            ),
+            const Spacer(),
+            // Título
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: Colors.white.withValues(alpha: 0.85),
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Valor
+            Text(
+              value.length > 45 ? '${value.substring(0, 42)}...' : value,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                height: 1.25,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Card especial para sectores con tags
+  Widget _buildDashboardCardSectores({
+    required bool isDark,
+    required List<String> sectores,
+  }) {
+    // Obtener los primeros 3 sectores y formatear
+    final sectoresTexto = sectores.take(3).map((sector) {
+      final sectorCorto = sector.split('(').first.trim();
+      return sectorCorto.length > 15 ? '${sectorCorto.substring(0, 12)}...' : sectorCorto;
+    }).join(', ');
+
+    return SizedBox(
+      height: _dashboardCardHeight,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            // Icono en círculo
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.factory_rounded,
+                size: 20,
+                color: Colors.white,
+              ),
+            ),
+            const Spacer(),
+            // Título
+            Text(
+              'Sectores Clave',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: Colors.white.withValues(alpha: 0.85),
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Sectores como texto normal
+            Text(
+              sectoresTexto,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                height: 1.25,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Contenido detallado (al presionar "Saber más")
+  Widget _buildDetailedContent(bool isDark, PoloMarker? poloData, PoloInfo polo, Color cardColor, Color borderColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Card de Vocación Principal
+        if (poloData?.vocacion.isNotEmpty ?? false) ...[
+          _buildSectionCard(
+            isDark,
+            cardColor: cardColor,
+            borderColor: borderColor,
+            icon: Icons.hub_rounded,
+            iconColor: const Color(0xFF691C32),
+            title: 'Vocación Principal',
+            child: Text(
+              poloData!.vocacion,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF1A1A2E),
+                height: 1.4,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Card de Sectores Clave (detallado)
+        if (poloData?.sectoresClave.isNotEmpty ?? false) ...[
+          _buildSectionCard(
+            isDark,
+            cardColor: cardColor,
+            borderColor: borderColor,
+            icon: Icons.factory_rounded,
+            iconColor: const Color(0xFF2563EB),
+            title: 'Sectores Clave',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: poloData!.sectoresClave.map((sector) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(top: 6),
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          sector,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF4B5563),
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Card de Infraestructura
+        if (poloData?.infraestructura.isNotEmpty ?? false) ...[
+          _buildSectionCard(
+            isDark,
+            cardColor: cardColor,
+            borderColor: borderColor,
+            icon: Icons.construction_rounded,
+            iconColor: const Color(0xFF16A34A),
+            title: 'Infraestructura',
+            child: Text(
+              poloData!.infraestructura,
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF4B5563),
+                height: 1.4,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Card de Empleo Estimado
+        if (poloData?.empleoEstimado.isNotEmpty ?? false) ...[
+          _buildSectionCard(
+            isDark,
+            cardColor: cardColor,
+            borderColor: borderColor,
+            icon: Icons.groups_rounded,
+            iconColor: const Color(0xFF16A34A),
+            title: 'Empleo Estimado',
+            child: Text(
+              poloData!.empleoEstimado,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF16A34A),
+                height: 1.4,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Card de Beneficios a Largo Plazo
+        if (poloData?.beneficiosLargoPlazo.isNotEmpty ?? false) ...[
+          _buildSectionCard(
+            isDark,
+            cardColor: cardColor,
+            borderColor: borderColor,
+            icon: Icons.trending_up_rounded,
+            iconColor: const Color(0xFFF59E0B),
+            title: 'Beneficios a Largo Plazo',
+            child: Text(
+              poloData!.beneficiosLargoPlazo,
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF4B5563),
+                height: 1.4,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Card de Descripción
+        if (poloData?.descripcion.isNotEmpty ?? polo.descripcion.isNotEmpty)
+          _buildSectionCard(
+            isDark,
+            cardColor: cardColor,
+            borderColor: borderColor,
+            icon: Icons.info_outline_rounded,
+            iconColor: const Color(0xFFBC955C),
+            title: 'Descripción',
+            child: Text(
+              poloData?.descripcion ?? polo.descripcion,
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF4B5563),
+                height: 1.4,
+              ),
+            ),
+          ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  // Card de highlight para información resumida
+  Widget _buildHighlightCard(
+    bool isDark, {
+    required Color cardColor,
+    required Color borderColor,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF2563EB),
+                    color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF6B7280),
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF1A1A2E),
+                    height: 1.3,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
 
-          // Nombre del polo
-          Text(
-            polo.nombre,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-            ),
+  Widget _buildInfoCard(bool isDark, {
+    required Widget child,
+    Color? cardColor,
+    Color? borderColor,
+  }) {
+    final bgColor = cardColor ?? (isDark ? const Color(0xFF262830) : Colors.white);
+    final border = borderColor ?? (isDark ? const Color(0xFF3A3D47) : const Color(0xFFE5E7EB));
+    
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: border),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildSectionCard(
+    bool isDark, {
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required Widget child,
+    Color? cardColor,
+    Color? borderColor,
+  }) {
+    final bgColor = cardColor ?? (isDark ? const Color(0xFF262830) : Colors.white);
+    final border = borderColor ?? (isDark ? const Color(0xFF3A3D47) : const Color(0xFFE5E7EB));
+    
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: border),
+        boxShadow: isDark ? [] : [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          const SizedBox(height: 8),
-
-          // Ubicación
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Row(
             children: [
-              Icon(
-                Icons.location_on_outlined,
-                size: 16,
-                color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 16, color: iconColor),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 10),
               Text(
-                polo.ubicacion,
+                title,
                 style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF6B7280),
+                  letterSpacing: 0.3,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
+    );
+  }
 
-          // Descripción
+  Widget _buildTypeBadge(String tipo, Color? color) {
+    String label;
+    Color badgeColor;
+    IconData icon;
+    
+    switch (tipo) {
+      case 'estrategico':
+        label = 'Estratégico';
+        badgeColor = const Color(0xFFF59E0B);
+        icon = Icons.star_rounded;
+        break;
+      case 'en_marcha':
+        label = 'En Marcha';
+        badgeColor = const Color(0xFF16A34A);
+        icon = Icons.play_circle_rounded;
+        break;
+      default:
+        label = 'Nuevo Polo';
+        badgeColor = color ?? const Color(0xFF2563EB);
+        icon = Icons.fiber_new_rounded;
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: badgeColor.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: badgeColor),
+          const SizedBox(width: 6),
           Text(
-            'Descripción',
+            label,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : const Color(0xFF374151),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            polo.descripcion,
-            style: TextStyle(
-              fontSize: 14,
-              height: 1.5,
-              color: isDark ? Colors.white70 : const Color(0xFF6B7280),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Botón "Ir al lugar"
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                // TODO: Abrir en Google Maps o navegador
-                _openLocation(polo.latitud, polo.longitud);
-              },
-              icon: const Icon(Icons.directions_rounded),
-              label: const Text('Visitar virtualmente'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Botón "Ir al lugar"
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                // TODO: Abrir en Google Maps o navegador
-                _openLocation(polo.latitud, polo.longitud);
-              },
-              icon: const Icon(Icons.feedback),
-              label: const Text('Dar mi punto de vista'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
+              color: badgeColor,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRegionBadge(String region, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark 
+            ? Colors.white.withValues(alpha: 0.1) 
+            : const Color(0xFF691C32).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.map_rounded, 
+            size: 14, 
+            color: isDark ? Colors.white70 : const Color(0xFF691C32),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            region,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.white70 : const Color(0xFF691C32),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [color, color.withValues(alpha: 0.85)],
+            ),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFeedbackDialog() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Próximamente: Sistema de opiniones'),
+        backgroundColor: const Color(0xFF691C32),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -846,82 +2295,6 @@ class _PolosScreenState extends State<PolosScreen> {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
-    );
-  }
-
-  Widget _buildPoloImage(String imagePath, bool isDark) {
-    if (imagePath.isEmpty) {
-      return Container(
-        color: isDark ? const Color(0xFF2D3748) : const Color(0xFFE5E7EB),
-        child: Center(
-          child: Icon(
-            Icons.image_rounded,
-            size: 48,
-            color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
-          ),
-        ),
-      );
-    }
-
-    // Si es una imagen local (assets)
-    if (imagePath.startsWith('assets/')) {
-      return Image.asset(
-        imagePath,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          debugPrint('Error cargando imagen: $error');
-          return Container(
-            color: isDark ? const Color(0xFF2D3748) : const Color(0xFFE5E7EB),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline_rounded,
-                    size: 48,
-                    color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Error al cargar imagen',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      );
-    }
-
-    // Si es una imagen de red
-    return Image.network(
-      imagePath,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          color: isDark ? const Color(0xFF2D3748) : const Color(0xFFE5E7EB),
-          child: Center(
-            child: Icon(
-              Icons.image_rounded,
-              size: 48,
-              color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
-            ),
-          ),
-        );
-      },
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          color: isDark ? const Color(0xFF2D3748) : const Color(0xFFE5E7EB),
-          child: const Center(
-            child: CircularProgressIndicator(color: Color(0xFF2563EB)),
-          ),
-        );
-      },
     );
   }
 
@@ -1004,12 +2377,12 @@ class _PolosScreenState extends State<PolosScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: isDark
-                    ? Colors.white.withValues(alpha: 0.05)
+                    ? const Color(0xFF262830)
                     : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: isDark
-                      ? Colors.white.withValues(alpha: 0.1)
+                      ? const Color(0xFF3A3D47)
                       : const Color(0xFFE5E7EB),
                 ),
               ),
@@ -1160,13 +2533,13 @@ class _PolosScreenState extends State<PolosScreen> {
       decoration: BoxDecoration(
         color: isSelected
             ? color.withValues(alpha: 0.15)
-            : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white),
+            : (isDark ? const Color(0xFF262830) : Colors.white),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isSelected
               ? color
               : (isDark
-                    ? Colors.white.withValues(alpha: 0.1)
+                    ? const Color(0xFF3A3D47)
                     : const Color(0xFFE5E7EB)),
           width: isSelected ? 2 : 1,
         ),
@@ -1278,6 +2651,205 @@ class _PolosScreenState extends State<PolosScreen> {
     );
   }
 
+  // Panel de estado para móvil - desplegado sin scroll interno (scroll de pantalla completa)
+  Widget _buildStateInfoPanel(bool isDark) {
+    final poloData = _selectedStateName != null
+        ? _statePoloData[_selectedStateName]
+        : null;
+    final detailData = _selectedStateName != null
+        ? _stateDetailData[_selectedStateName]
+        : null;
+
+    if (_showDetailedInfo && detailData != null) {
+      return _buildDetailedStateInfoNoScroll(detailData, isDark);
+    } else if (_showDetailedInfo && detailData == null) {
+      return _buildNoInfoFound(isDark);
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2029) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header con info del estado
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF691C32).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.map_rounded,
+                  color: Color(0xFF691C32),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _selectedStateName ?? '',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                      ),
+                    ),
+                    Text(
+                      'Código: ${_selectedStateCode ?? ''}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.6)
+                            : const Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Botón para cerrar
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _selectedStateName = null;
+                    _selectedStateCode = null;
+                    _showDetailedInfo = false;
+                  });
+                },
+                icon: Icon(
+                  Icons.close_rounded,
+                  color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Estadísticas
+          _buildStatCard(
+            isDark,
+            icon: Icons.business_rounded,
+            title: 'Polos de desarrollo',
+            value: poloData?.count.toString() ?? '0',
+            subtitle: 'En este estado',
+          ),
+          const SizedBox(height: 12),
+          _buildStatCard(
+            isDark,
+            icon: Icons.people_rounded,
+            title: 'Población beneficiada',
+            value: detailData?.poblacionBeneficiada ?? '--',
+            subtitle: 'Habitantes',
+          ),
+          const SizedBox(height: 12),
+          _buildStatCard(
+            isDark,
+            icon: Icons.trending_up_rounded,
+            title: 'Inversión proyectada',
+            value: detailData?.inversion ?? '--',
+            subtitle: 'MXN',
+          ),
+
+          if (poloData != null && poloData.descriptions.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            Text(
+              'Detalle de Polos',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...poloData.descriptions.map(
+              (desc) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF262830)
+                      : const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDark
+                        ? const Color(0xFF3A3D47)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        desc,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.8)
+                              : const Color(0xFF374151),
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 24),
+
+          // Botón de acción
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _showDetailedInfo = true;
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF691C32),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                'Ver detalles del estado',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStateInfo(bool isDark) {
     final poloData = _selectedStateName != null
         ? _statePoloData[_selectedStateName]
@@ -1381,12 +2953,12 @@ class _PolosScreenState extends State<PolosScreen> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: isDark
-                      ? Colors.white.withValues(alpha: 0.05)
+                      ? const Color(0xFF262830)
                       : const Color(0xFFF8F9FA),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: isDark
-                        ? Colors.white.withValues(alpha: 0.1)
+                        ? const Color(0xFF3A3D47)
                         : const Color(0xFFE5E7EB),
                   ),
                 ),
@@ -1443,6 +3015,143 @@ class _PolosScreenState extends State<PolosScreen> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  // Versión sin scroll interno para usar en layout de pantalla completa scrolleable
+  Widget _buildDetailedStateInfoNoScroll(StateDetailData data, bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2029) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header con botón de regreso
+          Row(
+            children: [
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _showDetailedInfo = false;
+                  });
+                },
+                icon: Icon(
+                  Icons.arrow_back_rounded,
+                  color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  data.nombrePolo,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                  ),
+                ),
+              ),
+              // Botón para cerrar
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _selectedStateName = null;
+                    _selectedStateCode = null;
+                    _showDetailedInfo = false;
+                  });
+                },
+                icon: Icon(
+                  Icons.close_rounded,
+                  color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          _buildDetailSection(isDark, 'Resumen del Estado', [
+            _buildDetailItem(isDark, 'Polo Oficial', data.poloOficial),
+            _buildDetailItem(
+              isDark,
+              'Sectores Fuertes',
+              data.sectoresFuertes.join(', '),
+            ),
+            _buildDetailItem(isDark, 'Población', data.poblacion),
+            _buildDetailItem(isDark, 'Conectividad', data.conectividad),
+          ]),
+
+          const SizedBox(height: 20),
+
+          _buildDetailSection(isDark, 'Indicadores Clave', [
+            _buildDetailItem(isDark, 'Superficie', data.superficie),
+            _buildDetailItem(isDark, 'Inversión Estimada', data.inversion),
+            _buildDetailItem(
+              isDark,
+              'Población Beneficiada',
+              data.poblacionBeneficiada,
+            ),
+            _buildDetailItem(isDark, 'Empleos / Empresas Ancla', data.empleos),
+          ]),
+
+          const SizedBox(height: 20),
+
+          _buildDetailSection(isDark, 'Detalle del Polo', [
+            _buildDetailItem(isDark, 'Municipio', data.municipio),
+            _buildDetailItem(isDark, 'Sector', data.sectorPolo),
+            _buildDetailItem(isDark, 'Vocación', data.vocacion),
+            _buildDetailItem(isDark, 'Organismos', data.organismos),
+            if (data.oportunidades.isNotEmpty)
+              _buildDetailItem(isDark, 'Oportunidades', data.oportunidades),
+            if (data.beneficios.isNotEmpty)
+              _buildDetailItem(isDark, 'Beneficios', data.beneficios),
+          ]),
+
+          const SizedBox(height: 20),
+
+          _buildDetailSection(isDark, 'Proyectos Federales Asociados', [
+            ...data.proyectosFederales.map(
+              (p) => Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline_rounded,
+                      size: 16,
+                      color: const Color(0xFF691C32),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        p,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDark
+                              ? Colors.white70
+                              : const Color(0xFF374151),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ]),
         ],
       ),
     );
@@ -1609,12 +3318,12 @@ class _PolosScreenState extends State<PolosScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
+            ? const Color(0xFF262830)
             : const Color(0xFFF8F9FA),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withValues(alpha: 0.1)
+              ? const Color(0xFF3A3D47)
               : const Color(0xFFE5E7EB),
         ),
       ),
@@ -1675,12 +3384,12 @@ class _PolosScreenState extends State<PolosScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
+            ? const Color(0xFF262830)
             : const Color(0xFFF8F9FA),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDark
-              ? Colors.white.withValues(alpha: 0.1)
+              ? const Color(0xFF3A3D47)
               : const Color(0xFFE5E7EB),
         ),
       ),
@@ -1704,7 +3413,7 @@ class _PolosScreenState extends State<PolosScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark
-                        ? Colors.white.withValues(alpha: 0.6)
+                        ? const Color(0xFFA0A0A0)
                         : const Color(0xFF6B7280),
                   ),
                 ),
