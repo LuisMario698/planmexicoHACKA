@@ -316,17 +316,21 @@ class _PolosScreenState extends State<PolosScreen> {
   }
 
   Widget _buildMobileLayout(bool isDark) {
+    // Si hay un polo seleccionado, dar más espacio al panel de información
+    final mapFlex = _selectedPolo != null ? 2 : 3;
+    final infoFlex = _selectedPolo != null ? 3 : 1;
+    
     return Column(
       children: [
-        // Mapa con zoom - más grande
+        // Mapa con zoom
         Expanded(
-          flex: 3,
+          flex: mapFlex,
           child: _buildMobileMapContainer(isDark),
         ),
         const SizedBox(height: 12),
-        // Panel de información - más pequeño
+        // Panel de información - más grande cuando hay polo seleccionado
         Expanded(
-          flex: 1,
+          flex: infoFlex,
           child: _buildInfoPanel(isDark),
         ),
       ],
