@@ -8,11 +8,167 @@ class PolosScreen extends StatefulWidget {
   State<PolosScreen> createState() => _PolosScreenState();
 }
 
+class StatePoloData {
+  final int count;
+  final List<String> descriptions;
+
+  const StatePoloData({required this.count, required this.descriptions});
+}
+
 class _PolosScreenState extends State<PolosScreen> {
   String? _selectedStateCode;
   String? _selectedStateName;
   String? _hoveredStateName;
   PoloInfo? _selectedPolo;
+
+  final Map<String, StatePoloData> _statePoloData = {
+    'Sonora': const StatePoloData(
+      count: 2,
+      descriptions: [
+        'Golfo de California – 555 ha (Hermosillo)',
+        'Noroeste – Plan Sonora',
+      ],
+    ),
+    'Tamaulipas': const StatePoloData(
+      count: 2,
+      descriptions: [
+        'Franja Fronteriza – 300 ha, Nuevo Laredo',
+        'Golfo – 935 ha, Puerto Seco',
+      ],
+    ),
+    'Puebla': const StatePoloData(count: 1, descriptions: ['Centro – 462 ha']),
+    'Durango': const StatePoloData(
+      count: 1,
+      descriptions: ['Durango – 470 ha'],
+    ),
+    'Yucatán': const StatePoloData(
+      count: 1,
+      descriptions: ['Maya – 223 ha (Mérida y Progreso)'],
+    ),
+    'Coahuila': const StatePoloData(
+      count: 2,
+      descriptions: [
+        'Norte – AHMSA 740 ha',
+        'Norte – Parque Binacional Piedras Negras (300 ha)',
+      ],
+    ),
+    'Nuevo León': const StatePoloData(
+      count: 1,
+      descriptions: [
+        'Franja Fronteriza / Border industrial zone (por ubicación multinodal incluye parte del corredor)',
+      ],
+    ),
+    'Chihuahua': const StatePoloData(
+      count: 1,
+      descriptions: ['Norte (cadena de desarrollo en región multinodal)'],
+    ),
+    'Guanajuato': const StatePoloData(
+      count: 1,
+      descriptions: ['Bajío – 52 ha (Celaya)'],
+    ),
+    'Estado de México': const StatePoloData(
+      count: 1,
+      descriptions: ['AIFA – 300 ha (Corredor AIFA)'],
+    ),
+    'Distrito Federal': const StatePoloData(
+      count: 1,
+      descriptions: ['Polígono AIFA (por zona metropolitana)'],
+    ),
+    'Ciudad de México': const StatePoloData(
+      count: 1,
+      descriptions: ['Polígono AIFA (por zona metropolitana)'],
+    ),
+    'Oaxaca': const StatePoloData(
+      count: 1,
+      descriptions: ['Istmo – 12 polos dentro del corredor del CIIT'],
+    ),
+    'Veracruz': const StatePoloData(
+      count: 1,
+      descriptions: [
+        'Istmo – 12 polos del CIIT (parte del corredor está en Veracruz)',
+      ],
+    ),
+    'Tabasco': const StatePoloData(
+      count: 1,
+      descriptions: ['Istmo – polo sur del corredor'],
+    ),
+    'Campeche': const StatePoloData(
+      count: 1,
+      descriptions: ['Maya/Regiones conectadas por SE'],
+    ),
+  };
+
+  final Map<String, List<String>> _stateSectors = {
+    'Sonora': [
+      'Automotriz y electromovilidad',
+      'Aeroespacial',
+      'Semiconductores',
+      'Energía',
+      'Bienes de consumo',
+      'Agroindustria',
+    ],
+    'Tamaulipas': [
+      'Automotriz y electromovilidad',
+      'Bienes de consumo',
+      'Textil y zapatos',
+      'Petroquímica',
+      'Química',
+      'Agroindustria',
+    ],
+    'Coahuila': [
+      'Automotriz y electromovilidad',
+      'Aeroespacial',
+      'Semiconductores',
+      'Petroquímica/Química',
+      'Bienes de consumo',
+      'Textil y zapatos',
+    ],
+    'Durango': [
+      'Automotriz y electromovilidad',
+      'Textil',
+      'Agroindustria',
+      'Bienes de consumo',
+    ],
+    'Guanajuato': [
+      'Automotriz y electromovilidad',
+      'Textil y zapatos',
+      'Bienes de consumo',
+    ],
+    'Estado de México': [
+      'Aeroespacial',
+      'Farmacéutica y dispositivos médicos',
+      'Logística avanzada',
+      'Semiconductores',
+    ],
+    'Distrito Federal': [
+      'Aeroespacial',
+      'Farmacéutica y dispositivos médicos',
+      'Logística avanzada',
+      'Semiconductores',
+    ],
+    'Ciudad de México': [
+      'Aeroespacial',
+      'Farmacéutica y dispositivos médicos',
+      'Logística avanzada',
+      'Semiconductores',
+    ],
+    'Puebla': ['Automotriz', 'Textil', 'Agroindustria', 'Bienes de consumo'],
+    'Yucatán': ['Agroindustria', 'Bienes de consumo', 'Turismo'],
+    'Oaxaca': [
+      'Logística',
+      'Petroquímica',
+      'Automotriz',
+      'Textil',
+      'Agroindustria',
+    ],
+    'Veracruz': [
+      'Logística',
+      'Petroquímica',
+      'Automotriz',
+      'Textil',
+      'Agroindustria',
+    ],
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +195,7 @@ class _PolosScreenState extends State<PolosScreen> {
               // Header
               _buildHeader(isDark, isDesktop),
               const SizedBox(height: 24),
-              
+
               // Contenido principal
               Expanded(
                 child: isDesktop
@@ -118,16 +274,10 @@ class _PolosScreenState extends State<PolosScreen> {
     return Row(
       children: [
         // Mapa
-        Expanded(
-          flex: 3,
-          child: _buildMapContainer(isDark),
-        ),
+        Expanded(flex: 3, child: _buildMapContainer(isDark)),
         const SizedBox(width: 24),
         // Panel de información
-        Expanded(
-          flex: 2,
-          child: _buildInfoPanel(isDark),
-        ),
+        Expanded(flex: 2, child: _buildInfoPanel(isDark)),
       ],
     );
   }
@@ -136,16 +286,10 @@ class _PolosScreenState extends State<PolosScreen> {
     return Column(
       children: [
         // Mapa
-        Expanded(
-          flex: 2,
-          child: _buildMapContainer(isDark),
-        ),
+        Expanded(flex: 2, child: _buildMapContainer(isDark)),
         const SizedBox(height: 16),
         // Panel de información
-        Expanded(
-          flex: 1,
-          child: _buildInfoPanel(isDark),
-        ),
+        Expanded(flex: 1, child: _buildInfoPanel(isDark)),
       ],
     );
   }
@@ -153,9 +297,7 @@ class _PolosScreenState extends State<PolosScreen> {
   Widget _buildMapContainer(bool isDark) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.white,
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
@@ -171,12 +313,12 @@ class _PolosScreenState extends State<PolosScreen> {
           children: [
             MexicoMapWidget(
               selectedStateCode: _selectedStateCode,
+              highlightedStates: _statePoloData.keys.toList(),
               onStateSelected: (code, name) {
                 setState(() {
-                  // Si code está vacío, es una deselección
                   _selectedStateCode = code.isEmpty ? null : code;
                   _selectedStateName = name.isEmpty ? null : name;
-                  _selectedPolo = null; // Limpiar polo al cambiar estado
+                  _selectedPolo = null;
                 });
               },
               onPoloSelected: (polo) {
@@ -184,12 +326,10 @@ class _PolosScreenState extends State<PolosScreen> {
                   _selectedPolo = polo;
                 });
               },
-              onBackToMap: () {
-                // Opcional: resetear selección al volver al mapa
-              },
-              onStateHover: (code, name) {
+              onBackToMap: () {},
+              onStateHover: (stateName) {
                 setState(() {
-                  _hoveredStateName = name.isEmpty ? null : name;
+                  _hoveredStateName = stateName;
                 });
               },
             ),
@@ -208,7 +348,7 @@ class _PolosScreenState extends State<PolosScreen> {
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: isDark 
+                      color: isDark
                           ? Colors.black.withValues(alpha: 0.5)
                           : Colors.white.withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(20),
@@ -226,16 +366,18 @@ class _PolosScreenState extends State<PolosScreen> {
                         Icon(
                           Icons.mouse_rounded,
                           size: 16,
-                          color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+                          color: isDark
+                              ? Colors.white70
+                              : const Color(0xFF6B7280),
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          _hoveredStateName != null
-                              ? _hoveredStateName!
-                              : 'Pasa el cursor sobre un estado para elevarlo',
+                          'Pasa el cursor sobre un estado para elevarlo',
                           style: TextStyle(
                             fontSize: 12,
-                            color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+                            color: isDark
+                                ? Colors.white70
+                                : const Color(0xFF6B7280),
                           ),
                         ),
                       ],
@@ -253,9 +395,7 @@ class _PolosScreenState extends State<PolosScreen> {
   Widget _buildInfoPanel(bool isDark) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.white,
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
@@ -269,8 +409,8 @@ class _PolosScreenState extends State<PolosScreen> {
       child: _selectedPolo != null
           ? _buildPoloInfo(isDark)
           : (_selectedStateName == null
-              ? _buildEmptyState(isDark)
-              : _buildStateInfo(isDark)),
+                ? _buildEmptyState(isDark)
+                : _buildStateInfo(isDark)),
     );
   }
 
@@ -318,7 +458,7 @@ class _PolosScreenState extends State<PolosScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          
+
           // Imagen principal
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
@@ -331,7 +471,7 @@ class _PolosScreenState extends State<PolosScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          
+
           // Tipo de polo
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -366,7 +506,7 @@ class _PolosScreenState extends State<PolosScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          
+
           // Nombre del polo
           Text(
             polo.nombre,
@@ -377,7 +517,7 @@ class _PolosScreenState extends State<PolosScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          
+
           // Ubicación
           Row(
             children: [
@@ -397,7 +537,7 @@ class _PolosScreenState extends State<PolosScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          
+
           // Descripción
           Text(
             'Descripción',
@@ -417,7 +557,7 @@ class _PolosScreenState extends State<PolosScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          
+
           // Botón "Ir al lugar"
           SizedBox(
             width: double.infinity,
@@ -440,7 +580,7 @@ class _PolosScreenState extends State<PolosScreen> {
             ),
           ),
           const SizedBox(height: 16),
-                    // Botón "Ir al lugar"
+          // Botón "Ir al lugar"
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -492,7 +632,7 @@ class _PolosScreenState extends State<PolosScreen> {
         ),
       );
     }
-    
+
     // Si es una imagen local (assets)
     if (imagePath.startsWith('assets/')) {
       return Image.asset(
@@ -526,7 +666,7 @@ class _PolosScreenState extends State<PolosScreen> {
         },
       );
     }
-    
+
     // Si es una imagen de red
     return Image.network(
       imagePath,
@@ -548,9 +688,7 @@ class _PolosScreenState extends State<PolosScreen> {
         return Container(
           color: isDark ? const Color(0xFF2D3748) : const Color(0xFFE5E7EB),
           child: const Center(
-            child: CircularProgressIndicator(
-              color: Color(0xFF2563EB),
-            ),
+            child: CircularProgressIndicator(color: Color(0xFF2563EB)),
           ),
         );
       },
@@ -566,16 +704,18 @@ class _PolosScreenState extends State<PolosScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildCategoryButton(isDark, 
-                  color: const Color(0xFF006847), 
+                child: _buildCategoryButton(
+                  isDark,
+                  color: const Color(0xFF006847),
                   label: 'En marcha',
                   isSelected: false,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildCategoryButton(isDark, 
-                  color: const Color(0xFFB8D4B8), 
+                child: _buildCategoryButton(
+                  isDark,
+                  color: const Color(0xFFB8D4B8),
                   label: 'A licitar o en proceso',
                   isSelected: false,
                 ),
@@ -583,21 +723,23 @@ class _PolosScreenState extends State<PolosScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          
+
           // Fila 2: Nuevos polos | En proceso de evaluación
           Row(
             children: [
               Expanded(
-                child: _buildCategoryButton(isDark, 
-                  color: const Color(0xFF2563EB), 
+                child: _buildCategoryButton(
+                  isDark,
+                  color: const Color(0xFF2563EB),
                   label: 'Nuevos polos',
                   isSelected: true,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildCategoryButton(isDark, 
-                  color: const Color(0xFFE89005), 
+                child: _buildCategoryButton(
+                  isDark,
+                  color: const Color(0xFFE89005),
                   label: 'En proceso de evaluación',
                   isSelected: false,
                 ),
@@ -605,13 +747,14 @@ class _PolosScreenState extends State<PolosScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          
+
           // Fila 3: Tercera etapa
           Row(
             children: [
               Expanded(
-                child: _buildCategoryButton(isDark, 
-                  color: const Color(0xFFD4B896), 
+                child: _buildCategoryButton(
+                  isDark,
+                  color: const Color(0xFFD4B896),
                   label: 'Tercera etapa: en evaluación',
                   isSelected: false,
                 ),
@@ -620,78 +763,164 @@ class _PolosScreenState extends State<PolosScreen> {
               const Expanded(child: SizedBox()), // Espacio vacío
             ],
           ),
-          
+
           const SizedBox(height: 32),
-          
+
           // Sectores estratégicos
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
+          if (_hoveredStateName == null ||
+              (_hoveredStateName != null &&
+                  _stateSectors.containsKey(_hoveredStateName)))
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
                 color: isDark
-                    ? Colors.white.withValues(alpha: 0.1)
-                    : const Color(0xFFE5E7EB),
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : const Color(0xFFE5E7EB),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_hoveredStateName != null &&
+                      _stateSectors.containsKey(_hoveredStateName)) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        'Sectores en $_hoveredStateName',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF1A1A2E),
+                        ),
+                      ),
+                    ),
+                    ..._buildDynamicSectors(
+                      _stateSectors[_hoveredStateName]!,
+                      isDark,
+                    ),
+                  ] else ...[
+                    _buildSectorRow([
+                      _buildSectorItem(
+                        Icons.agriculture_rounded,
+                        'Agroindustria',
+                        isDark,
+                      ),
+                      _buildSectorItem(
+                        Icons.recycling_rounded,
+                        'Economía circular',
+                        isDark,
+                      ),
+                    ]),
+                    const SizedBox(height: 12),
+                    _buildSectorRow([
+                      _buildSectorItem(
+                        Icons.flight_rounded,
+                        'Aeroespacial',
+                        isDark,
+                      ),
+                      _buildSectorItem(
+                        Icons.wb_sunny_rounded,
+                        'Energías limpias',
+                        isDark,
+                      ),
+                    ]),
+                    const SizedBox(height: 12),
+                    _buildSectorRow([
+                      _buildSectorItem(
+                        Icons.electric_car_rounded,
+                        'Automotriz y electromovilidad',
+                        isDark,
+                      ),
+                      _buildSectorItem(
+                        Icons.factory_rounded,
+                        'Industrias metálicas básicas',
+                        isDark,
+                      ),
+                    ]),
+                    const SizedBox(height: 12),
+                    _buildSectorRow([
+                      _buildSectorItem(
+                        Icons.shopping_bag_rounded,
+                        'Bienes de consumo',
+                        isDark,
+                      ),
+                      _buildSectorItem(
+                        Icons.description_rounded,
+                        'Industria del papel',
+                        isDark,
+                      ),
+                    ]),
+                    const SizedBox(height: 12),
+                    _buildSectorRow([
+                      _buildSectorItem(
+                        Icons.medical_services_rounded,
+                        'Farmacéutica y dispositivos médicos',
+                        isDark,
+                      ),
+                      _buildSectorItem(
+                        Icons.science_rounded,
+                        'Industria del plástico',
+                        isDark,
+                      ),
+                    ]),
+                    const SizedBox(height: 12),
+                    _buildSectorRow([
+                      _buildSectorItem(
+                        Icons.memory_rounded,
+                        'Electrónica y semiconductores',
+                        isDark,
+                      ),
+                      _buildSectorItem(
+                        Icons.local_shipping_rounded,
+                        'Logística',
+                        isDark,
+                      ),
+                    ]),
+                    const SizedBox(height: 12),
+                    _buildSectorRow([
+                      _buildSectorItem(Icons.bolt_rounded, 'Energía', isDark),
+                      _buildSectorItem(
+                        Icons.precision_manufacturing_rounded,
+                        'Metalmecánica',
+                        isDark,
+                      ),
+                    ]),
+                    const SizedBox(height: 12),
+                    _buildSectorRow([
+                      _buildSectorItem(
+                        Icons.science_outlined,
+                        'Química y petroquímica',
+                        isDark,
+                      ),
+                      const Expanded(child: SizedBox()),
+                    ]),
+                    const SizedBox(height: 12),
+                    _buildSectorRow([
+                      _buildSectorItem(
+                        Icons.checkroom_rounded,
+                        'Textil y calzado',
+                        isDark,
+                      ),
+                      const Expanded(child: SizedBox()),
+                    ]),
+                  ],
+                ],
               ),
             ),
-            child: Column(
-              children: [
-                _buildSectorRow([
-                  _buildSectorItem(Icons.agriculture_rounded, 'Agroindustria', isDark),
-                  _buildSectorItem(Icons.recycling_rounded, 'Economía circular', isDark),
-                ]),
-                const SizedBox(height: 12),
-                _buildSectorRow([
-                  _buildSectorItem(Icons.flight_rounded, 'Aeroespacial', isDark),
-                  _buildSectorItem(Icons.wb_sunny_rounded, 'Energías limpias', isDark),
-                ]),
-                const SizedBox(height: 12),
-                _buildSectorRow([
-                  _buildSectorItem(Icons.electric_car_rounded, 'Automotriz y electromovilidad', isDark),
-                  _buildSectorItem(Icons.factory_rounded, 'Industrias metálicas básicas', isDark),
-                ]),
-                const SizedBox(height: 12),
-                _buildSectorRow([
-                  _buildSectorItem(Icons.shopping_bag_rounded, 'Bienes de consumo', isDark),
-                  _buildSectorItem(Icons.description_rounded, 'Industria del papel', isDark),
-                ]),
-                const SizedBox(height: 12),
-                _buildSectorRow([
-                  _buildSectorItem(Icons.medical_services_rounded, 'Farmacéutica y dispositivos médicos', isDark),
-                  _buildSectorItem(Icons.science_rounded, 'Industria del plástico', isDark),
-                ]),
-                const SizedBox(height: 12),
-                _buildSectorRow([
-                  _buildSectorItem(Icons.memory_rounded, 'Electrónica y semiconductores', isDark),
-                  _buildSectorItem(Icons.local_shipping_rounded, 'Logística', isDark),
-                ]),
-                const SizedBox(height: 12),
-                _buildSectorRow([
-                  _buildSectorItem(Icons.bolt_rounded, 'Energía', isDark),
-                  _buildSectorItem(Icons.precision_manufacturing_rounded, 'Metalmecánica', isDark),
-                ]),
-                const SizedBox(height: 12),
-                _buildSectorRow([
-                  _buildSectorItem(Icons.science_outlined, 'Química y petroquímica', isDark),
-                  const Expanded(child: SizedBox()),
-                ]),
-                const SizedBox(height: 12),
-                _buildSectorRow([
-                  _buildSectorItem(Icons.checkroom_rounded, 'Textil y calzado', isDark),
-                  const Expanded(child: SizedBox()),
-                ]),
-              ],
-            ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildCategoryButton(bool isDark, {
+  Widget _buildCategoryButton(
+    bool isDark, {
     required Color color,
     required String label,
     required bool isSelected,
@@ -699,33 +928,34 @@ class _PolosScreenState extends State<PolosScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: isSelected 
+        color: isSelected
             ? color.withValues(alpha: 0.15)
             : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isSelected 
-              ? color 
-              : (isDark ? Colors.white.withValues(alpha: 0.1) : const Color(0xFFE5E7EB)),
+          color: isSelected
+              ? color
+              : (isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : const Color(0xFFE5E7EB)),
           width: isSelected ? 2 : 1,
         ),
-        boxShadow: isSelected ? [
-          BoxShadow(
-            color: color.withValues(alpha: 0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ] : null,
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
       ),
       child: Row(
         children: [
           Container(
             width: 20,
             height: 20,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -744,9 +974,49 @@ class _PolosScreenState extends State<PolosScreen> {
   }
 
   Widget _buildSectorRow(List<Widget> children) {
-    return Row(
-      children: children,
-    );
+    return Row(children: children);
+  }
+
+  List<Widget> _buildDynamicSectors(List<String> sectors, bool isDark) {
+    final List<Widget> rows = [];
+    for (int i = 0; i < sectors.length; i += 2) {
+      final item1 = sectors[i];
+      final item2 = (i + 1 < sectors.length) ? sectors[i + 1] : null;
+
+      rows.add(
+        _buildSectorRow([
+          _buildSectorItem(_getIconForSector(item1), item1, isDark),
+          if (item2 != null)
+            _buildSectorItem(_getIconForSector(item2), item2, isDark)
+          else
+            const Expanded(child: SizedBox()),
+        ]),
+      );
+      if (i + 2 < sectors.length) {
+        rows.add(const SizedBox(height: 12));
+      }
+    }
+    return rows;
+  }
+
+  IconData _getIconForSector(String sector) {
+    final lower = sector.toLowerCase();
+    if (lower.contains('agro')) return Icons.agriculture_rounded;
+    if (lower.contains('auto')) return Icons.electric_car_rounded;
+    if (lower.contains('aero')) return Icons.flight_rounded;
+    if (lower.contains('semi') || lower.contains('electrónica'))
+      return Icons.memory_rounded;
+    if (lower.contains('energía')) return Icons.bolt_rounded;
+    if (lower.contains('bienes')) return Icons.shopping_bag_rounded;
+    if (lower.contains('textil')) return Icons.checkroom_rounded;
+    if (lower.contains('química') || lower.contains('plástico'))
+      return Icons.science_outlined;
+    if (lower.contains('logística')) return Icons.local_shipping_rounded;
+    if (lower.contains('turismo')) return Icons.beach_access_rounded;
+    if (lower.contains('farmacéutica') || lower.contains('médicos'))
+      return Icons.medical_services_rounded;
+    if (lower.contains('metal')) return Icons.precision_manufacturing_rounded;
+    return Icons.business_rounded;
   }
 
   Widget _buildSectorItem(IconData icon, String label, bool isDark) {
@@ -756,7 +1026,7 @@ class _PolosScreenState extends State<PolosScreen> {
           Icon(
             icon,
             size: 18,
-            color: isDark 
+            color: isDark
                 ? Colors.white.withValues(alpha: 0.7)
                 : const Color(0xFF6B7280),
           ),
@@ -766,7 +1036,7 @@ class _PolosScreenState extends State<PolosScreen> {
               label,
               style: TextStyle(
                 fontSize: 11,
-                color: isDark 
+                color: isDark
                     ? Colors.white.withValues(alpha: 0.8)
                     : const Color(0xFF374151),
               ),
@@ -779,6 +1049,10 @@ class _PolosScreenState extends State<PolosScreen> {
   }
 
   Widget _buildStateInfo(bool isDark) {
+    final poloData = _selectedStateName != null
+        ? _statePoloData[_selectedStateName]
+        : null;
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -825,13 +1099,13 @@ class _PolosScreenState extends State<PolosScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          
-          // Estadísticas placeholder
+
+          // Estadísticas
           _buildStatCard(
             isDark,
             icon: Icons.business_rounded,
             title: 'Polos de desarrollo',
-            value: '0',
+            value: poloData?.count.toString() ?? '0',
             subtitle: 'En este estado',
           ),
           const SizedBox(height: 12),
@@ -850,9 +1124,62 @@ class _PolosScreenState extends State<PolosScreen> {
             value: '--',
             subtitle: 'MXN',
           ),
-          
+
+          if (poloData != null && poloData.descriptions.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            Text(
+              'Detalle de Polos',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...poloData.descriptions.map(
+              (desc) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        desc,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.8)
+                              : const Color(0xFF374151),
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+
           const SizedBox(height: 24),
-          
+
           // Botón de acción
           SizedBox(
             width: double.infinity,
@@ -871,10 +1198,7 @@ class _PolosScreenState extends State<PolosScreen> {
               ),
               child: const Text(
                 'Ver detalles del estado',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
               ),
             ),
           ),
@@ -911,11 +1235,7 @@ class _PolosScreenState extends State<PolosScreen> {
               color: const Color(0xFF691C32).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              icon,
-              color: const Color(0xFF691C32),
-              size: 20,
-            ),
+            child: Icon(icon, color: const Color(0xFF691C32), size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
