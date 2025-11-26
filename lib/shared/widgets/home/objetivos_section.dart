@@ -52,23 +52,13 @@ class ObjetivosSection extends StatelessWidget {
               topRight: Radius.circular(6),
             ),
           ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: Colors.white.withValues(alpha: 0.9),
-                size: 26,
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Objetivos Centrales',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ],
+          child: const Text(
+            'Objetivos Centrales',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
           ),
         ),
         
