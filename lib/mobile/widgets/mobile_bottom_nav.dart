@@ -33,7 +33,7 @@ class MobileBottomNav extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryDark.withOpacity(0.5),
+            color: AppTheme.primaryDark.withValues(alpha: 0.5),
             blurRadius: 20,
             offset: const Offset(0, -5),
           ),
@@ -69,7 +69,7 @@ class MobileBottomNav extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryDark.withOpacity(0.8),
+                          color: AppTheme.primaryDark.withValues(alpha: 0.8),
                           blurRadius: 8,
                           spreadRadius: 2,
                         ),
@@ -85,21 +85,21 @@ class MobileBottomNav extends StatelessWidget {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: selectedIndex == 0
-                              ? [Colors.white, Colors.white.withOpacity(0.95)]
-                              : [AppTheme.accentColor.withOpacity(0.9), AppTheme.accentColor.withOpacity(0.7)],
+                              ? [Colors.white, Colors.white.withValues(alpha: 0.95)]
+                              : [AppTheme.accentColor.withValues(alpha: 0.9), AppTheme.accentColor.withValues(alpha: 0.7)],
                         ),
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: selectedIndex == 0 
                               ? AppTheme.accentColor
-                              : AppTheme.accentColor.withOpacity(0.5),
+                              : AppTheme.accentColor.withValues(alpha: 0.5),
                           width: 2.5,
                         ),
                         boxShadow: [
                           BoxShadow(
                             color: selectedIndex == 0
-                                ? Colors.white.withOpacity(0.3)
-                                : AppTheme.accentColor.withOpacity(0.4),
+                                ? Colors.white.withValues(alpha: 0.3)
+                                : AppTheme.accentColor.withValues(alpha: 0.4),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -146,12 +146,12 @@ class MobileBottomNav extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? Colors.white.withOpacity(0.2)
+              ? Colors.white.withValues(alpha: 0.2)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected
-                ? AppTheme.accentColor.withOpacity(0.5)
+                ? AppTheme.accentColor.withValues(alpha: 0.5)
                 : Colors.transparent,
             width: 1,
           ),
@@ -163,7 +163,7 @@ class MobileBottomNav extends StatelessWidget {
               item.icon,
               color: isSelected
                   ? Colors.white
-                  : Colors.white.withOpacity(0.6),
+                  : Colors.white.withValues(alpha: 0.6),
               size: 22,
             ),
             const SizedBox(height: 4),
@@ -174,7 +174,7 @@ class MobileBottomNav extends StatelessWidget {
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected
                     ? Colors.white
-                    : Colors.white.withOpacity(0.6),
+                    : Colors.white.withValues(alpha: 0.6),
               ),
             ),
           ],

@@ -3,6 +3,7 @@ import '../../core/theme/theme_provider.dart';
 import '../../web/widgets/web_sidebar.dart';
 import '../../mobile/widgets/mobile_bottom_nav.dart';
 import '../screens/home_screen.dart';
+import '../screens/polos_screen.dart';
 
 class ResponsiveScaffold extends StatefulWidget {
   final ThemeProvider themeProvider;
@@ -35,6 +36,8 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
     switch (_selectedIndex) {
       case 0:
         return const HomeScreen();
+      case 3:
+        return const PolosScreen();
       default:
         return Center(
           child: Text(
@@ -103,7 +106,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF691C32).withOpacity(0.4),
+              color: const Color(0xFF691C32).withValues(alpha: 0.4),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -137,7 +140,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.3),
+                color: Colors.grey.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -164,13 +167,13 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? Colors.white.withOpacity(0.05)
-                        : Colors.black.withOpacity(0.03),
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.black.withValues(alpha: 0.03),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isDark
-                          ? Colors.white.withOpacity(0.1)
-                          : Colors.black.withOpacity(0.08),
+                          ? Colors.white.withValues(alpha: 0.1)
+                          : Colors.black.withValues(alpha: 0.08),
                     ),
                   ),
                   child: Row(
@@ -209,8 +212,8 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                               style: TextStyle(
                                 fontSize: 13,
                                 color: isDark
-                                    ? Colors.white.withOpacity(0.6)
-                                    : Colors.black.withOpacity(0.5),
+                                    ? Colors.white.withValues(alpha: 0.6)
+                                    : Colors.black.withValues(alpha: 0.5),
                               ),
                             ),
                           ],
@@ -220,7 +223,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                         width: 52,
                         height: 28,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF691C32).withOpacity(0.3),
+                          color: const Color(0xFF691C32).withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: AnimatedAlign(
@@ -256,7 +259,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                 children: [
                   Icon(
                     Icons.verified_rounded,
-                    color: const Color(0xFFBC955C).withOpacity(0.9),
+                    color: const Color(0xFFBC955C).withValues(alpha: 0.9),
                     size: 22,
                   ),
                   const SizedBox(width: 12),
@@ -274,7 +277,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                     'Plan México',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                     ),
                   ),
                 ],

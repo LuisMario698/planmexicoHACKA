@@ -40,7 +40,7 @@ class _WebSidebarState extends State<WebSidebar> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(2, 0),
           ),
@@ -58,10 +58,10 @@ class _WebSidebarState extends State<WebSidebar> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: AppTheme.accentColor.withOpacity(0.5),
+                      color: AppTheme.accentColor.withValues(alpha: 0.5),
                       width: 1.5,
                     ),
                   ),
@@ -78,7 +78,7 @@ class _WebSidebarState extends State<WebSidebar> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w400,
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             height: 1.2,
                           ),
                         ),
@@ -108,9 +108,9 @@ class _WebSidebarState extends State<WebSidebar> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppTheme.accentColor.withOpacity(0.1),
-                      AppTheme.accentColor.withOpacity(0.6),
-                      AppTheme.accentColor.withOpacity(0.1),
+                      AppTheme.accentColor.withValues(alpha: 0.1),
+                      AppTheme.accentColor.withValues(alpha: 0.6),
+                      AppTheme.accentColor.withValues(alpha: 0.1),
                     ],
                   ),
                 ),
@@ -134,8 +134,8 @@ class _WebSidebarState extends State<WebSidebar> {
                     child: InkWell(
                       onTap: () => widget.onItemSelected(index),
                       borderRadius: BorderRadius.circular(12),
-                      splashColor: Colors.white.withOpacity(0.1),
-                      highlightColor: Colors.white.withOpacity(0.05),
+                      splashColor: Colors.white.withValues(alpha: 0.1),
+                      highlightColor: Colors.white.withValues(alpha: 0.05),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         padding: EdgeInsets.symmetric(
@@ -144,12 +144,12 @@ class _WebSidebarState extends State<WebSidebar> {
                         ),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? Colors.white.withOpacity(0.15)
+                              ? Colors.white.withValues(alpha: 0.15)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: isSelected
-                                ? AppTheme.accentColor.withOpacity(0.4)
+                                ? AppTheme.accentColor.withValues(alpha: 0.4)
                                 : Colors.transparent,
                             width: 1,
                           ),
@@ -163,7 +163,7 @@ class _WebSidebarState extends State<WebSidebar> {
                               item.icon,
                               color: isSelected
                                   ? Colors.white
-                                  : Colors.white.withOpacity(0.7),
+                                  : Colors.white.withValues(alpha: 0.7),
                               size: 22,
                             ),
                             if (_isExpanded) ...[
@@ -177,7 +177,7 @@ class _WebSidebarState extends State<WebSidebar> {
                                       : FontWeight.w400,
                                   color: isSelected
                                       ? Colors.white
-                                      : Colors.white.withOpacity(0.8),
+                                      : Colors.white.withValues(alpha: 0.8),
                                 ),
                               ),
                               if (isSelected) ...[
@@ -213,7 +213,7 @@ class _WebSidebarState extends State<WebSidebar> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -231,7 +231,7 @@ class _WebSidebarState extends State<WebSidebar> {
                             widget.themeProvider.isDarkMode ? 'Modo oscuro' : 'Modo claro',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withValues(alpha: 0.9),
                             ),
                           ),
                         ),
@@ -240,8 +240,8 @@ class _WebSidebarState extends State<WebSidebar> {
                           height: 24,
                           decoration: BoxDecoration(
                             color: widget.themeProvider.isDarkMode
-                                ? AppTheme.accentColor.withOpacity(0.3)
-                                : Colors.white.withOpacity(0.3),
+                                ? AppTheme.accentColor.withValues(alpha: 0.3)
+                                : Colors.white.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: AnimatedAlign(
@@ -276,14 +276,14 @@ class _WebSidebarState extends State<WebSidebar> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.2),
+                  color: Colors.black.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.verified_rounded,
-                      color: AppTheme.accentColor.withOpacity(0.8),
+                      color: AppTheme.accentColor.withValues(alpha: 0.8),
                       size: 18,
                     ),
                     const SizedBox(width: 10),
@@ -292,7 +292,7 @@ class _WebSidebarState extends State<WebSidebar> {
                         'Gobierno de México',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withValues(alpha: 0.7),
                         ),
                       ),
                     ),
@@ -309,10 +309,10 @@ class _WebSidebarState extends State<WebSidebar> {
                 _isExpanded
                     ? Icons.keyboard_double_arrow_left_rounded
                     : Icons.keyboard_double_arrow_right_rounded,
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
               ),
               style: IconButton.styleFrom(
-                backgroundColor: Colors.white.withOpacity(0.1),
+                backgroundColor: Colors.white.withValues(alpha: 0.1),
                 padding: const EdgeInsets.all(10),
               ),
             ),
