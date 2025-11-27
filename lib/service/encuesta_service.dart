@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase/supabase.dart' show SupabaseClient, CountOption;
 
 /// Modelo de respuesta de encuesta
 class EncuestaRespuesta {

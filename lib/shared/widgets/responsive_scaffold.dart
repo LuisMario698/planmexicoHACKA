@@ -9,7 +9,6 @@ import '../screens/asistente_screen.dart';
 import '../screens/mi_region_screen.dart';
 import '../screens/voice_chat_widget.dart';
 import '../screens/perfil_screen.dart';
-import '../screens/encuestas_screen.dart';
 
 class ResponsiveScaffold extends StatefulWidget {
   final ThemeProvider themeProvider;
@@ -32,17 +31,17 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
     NavItem(icon: Icons.location_on_rounded, label: 'Mi Región'),
   ];
 
-  // Orden para web (sidebar) - Inicio arriba
+  // Orden para web (sidebar) - Inicio arriba, Mi Región prominente
   // Mapeo: webIndex -> mobileIndex
-  static const List<int> _webToMobileIndex = [2, 3, 1, 0, 4]; // Inicio, Polos, Inversiones, Asistente, Mi Región
-  static const List<int> _mobileToWebIndex = [3, 2, 0, 1, 4]; // Mapeo inverso
+  static const List<int> _webToMobileIndex = [2, 4, 3, 1, 0]; // Inicio, Mi Región, Polos, Inversiones, Asistente
+  static const List<int> _mobileToWebIndex = [4, 3, 0, 2, 1]; // Mapeo inverso
 
   List<NavItem> get _webNavItems => [
     _navItems[2], // Inicio
+    _navItems[4], // Mi Región
     _navItems[3], // Polos
     _navItems[1], // Inversiones
     _navItems[0], // Asistente
-    _navItems[4], // Mi Región
   ];
 
   void _onItemSelected(int index) {
@@ -70,7 +69,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
       case 3:
         return const PolosScreen();
       case 4:
-        return const EncuestasScreen();
+        return const MiRegionScreen();
       default:
         return Center(
           child: Text(
