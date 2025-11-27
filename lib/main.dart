@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'shared/widgets/responsive_scaffold.dart';
+import 'shared/screens/welcome_screen.dart';
 import 'app_config.dart';
 import 'service/encuesta_service.dart';
 
@@ -57,6 +58,13 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   final ThemeProvider _themeProvider = ThemeProvider();
+  bool _showWelcome = true;
+
+  void _onStartApp() {
+    setState(() {
+      _showWelcome = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,6 +77,9 @@ class _MainAppState extends State<MainApp> {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: _themeProvider.themeMode,
+          // home: _showWelcome
+          //     ? WelcomeScreen(onStart: _onStartApp)
+          //     : ResponsiveScaffold(themeProvider: _themeProvider),
           home: ResponsiveScaffold(themeProvider: _themeProvider),
         );
       },

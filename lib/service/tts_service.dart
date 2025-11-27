@@ -60,7 +60,7 @@ class TtsService extends ChangeNotifier {
   Future<void> _initTts() async {
     _flutterTts = FlutterTts();
 
-    // Configuración para flutter_tts (móviles)
+    // Configuración para flutter_tts (móviles))
     await _flutterTts.setLanguage("es-MX");
     await _flutterTts.setVolume(0.9);
     await _flutterTts.setSpeechRate(0.5);
