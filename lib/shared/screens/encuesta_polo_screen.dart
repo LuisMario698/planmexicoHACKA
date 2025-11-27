@@ -103,16 +103,10 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
   // Tutorial variables
   bool _showTutorial = false;
   int _tutorialStep = 1;
-  late GlobalKey _pregunta1Key;
-  late GlobalKey _pregunta4Key;
-  late GlobalKey _submitButtonKey;
 
   @override
   void initState() {
     super.initState();
-    _pregunta1Key = GlobalKey();
-    _pregunta4Key = GlobalKey();
-    _submitButtonKey = GlobalKey();
     _checkIfShowTutorial();
   }
 
@@ -256,14 +250,11 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
                 const SizedBox(height: 20),
 
                 // Preguntas compactas
-                Container(
-                  key: _pregunta1Key,
-                  child: _buildQuestionCompact(
-                    number: 1,
-                    question: '¿Qué tan clara es la información?',
-                    value: _pregunta1,
-                    onChanged: (v) => setState(() => _pregunta1 = v),
-                  ),
+                _buildQuestionCompact(
+                  number: 1,
+                  question: '¿Qué tan clara es la información?',
+                  value: _pregunta1,
+                  onChanged: (v) => setState(() => _pregunta1 = v),
                 ),
 
                 const SizedBox(height: 16),
@@ -287,49 +278,41 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
                 const SizedBox(height: 16),
 
                 // Pregunta abierta compacta
-                Container(
-                  key: _pregunta4Key,
-                  child: _buildOpenQuestionCompact(),
-                ),
+                _buildOpenQuestionCompact(),
 
                 const SizedBox(height: 24),
 
                 // Botón de envío
-                Container(
-                  key: _submitButtonKey,
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isSubmitting ? null : _submitSurvey,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: guinda,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.grey.shade300,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        elevation: 0,
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isSubmitting ? null : _submitSurvey,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: guinda,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: _isSubmitting
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation(
-                                  Colors.white,
-                                ),
-                              ),
-                            )
-                          : const Text(
-                              'Enviar encuesta',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                      elevation: 0,
                     ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            'Enviar encuesta',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -1102,8 +1085,7 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
   /// Verificar si debe mostrar tutorial
   Future<void> _checkIfShowTutorial() async {
     final prefs = await SharedPreferences.getInstance();
-    final tutorialSeen =
-        prefs.getBool('encuesta_tutorial_seen_${widget.poloId}') ?? false;
+    final tutorialSeen = prefs.getBool('encuesta_tutorial_seen') ?? false;
 
     if (!tutorialSeen && mounted) {
       await Future.delayed(const Duration(milliseconds: 300));
@@ -1126,7 +1108,7 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
   /// Marcar tutorial como completado
   Future<void> _completeTutorial() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('encuesta_tutorial_seen_${widget.poloId}', true);
+    await prefs.setBool('encuesta_tutorial_seen', true);
     if (mounted) {
       setState(() {
         _showTutorial = false;
@@ -1139,46 +1121,11 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
     _completeTutorial();
   }
 
-  /// Obtener Rect de un elemento por GlobalKey
-  Rect _getTutorialElementRect(GlobalKey key) {
-    final renderBox = key.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox != null) {
-      final position = renderBox.localToGlobal(Offset.zero);
-      return Rect.fromLTWH(
-        position.dx,
-        position.dy,
-        renderBox.size.width,
-        renderBox.size.height,
-      );
-    }
-    return const Rect.fromLTWH(0, 400, 300, 60);
-  }
-
   /// Construir overlay del tutorial
   Widget _buildTutorialOverlay() {
-    Rect? targetRect;
-
-    switch (_tutorialStep) {
-      case 1:
-        // Sin target (intro general)
-        break;
-      case 2:
-        // Target: Primera pregunta
-        targetRect = _getTutorialElementRect(_pregunta1Key);
-        break;
-      case 3:
-        // Target: Pregunta abierta
-        targetRect = _getTutorialElementRect(_pregunta4Key);
-        break;
-      case 4:
-        // Target: Botón submit
-        targetRect = _getTutorialElementRect(_submitButtonKey);
-        break;
-    }
-
     return EncuestaTutorialOverlay(
       step: _tutorialStep,
-      targetRect: targetRect,
+      targetRect: null, // No usamos targets en la encuesta
       onNext: _nextTutorialStep,
       onSkip: _skipTutorial,
     );

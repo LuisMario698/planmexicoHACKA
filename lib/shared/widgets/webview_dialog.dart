@@ -12,14 +12,11 @@ class WebViewDialog extends StatelessWidget {
   final String url;
   final String title;
 
-  const WebViewDialog({
-    super.key,
-    required this.url,
-    required this.title,
-  });
+  const WebViewDialog({super.key, required this.url, required this.title});
 
   /// Muestra el diálogo con el WebView
-  static Future<void> show(BuildContext context, {
+  static Future<void> show(
+    BuildContext context, {
     required String url,
     required String title,
   }) {
@@ -74,7 +71,6 @@ class WebViewDialogHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Ícono
           Container(
             padding: EdgeInsets.all(isMobile ? 8 : 10),
             decoration: BoxDecoration(

@@ -143,7 +143,7 @@ class _PolosScreenState extends State<PolosScreen>
   Future<void> _checkIfShowStateTutorial(String stateName) async {
     final prefs = await SharedPreferences.getInstance();
     final hasSeenStateTutorial =
-        prefs.getBool('polos_state_tutorial_seen_$stateName') ?? false;
+        prefs.getBool('polos_state_tutorial_seen') ?? false;
 
     if (mounted && !hasSeenStateTutorial) {
       // Esperar a que el widget se dibuje completamente
@@ -157,13 +157,13 @@ class _PolosScreenState extends State<PolosScreen>
 
   Future<void> _completeStateTutorial(String stateName) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('polos_state_tutorial_seen_$stateName', true);
+    await prefs.setBool('polos_state_tutorial_seen', true);
   }
 
   Future<void> _checkIfShowPoloTutorial(PoloInfo polo) async {
     final prefs = await SharedPreferences.getInstance();
     final hasSeenPoloTutorial =
-        prefs.getBool('polos_polo_tutorial_seen_${polo.id}') ?? false;
+        prefs.getBool('polos_polo_tutorial_seen') ?? false;
 
     if (mounted && !hasSeenPoloTutorial) {
       // Esperar a que el widget se dibuje completamente
@@ -191,13 +191,8 @@ class _PolosScreenState extends State<PolosScreen>
   }
 
   Future<void> _completePoloTutorial() async {
-    if (_selectedPolo != null) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(
-        'polos_polo_tutorial_seen_${_selectedPolo!.id}',
-        true,
-      );
-    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('polos_polo_tutorial_seen', true);
 
     if (mounted) {
       setState(() {
@@ -2957,7 +2952,9 @@ class _PolosScreenState extends State<PolosScreen>
             content: const Text('Error al guardar imagen'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
