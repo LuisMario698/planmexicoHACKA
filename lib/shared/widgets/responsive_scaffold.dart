@@ -18,12 +18,12 @@ class ResponsiveScaffold extends StatefulWidget {
 }
 
 class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
-  int _selectedIndex = 0;
+  int _selectedIndex = 2; // Inicio está en posición 2 ahora
 
   final List<NavItem> _navItems = const [
-    NavItem(icon: Icons.home_rounded, label: 'Inicio'),
     NavItem(icon: Icons.smart_toy_rounded, label: 'Asistente'),
     NavItem(icon: Icons.trending_up_rounded, label: 'Inversiones'),
+    NavItem(icon: Icons.home_rounded, label: 'Inicio'),
     NavItem(icon: Icons.hub_rounded, label: 'Polos'),
     NavItem(icon: Icons.poll_rounded, label: 'Encuestas'),
   ];
@@ -37,12 +37,12 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
 
     switch (_selectedIndex) {
       case 0:
-        return const HomeScreen();
-      case 1:
         // Pantalla del Asistente IA
         return const AsistenteScreen();
-      case 2:
+      case 1:
         return const InversionesScreen();
+      case 2:
+        return const HomeScreen();
       case 3:
         return const PolosScreen();
       default:
@@ -172,6 +172,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
     return Scaffold(
       body: Stack(
         children: [
+          // Contenido ocupa toda la pantalla
           _buildContent(context),
 
           // Botón de configuración (Arriba derecha)
@@ -181,14 +182,23 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
             child: _buildSettingsButton(context),
           ),
 
-          // Botón flotante Ajolote (Móvil)
-          Positioned(bottom: 20, right: 16, child: _buildAjoloteFab(context)),
+          // Bottom Nav flotante sobre el contenido
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: SafeArea(
+              child: MobileBottomNav(
+                items: _navItems,
+                selectedIndex: _selectedIndex,
+                onItemSelected: _onItemSelected,
+              ),
+            ),
+          ),
+
+          // Botón flotante Ajolote (Móvil) - encima del nav
+          Positioned(bottom: 110, right: 16, child: _buildAjoloteFab(context)),
         ],
-      ),
-      bottomNavigationBar: MobileBottomNav(
-        items: _navItems,
-        selectedIndex: _selectedIndex,
-        onItemSelected: _onItemSelected,
       ),
     );
   }

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/responsive_scaffold.dart';
 
-class MobileBottomNav extends StatelessWidget {
+class MobileBottomNav extends StatefulWidget {
   final List<NavItem> items;
   final int selectedIndex;
   final Function(int) onItemSelected;
@@ -15,166 +14,131 @@ class MobileBottomNav extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    // Separar el item de Inicio (index 0) de los demás
-    final homeItem = items[0];
-    final leftItems = items.sublist(1, 3);  // Asistente, Datos
-    final rightItems = items.sublist(3);     // Polos, Encuestas
+  State<MobileBottomNav> createState() => _MobileBottomNavState();
+}
 
+class _MobileBottomNavState extends State<MobileBottomNav> 
+    with SingleTickerProviderStateMixin {
+  
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
+      // Margen mínimo para flotar un poco
+      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
       decoration: BoxDecoration(
+        // Fondo guinda
         gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [
-            AppTheme.primaryColor,
-            AppTheme.primaryDark,
+            Color(0xFF7A1E3D),
+            Color(0xFF691C32),
+            Color(0xFF4A1525),
           ],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryDark.withValues(alpha: 0.5),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
+            color: const Color(0xFF691C32).withValues(alpha: 0.5),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              // Items izquierda (Asistente, Datos) - con Expanded para distribuir
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: leftItems.asMap().entries.map((entry) {
-                    final actualIndex = entry.key + 1;
-                    final item = entry.value;
-                    final isSelected = actualIndex == selectedIndex;
-                    return _buildNavItem(item, isSelected, () => onItemSelected(actualIndex));
-                  }).toList(),
-                ),
-              ),
-              
-              // Botón central de Inicio (más grande y centrado)
-              GestureDetector(
-                onTap: () => onItemSelected(0),
-                child: Transform.translate(
-                  offset: const Offset(0, -16),
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryDark,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryDark.withValues(alpha: 0.8),
-                          blurRadius: 8,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeOutCubic,
-                      width: 58,
-                      height: 58,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: selectedIndex == 0
-                              ? [Colors.white, Colors.white.withValues(alpha: 0.95)]
-                              : [AppTheme.accentColor.withValues(alpha: 0.9), AppTheme.accentColor.withValues(alpha: 0.7)],
-                        ),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: selectedIndex == 0 
-                              ? AppTheme.accentColor
-                              : AppTheme.accentColor.withValues(alpha: 0.5),
-                          width: 2.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: selectedIndex == 0
-                                ? Colors.white.withValues(alpha: 0.3)
-                                : AppTheme.accentColor.withValues(alpha: 0.4),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        homeItem.icon,
-                        color: selectedIndex == 0
-                            ? AppTheme.primaryColor
-                            : Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              
-              // Items derecha (Polos, Encuestas) - con Expanded para distribuir
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: rightItems.asMap().entries.map((entry) {
-                    final actualIndex = entry.key + 3;
-                    final item = entry.value;
-                    final isSelected = actualIndex == selectedIndex;
-                    return _buildNavItem(item, isSelected, () => onItemSelected(actualIndex));
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-        ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: widget.items.asMap().entries.map((entry) {
+          final index = entry.key;
+          final item = entry.value;
+          final isSelected = index == widget.selectedIndex;
+          
+          return Expanded(
+            child: _buildNavItem(item, index, isSelected, isDark),
+          );
+        }).toList(),
       ),
     );
   }
 
-  Widget _buildNavItem(NavItem item, bool isSelected, VoidCallback onTap) {
+  Widget _buildNavItem(NavItem item, int index, bool isSelected, bool isDark) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => widget.onItemSelected(index),
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Colors.white.withValues(alpha: 0.2)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected
-                ? AppTheme.accentColor.withValues(alpha: 0.5)
-                : Colors.transparent,
-            width: 1,
-          ),
-        ),
+        // Se eleva cuando está seleccionado
+        transform: Matrix4.translationValues(0, isSelected ? -4 : 0, 0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              item.icon,
-              color: isSelected
-                  ? Colors.white
-                  : Colors.white.withValues(alpha: 0.6),
-              size: 22,
+            // Contenedor del icono con fondo
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? Colors.white : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Icon(
+                item.icon,
+                color: isSelected
+                    ? const Color(0xFF691C32)
+                    : Colors.white.withValues(alpha: 0.7),
+                size: 26,
+              ),
             ),
             const SizedBox(height: 4),
+            // Texto siempre visible
             Text(
               item.label,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected
                     ? Colors.white
-                    : Colors.white.withValues(alpha: 0.6),
+                    : Colors.white.withValues(alpha: 0.7),
+                letterSpacing: 0.1,
               ),
             ),
           ],
