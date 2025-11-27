@@ -78,6 +78,12 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
   late Animation<double> _selectionAnimation;
   late Animation<double> _elevationAnimation;
 
+  // Zoom interactivo
+  final TransformationController _transformationController = TransformationController();
+  double _currentZoom = 1.0;
+  static const double _minZoom = 1.0;
+  static const double _maxZoom = 4.0;
+
   // Bounds para normalizar las coordenadas
   double _minX = double.infinity;
   double _maxX = double.negativeInfinity;
@@ -137,6 +143,7 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
   void dispose() {
     _hoverController.dispose();
     _selectionController.dispose();
+    _transformationController.dispose();
     for (final controller in _stateHoverControllers.values) {
       controller.dispose();
     }
@@ -339,38 +346,94 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final mapSize = Size(constraints.maxWidth, constraints.maxHeight);
+        
         return Stack(
           children: [
-            // Mapa principal
+            // Mapa principal con zoom interactivo
             AnimatedOpacity(
               duration: const Duration(milliseconds: 300),
               opacity: _showStateDetail ? 0.3 : 1.0,
-              child: MouseRegion(
-                cursor: _hoveredStateCode != null
-                    ? SystemMouseCursors.click
-                    : SystemMouseCursors.basic,
-                onHover: (event) => _handleHover(event, constraints),
-                onExit: (_) => _handleHoverExit(),
-                child: GestureDetector(
-                  onTapDown: (details) => _handleTap(details, constraints),
-                  child: CustomPaint(
-                    size: Size(constraints.maxWidth, constraints.maxHeight),
-                    painter: MexicoMapPainter(
-                      states: _states,
-                      minX: _minX,
-                      maxX: _maxX,
-                      minY: _minY,
-                      maxY: _maxY,
-                      selectedStateCode: widget.selectedStateCode,
-                      hoveredStateCode: _hoveredStateCode,
-                      isDark: Theme.of(context).brightness == Brightness.dark,
-                      hoverAnimations: _stateHoverAnimations,
-                      highlightedStates: widget.highlightedStates,
+              child: InteractiveViewer(
+                transformationController: _transformationController,
+                minScale: _minZoom,
+                maxScale: _maxZoom,
+                panEnabled: true,
+                scaleEnabled: true,
+                boundaryMargin: const EdgeInsets.all(100),
+                constrained: false,
+                onInteractionUpdate: (details) {
+                  setState(() {
+                    _currentZoom = _transformationController.value.getMaxScaleOnAxis();
+                  });
+                },
+                child: SizedBox(
+                  width: mapSize.width,
+                  height: mapSize.height,
+                  child: MouseRegion(
+                    cursor: _hoveredStateCode != null
+                        ? SystemMouseCursors.click
+                        : SystemMouseCursors.basic,
+                    onHover: (event) => _handleHover(event, constraints),
+                    onExit: (_) => _handleHoverExit(),
+                    child: GestureDetector(
+                      onTapDown: (details) => _handleTap(details, constraints),
+                      child: CustomPaint(
+                        size: mapSize,
+                        painter: MexicoMapPainter(
+                          states: _states,
+                          minX: _minX,
+                          maxX: _maxX,
+                          minY: _minY,
+                          maxY: _maxY,
+                          selectedStateCode: widget.selectedStateCode,
+                          hoveredStateCode: _hoveredStateCode,
+                          isDark: isDark,
+                          hoverAnimations: _stateHoverAnimations,
+                          highlightedStates: widget.highlightedStates,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
+
+            // Botones de zoom (+ / -)
+            if (!_showStateDetail)
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildZoomButton(
+                      icon: Icons.add,
+                      onTap: _zoomIn,
+                      isDark: isDark,
+                      enabled: _currentZoom < _maxZoom,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildZoomButton(
+                      icon: Icons.remove,
+                      onTap: _zoomOut,
+                      isDark: isDark,
+                      enabled: _currentZoom > _minZoom,
+                    ),
+                    // Botón de reset solo si hay zoom aplicado
+                    if (_currentZoom > 1.0) ...[
+                      const SizedBox(height: 8),
+                      _buildZoomButton(
+                        icon: Icons.fullscreen_exit,
+                        onTap: _resetZoom,
+                        isDark: isDark,
+                        enabled: true,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
 
             // Vista de detalle del estado
             if (_showStateDetail && _detailState != null)
@@ -835,6 +898,89 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
       widget.onStateSelected?.call('', '');
       widget.onBackToMap?.call();
     });
+  }
+
+  // Métodos de zoom
+  void _zoomIn() {
+    final newZoom = (_currentZoom + 0.5).clamp(_minZoom, _maxZoom);
+    _animateZoom(newZoom);
+  }
+
+  void _zoomOut() {
+    final newZoom = (_currentZoom - 0.5).clamp(_minZoom, _maxZoom);
+    _animateZoom(newZoom);
+  }
+
+  void _animateZoom(double targetZoom) {
+    // Si es el mismo zoom, no hacer nada
+    if (targetZoom == _currentZoom) return;
+    
+    final currentMatrix = _transformationController.value;
+    final currentScale = currentMatrix.getMaxScaleOnAxis();
+    
+    // Calcular el factor de escala
+    final double scaleFactor = targetZoom / currentScale;
+    
+    // Obtener la traducción actual
+    final translation = currentMatrix.getTranslation();
+    
+    // Crear nueva matriz manteniendo la posición relativa
+    final newMatrix = Matrix4.identity()
+      ..translate(translation.x * scaleFactor, translation.y * scaleFactor)
+      ..scale(targetZoom);
+    
+    _transformationController.value = newMatrix;
+    setState(() {
+      _currentZoom = targetZoom;
+    });
+  }
+
+  void _resetZoom() {
+    _transformationController.value = Matrix4.identity();
+    setState(() {
+      _currentZoom = 1.0;
+    });
+  }
+
+  Widget _buildZoomButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    required bool isDark,
+    required bool enabled,
+  }) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: isDark 
+              ? const Color(0xFF262830).withValues(alpha: 0.95) 
+              : Colors.white.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark 
+                ? const Color(0xFF3A3D47) 
+                : const Color(0xFFE5E7EB),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(
+          icon,
+          size: 22,
+          color: enabled 
+              ? const Color(0xFF691C32) 
+              : (isDark ? Colors.white24 : Colors.grey.shade400),
+        ),
+      ),
+    );
   }
 
   void _handleHover(PointerHoverEvent event, BoxConstraints constraints) {
