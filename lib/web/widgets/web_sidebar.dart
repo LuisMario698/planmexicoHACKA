@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../shared/widgets/responsive_scaffold.dart';
@@ -102,59 +103,31 @@ class _WebSidebarState extends State<WebSidebar>
   }
 
   Widget _buildHeader(bool isDark) {
+    // Tamaño del logo basado en si está expandido o no
+    final logoSize = _isExpanded ? 150.0 : 80.0;
+    
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: _isExpanded ? 16 : 12),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Center(
-              child: Text(
-                'PM',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ),
-          if (_expandAnimation.value > 0.5) ...[
-            const SizedBox(width: 12),
-            Expanded(
-              child: Opacity(
-                opacity: ((_expandAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Plan México',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    Text(
-                      '2025',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.accentColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      padding: EdgeInsets.symmetric(horizontal: _isExpanded ? 16 : 10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        width: logoSize,
+        height: logoSize,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(_isExpanded ? 16 : 12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
-        ],
+        ),
+        padding: EdgeInsets.all(_isExpanded ? 10 : 6),
+        child: SvgPicture.asset(
+          'assets/images/logo_planMX_solo.svg',
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }
