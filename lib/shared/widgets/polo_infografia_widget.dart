@@ -436,7 +436,7 @@ class PoloInfografiaWidget extends StatelessWidget {
             ),
           ),
           const Text(
-            'Plan México',
+            'PlanMX',
             style: TextStyle(
               fontSize: 12,
               color: Colors.white,
@@ -451,7 +451,7 @@ class PoloInfografiaWidget extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
             ),
             child: const Text(
-              '#PlanMéxico',
+              '#PlanMX',
               style: TextStyle(
                 fontSize: 10,
                 color: Colors.white,

@@ -37,6 +37,113 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     return MediaQuery.of(context).size.width > 800;
   }
 
+  // Helper para mostrar modal adaptativo (diálogo en desktop, bottom sheet en mobile)
+  void _mostrarModalAdaptativo({
+    required BuildContext context,
+    required Widget Function(ScrollController? scrollController) contentBuilder,
+    required bool isDark,
+    double desktopWidth = 600,
+    double desktopMaxHeight = 0.85,
+  }) {
+    if (_isWideScreen(context)) {
+      // Desktop: Diálogo centrado
+      showDialog(
+        context: context,
+        barrierColor: Colors.black54,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
+          child: Container(
+            width: desktopWidth,
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * desktopMaxHeight,
+            ),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(40),
+                  blurRadius: 30,
+                  offset: const Offset(0, 15),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header con botón cerrar
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: isDark ? Colors.white70 : Colors.grey.shade600,
+                      ),
+                      style: IconButton.styleFrom(
+                        backgroundColor: isDark ? Colors.white10 : Colors.grey.shade100,
+                      ),
+                    ),
+                  ),
+                ),
+                // Contenido scrolleable
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                    child: contentBuilder(null),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } else {
+      // Mobile: Bottom sheet deslizable
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          maxChildSize: 0.95,
+          minChildSize: 0.5,
+          builder: (context, scrollController) => Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              children: [
+                // Handle
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withAlpha(80),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Contenido
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(24),
+                    child: contentBuilder(scrollController),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
   // Preguntas del día (5 predefinidas, se elige aleatoriamente)
   static const List<String> _preguntasDelDia = [
     '¿Qué tipo de empleo te gustaría encontrar en tu región?',
@@ -2856,7 +2963,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // CONTENIDO DE CADA MÓDULO
+  // CONTENIDO DE CADA MÓDULO - MEJORADO
   // ════════════════════════════════════════════════════════════════════════════
   Widget _buildContenidoEmpleos(
     BuildContext context,
@@ -2873,6 +2980,12 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
         'sector': 'Manufactura',
         'salario': '\$18,000/mes',
         'distancia': '12 km',
+        'tipo': 'Tiempo completo',
+        'descripcion': 'Buscamos técnico soldador con experiencia en soldadura MIG/TIG para proyectos de construcción industrial. Ofrecemos prestaciones de ley, seguro de gastos médicos y vales de despensa.',
+        'requisitos': ['2+ años de experiencia', 'Certificación en soldadura', 'Disponibilidad de horario'],
+        'beneficios': ['Seguro médico', 'Vales de despensa', 'Fondo de ahorro'],
+        'icono': Icons.construction_rounded,
+        'imagen': 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?w=400',
       },
       {
         'titulo': 'Operador de Maquinaria',
@@ -2880,32 +2993,532 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
         'sector': 'Minería',
         'salario': '\$22,000/mes',
         'distancia': '25 km',
+        'tipo': 'Tiempo completo',
+        'descripcion': 'Operador de maquinaria pesada para extracción minera. Turno rotativo con transporte incluido. Excelente ambiente laboral y oportunidades de crecimiento.',
+        'requisitos': ['Licencia tipo E', '3+ años de experiencia', 'Disponibilidad para rotar turnos'],
+        'beneficios': ['Transporte', 'Comedor', 'Bono de productividad'],
+        'icono': Icons.precision_manufacturing_rounded,
+        'imagen': 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400',
       },
       {
         'titulo': 'Ingeniero de Procesos',
-        'empresa': 'Planta Solar',
-        'sector': 'Energía',
+        'empresa': 'Planta Solar MX',
+        'sector': 'Energía Renovable',
         'salario': '\$35,000/mes',
         'distancia': '8 km',
+        'tipo': 'Tiempo completo',
+        'descripcion': 'Ingeniero para optimización de procesos en planta de energía solar. Participarás en proyectos de innovación y sustentabilidad con impacto nacional.',
+        'requisitos': ['Ing. Industrial o afín', 'Inglés intermedio', 'Conocimiento en Lean Manufacturing'],
+        'beneficios': ['Home office parcial', 'Capacitación continua', 'Bono anual'],
+        'icono': Icons.solar_power_rounded,
+        'imagen': 'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=400',
+      },
+      {
+        'titulo': 'Supervisor de Producción',
+        'empresa': 'Alimentos del Norte',
+        'sector': 'Agroindustria',
+        'salario': '\$28,000/mes',
+        'distancia': '15 km',
+        'tipo': 'Tiempo completo',
+        'descripcion': 'Supervisión de líneas de producción en planta procesadora de alimentos. Liderazgo de equipos de trabajo y cumplimiento de estándares de calidad.',
+        'requisitos': ['Experiencia en supervisión', 'Conocimiento en BPM', 'Liderazgo comprobado'],
+        'beneficios': ['Producto gratis', 'Aguinaldo superior', 'Caja de ahorro'],
+        'icono': Icons.factory_rounded,
+        'imagen': 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400',
       },
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '${empleos.length} empleos disponibles en $_estadoUsuario',
-          style: TextStyle(fontSize: 14, color: subtextColor),
+        // Header con estadísticas
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [verde.withAlpha(20), verde.withAlpha(8)],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: verde.withAlpha(30)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.trending_up_rounded, color: verde, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${empleos.length} empleos disponibles',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                    Text(
+                      'En $_estadoUsuario • Actualizados hoy',
+                      style: TextStyle(fontSize: 12, color: subtextColor),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: verde,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  '+15% esta semana',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
-        ...empleos.map(
-          (empleo) => _buildEmpleoCard(
-            empleo,
-            isDark,
-            cardColor,
-            textColor,
-            subtextColor,
-            borderColor,
+        const SizedBox(height: 20),
+        // Lista de empleos
+        ...empleos.map((empleo) => _buildEmpleoCardMejorado(
+          empleo,
+          isDark,
+          textColor,
+          subtextColor,
+          borderColor,
+          context,
+        )),
+      ],
+    );
+  }
+
+  Widget _buildEmpleoCardMejorado(
+    Map<String, dynamic> empleo,
+    bool isDark,
+    Color textColor,
+    Color subtextColor,
+    Color borderColor,
+    BuildContext context,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _mostrarDetalleEmpleo(context, empleo, isDark, textColor, subtextColor),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF252530) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: borderColor),
+              boxShadow: [
+                BoxShadow(
+                  color: verde.withAlpha(isDark ? 15 : 8),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    // Icono representativo
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [verde, verde.withAlpha(180)],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: verde.withAlpha(60),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        empleo['icono'] as IconData,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            empleo['titulo'] as String,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.business_rounded, size: 14, color: subtextColor),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    empleo['empresa'] as String,
+                                    style: TextStyle(fontSize: 13, color: subtextColor),
+                                  ),
+                                ],
+                              ),
+                              Text('•', style: TextStyle(color: subtextColor)),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.location_on_rounded, size: 14, color: subtextColor),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    empleo['distancia'] as String,
+                                    style: TextStyle(fontSize: 13, color: subtextColor),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // Tags - usando Wrap para responsividad
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    _buildTag(empleo['sector'] as String, verde.withAlpha(25), verde),
+                    _buildTag(empleo['tipo'] as String, Colors.blue.withAlpha(25), Colors.blue),
+                    // Salario destacado
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [verde, verde.withAlpha(200)],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        empleo['salario'] as String,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Preview descripción
+                Text(
+                  (empleo['descripcion'] as String).length > 80
+                      ? '${(empleo['descripcion'] as String).substring(0, 80)}...'
+                      : empleo['descripcion'] as String,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: subtextColor,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Call to action
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Ver detalles',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: verde,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_rounded, size: 16, color: verde),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTag(String text, Color bgColor, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+
+  void _mostrarDetalleEmpleo(
+    BuildContext context,
+    Map<String, dynamic> empleo,
+    bool isDark,
+    Color textColor,
+    Color subtextColor,
+  ) {
+    _mostrarModalAdaptativo(
+      context: context,
+      isDark: isDark,
+      desktopWidth: 650,
+      contentBuilder: (scrollController) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [verde, verde.withAlpha(180)],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: verde.withAlpha(80),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  empleo['icono'] as IconData,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      empleo['titulo'] as String,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      empleo['empresa'] as String,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: subtextColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Salario destacado
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [verde.withAlpha(20), verde.withAlpha(8)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: verde.withAlpha(40)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildInfoColumn('Salario', empleo['salario'] as String, Icons.payments_rounded, verde),
+                _buildInfoColumn('Distancia', empleo['distancia'] as String, Icons.location_on_rounded, dorado),
+                _buildInfoColumn('Tipo', empleo['tipo'] as String, Icons.schedule_rounded, Colors.blue),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Descripción
+          Text(
+            'Descripción del puesto',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            empleo['descripcion'] as String,
+            style: TextStyle(
+              fontSize: 15,
+              color: subtextColor,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Requisitos
+          Text(
+            'Requisitos',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...(empleo['requisitos'] as List<String>).map((req) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: verde, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    req,
+                    style: TextStyle(fontSize: 14, color: textColor),
+                  ),
+                ),
+              ],
+            ),
+          )),
+          const SizedBox(height: 24),
+          // Beneficios
+          Text(
+            'Beneficios',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: (empleo['beneficios'] as List<String>).map((ben) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: dorado.withAlpha(20),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: dorado.withAlpha(40)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.star_rounded, color: dorado, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    ben,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? dorado : Colors.brown.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            )).toList(),
+          ),
+          const SizedBox(height: 32),
+          // Botón aplicar
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('¡Aplicación enviada! Te contactaremos pronto.'),
+                    backgroundColor: verde,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: verde,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 8,
+                shadowColor: verde.withAlpha(100),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.send_rounded, size: 22),
+                  SizedBox(width: 10),
+                  Text(
+                    'Aplicar ahora',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoColumn(String label, String value, IconData icon, Color color) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
           ),
         ),
       ],
@@ -2987,81 +3600,456 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     Color subtextColor,
     Color borderColor,
   ) {
+    const Color azul = Color(0xFF2563EB);
     final cursos = [
       {
-        'nombre': 'Soldadura Industrial',
+        'nombre': 'Soldadura Industrial Avanzada',
+        'institucion': 'CONALEP',
         'duracion': '40 horas',
         'modalidad': 'Presencial',
+        'precio': 'Gratuito',
+        'fechaInicio': '15 Dic 2025',
+        'cupoDisponible': 12,
+        'descripcion': 'Curso práctico de soldadura MIG/TIG para proyectos industriales. Incluye certificación oficial reconocida por la SEP.',
+        'temario': ['Fundamentos de soldadura', 'Técnicas MIG', 'Técnicas TIG', 'Seguridad industrial', 'Proyecto final'],
+        'icono': Icons.construction_rounded,
+        'nivel': 'Intermedio',
       },
       {
-        'nombre': 'Excel Avanzado',
+        'nombre': 'Excel y Análisis de Datos',
+        'institucion': 'Capacítate para el Empleo',
         'duracion': '20 horas',
         'modalidad': 'En línea',
+        'precio': 'Gratuito',
+        'fechaInicio': 'Inmediato',
+        'cupoDisponible': 999,
+        'descripcion': 'Domina Excel desde nivel básico hasta avanzado. Aprende tablas dinámicas, fórmulas complejas y visualización de datos.',
+        'temario': ['Fórmulas básicas', 'Tablas dinámicas', 'Gráficos', 'Macros básicos', 'Dashboard'],
+        'icono': Icons.table_chart_rounded,
+        'nivel': 'Básico-Avanzado',
       },
       {
-        'nombre': 'Electricidad Básica',
+        'nombre': 'Electricidad Residencial',
+        'institucion': 'CFE - Programa Social',
         'duracion': '60 horas',
         'modalidad': 'Presencial',
+        'precio': 'Gratuito',
+        'fechaInicio': '8 Ene 2026',
+        'cupoDisponible': 8,
+        'descripcion': 'Aprende instalaciones eléctricas residenciales con estándares de seguridad. Incluye materiales y herramientas básicas.',
+        'temario': ['Fundamentos eléctricos', 'Instalaciones básicas', 'Tableros', 'Normatividad NOM', 'Práctica supervisada'],
+        'icono': Icons.electrical_services_rounded,
+        'nivel': 'Básico',
+      },
+      {
+        'nombre': 'Inglés para el Trabajo',
+        'institucion': 'SEP - Prepa en Línea',
+        'duracion': '80 horas',
+        'modalidad': 'En línea',
+        'precio': 'Gratuito',
+        'fechaInicio': 'Inmediato',
+        'cupoDisponible': 999,
+        'descripcion': 'Curso de inglés enfocado en el ámbito laboral. Desde vocabulario básico hasta conversaciones de negocios.',
+        'temario': ['Vocabulario laboral', 'Emails profesionales', 'Entrevistas', 'Presentaciones', 'Negociación'],
+        'icono': Icons.translate_rounded,
+        'nivel': 'Básico-Intermedio',
       },
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Cursos disponibles para tu región',
-          style: TextStyle(fontSize: 14, color: subtextColor),
-        ),
-        const SizedBox(height: 16),
-        ...cursos.map(
-          (curso) => Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: borderColor),
+        // Header con estadísticas
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [azul.withAlpha(20), azul.withAlpha(8)],
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2563EB).withAlpha(26),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.school_rounded,
-                    color: Color(0xFF2563EB),
-                    size: 24,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: azul.withAlpha(30)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.school_rounded, color: azul, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${cursos.length} cursos disponibles',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                    Text(
+                      'Capacitación gratuita para tu desarrollo',
+                      style: TextStyle(fontSize: 12, color: subtextColor),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: verde,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  '100% Gratis',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        curso['nombre']!,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        // Lista de cursos
+        ...cursos.map((curso) => _buildCursoCardMejorado(
+          curso,
+          isDark,
+          textColor,
+          subtextColor,
+          borderColor,
+          context,
+          azul,
+        )),
+      ],
+    );
+  }
+
+  Widget _buildCursoCardMejorado(
+    Map<String, dynamic> curso,
+    bool isDark,
+    Color textColor,
+    Color subtextColor,
+    Color borderColor,
+    BuildContext context,
+    Color azul,
+  ) {
+    final cupos = curso['cupoDisponible'] as int;
+    final cuposColor = cupos < 10 ? Colors.orange : verde;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _mostrarDetalleCurso(context, curso, isDark, textColor, subtextColor, azul),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF252530) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: borderColor),
+              boxShadow: [
+                BoxShadow(
+                  color: azul.withAlpha(isDark ? 15 : 8),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [azul, azul.withAlpha(180)],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        curso['icono'] as IconData,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            curso['nombre'] as String,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            curso['institucion'] as String,
+                            style: TextStyle(fontSize: 13, color: subtextColor),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: verde.withAlpha(20),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        curso['precio'] as String,
                         style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: textColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: verde,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${curso['duracion']} • ${curso['modalidad']}',
-                        style: TextStyle(fontSize: 12, color: subtextColor),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // Info row
+                Row(
+                  children: [
+                    _buildCursoInfoChip(Icons.schedule_rounded, curso['duracion'] as String, subtextColor),
+                    const SizedBox(width: 12),
+                    _buildCursoInfoChip(
+                      curso['modalidad'] == 'En línea' ? Icons.laptop_rounded : Icons.location_on_rounded,
+                      curso['modalidad'] as String,
+                      subtextColor,
+                    ),
+                    const SizedBox(width: 12),
+                    _buildCursoInfoChip(Icons.signal_cellular_alt_rounded, curso['nivel'] as String, subtextColor),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // Fecha y cupos
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today_rounded, size: 16, color: subtextColor),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Inicia: ${curso['fechaInicio']}',
+                      style: TextStyle(fontSize: 13, color: subtextColor),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: cuposColor.withAlpha(20),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ],
-                  ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.people_rounded, size: 14, color: cuposColor),
+                          const SizedBox(width: 4),
+                          Text(
+                            cupos > 100 ? 'Cupo abierto' : '$cupos lugares',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: cuposColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Ver detalles',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: azul,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_rounded, size: 16, color: azul),
+                  ],
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCursoInfoChip(IconData icon, String text, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: TextStyle(fontSize: 12, color: color),
+        ),
       ],
+    );
+  }
+
+  void _mostrarDetalleCurso(
+    BuildContext context,
+    Map<String, dynamic> curso,
+    bool isDark,
+    Color textColor,
+    Color subtextColor,
+    Color azul,
+  ) {
+    _mostrarModalAdaptativo(
+      context: context,
+      isDark: isDark,
+      desktopWidth: 650,
+      contentBuilder: (scrollController) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [azul, azul.withAlpha(180)],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  curso['icono'] as IconData,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      curso['nombre'] as String,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      curso['institucion'] as String,
+                      style: TextStyle(fontSize: 15, color: subtextColor),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Info cards
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [azul.withAlpha(20), azul.withAlpha(8)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildInfoColumn('Duración', curso['duracion'] as String, Icons.schedule_rounded, azul),
+                _buildInfoColumn('Modalidad', curso['modalidad'] as String, Icons.laptop_rounded, dorado),
+                _buildInfoColumn('Nivel', curso['nivel'] as String, Icons.signal_cellular_alt_rounded, verde),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Descripción',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            curso['descripcion'] as String,
+            style: TextStyle(fontSize: 15, color: subtextColor, height: 1.6),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Temario',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
+          ),
+          const SizedBox(height: 12),
+          ...(curso['temario'] as List<String>).asMap().entries.map((entry) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: azul.withAlpha(20),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${entry.key + 1}',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: azul),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(entry.value, style: TextStyle(fontSize: 14, color: textColor)),
+              ],
+            ),
+          )),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('¡Inscripción exitosa! Revisa tu correo para más detalles.'),
+                    backgroundColor: azul,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: azul,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.how_to_reg_rounded, size: 22),
+                  SizedBox(width: 10),
+                  Text('Inscribirme ahora', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
     );
   }
 
@@ -3075,33 +4063,246 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
   ) {
     final obras = [
       {
-        'nombre': 'Centro Logístico Peñasco',
+        'nombre': 'Centro Logístico Regional Peñasco',
+        'descripcion': 'Hub de distribución intermodal con conexión a autopista y ferrocarril. Incluirá bodegas, oficinas y estación de transferencia.',
         'avance': 0.67,
+        'etapa': 'Construcción',
+        'inversion': '\$1,200 MDP',
+        'empleosGenerados': 320,
+        'empleosPermanentes': 850,
+        'fechaInicio': 'Mar 2024',
+        'fechaFin': 'Dic 2025',
         'actualizado': 'Hace 3 días',
+        'ubicacion': 'Zona Industrial Norte',
+        'responsable': 'SCT / Gobierno Estatal',
+        'icono': Icons.local_shipping_rounded,
+        'color': dorado,
+        'hitos': [
+          {'nombre': 'Estudios de factibilidad', 'completado': true},
+          {'nombre': 'Adquisición de terreno', 'completado': true},
+          {'nombre': 'Cimentación y estructura', 'completado': true},
+          {'nombre': 'Instalaciones eléctricas', 'completado': false},
+          {'nombre': 'Equipamiento y pruebas', 'completado': false},
+        ],
       },
       {
-        'nombre': 'Parque Industrial Norte',
+        'nombre': 'Parque Industrial Tecnológico',
+        'descripcion': 'Complejo para empresas de manufactura avanzada y desarrollo tecnológico con laboratorios de innovación y centro de capacitación.',
         'avance': 0.45,
+        'etapa': 'Edificación',
+        'inversion': '\$2,800 MDP',
+        'empleosGenerados': 540,
+        'empleosPermanentes': 3200,
+        'fechaInicio': 'Ene 2024',
+        'fechaFin': 'Ago 2026',
         'actualizado': 'Hace 1 semana',
+        'ubicacion': 'Corredor Industrial Este',
+        'responsable': 'SEDECO / Iniciativa Privada',
+        'icono': Icons.precision_manufacturing_rounded,
+        'color': const Color(0xFF2563EB),
+        'hitos': [
+          {'nombre': 'Aprobación del proyecto', 'completado': true},
+          {'nombre': 'Infraestructura básica', 'completado': true},
+          {'nombre': 'Construcción Fase 1', 'completado': false},
+          {'nombre': 'Construcción Fase 2', 'completado': false},
+          {'nombre': 'Inauguración', 'completado': false},
+        ],
+      },
+      {
+        'nombre': 'Hospital Regional de Especialidades',
+        'descripcion': 'Centro médico de tercer nivel con urgencias, quirófanos, UCI y unidades de diagnóstico. Atenderá a 15 municipios de la región.',
+        'avance': 0.82,
+        'etapa': 'Acabados',
+        'inversion': '\$890 MDP',
+        'empleosGenerados': 280,
+        'empleosPermanentes': 420,
+        'fechaInicio': 'Sep 2023',
+        'fechaFin': 'Mar 2025',
+        'actualizado': 'Hoy',
+        'ubicacion': 'Zona Centro',
+        'responsable': 'IMSS-Bienestar',
+        'icono': Icons.local_hospital_rounded,
+        'color': guinda,
+        'hitos': [
+          {'nombre': 'Diseño arquitectónico', 'completado': true},
+          {'nombre': 'Obra civil', 'completado': true},
+          {'nombre': 'Instalaciones especiales', 'completado': true},
+          {'nombre': 'Acabados interiores', 'completado': true},
+          {'nombre': 'Equipamiento médico', 'completado': false},
+        ],
+      },
+      {
+        'nombre': 'Planta de Tratamiento de Aguas',
+        'descripcion': 'Planta con capacidad para tratar 500 litros por segundo, beneficiando a más de 80,000 habitantes con agua potable de calidad.',
+        'avance': 0.23,
+        'etapa': 'Cimentación',
+        'inversion': '\$450 MDP',
+        'empleosGenerados': 120,
+        'empleosPermanentes': 45,
+        'fechaInicio': 'Jun 2024',
+        'fechaFin': 'Dic 2026',
+        'actualizado': 'Hace 5 días',
+        'ubicacion': 'Zona Sur',
+        'responsable': 'CONAGUA / CEAS',
+        'icono': Icons.water_drop_rounded,
+        'color': verde,
+        'hitos': [
+          {'nombre': 'Estudios ambientales', 'completado': true},
+          {'nombre': 'Excavación', 'completado': false},
+          {'nombre': 'Cimentación', 'completado': false},
+          {'nombre': 'Instalación de equipos', 'completado': false},
+          {'nombre': 'Puesta en marcha', 'completado': false},
+        ],
       },
     ];
+
+    final inversionTotal = obras.fold<double>(0, (sum, obra) {
+      final inv = (obra['inversion'] as String).replaceAll(RegExp(r'[^\d.]'), '');
+      return sum + (double.tryParse(inv) ?? 0);
+    });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Proyectos en desarrollo en tu región',
-          style: TextStyle(fontSize: 14, color: subtextColor),
+        // Header con estadísticas
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [dorado.withAlpha(20), dorado.withAlpha(8)],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: dorado.withAlpha(30)),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.construction_rounded, color: dorado, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${obras.length} obras en desarrollo',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                          ),
+                        ),
+                        Text(
+                          'Inversión total: \$${inversionTotal.toStringAsFixed(0)} MDP',
+                          style: TextStyle(fontSize: 12, color: subtextColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildObraStat(
+                      Icons.engineering_rounded,
+                      '${obras.fold<int>(0, (s, o) => s + (o['empleosGenerados'] as int))}',
+                      'Empleos en obra',
+                      isDark,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildObraStat(
+                      Icons.work_rounded,
+                      '${obras.fold<int>(0, (s, o) => s + (o['empleosPermanentes'] as int))}',
+                      'Empleos futuros',
+                      isDark,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
-        ...obras.map(
-          (obra) => Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(18),
+        const SizedBox(height: 20),
+        // Lista de obras
+        ...obras.map((obra) => _buildObraCardMejorado(
+          obra,
+          isDark,
+          textColor,
+          subtextColor,
+          borderColor,
+          context,
+        )),
+      ],
+    );
+  }
+
+  Widget _buildObraStat(IconData icon, String value, String label, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.black26 : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: dorado),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+              Text(label, style: TextStyle(fontSize: 10, color: isDark ? Colors.white60 : Colors.grey)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildObraCardMejorado(
+    Map<String, dynamic> obra,
+    bool isDark,
+    Color textColor,
+    Color subtextColor,
+    Color borderColor,
+    BuildContext context,
+  ) {
+    final avance = obra['avance'] as double;
+    final color = obra['color'] as Color;
+    
+    Color avanceColor;
+    if (avance >= 0.75) {
+      avanceColor = verde;
+    } else if (avance >= 0.4) {
+      avanceColor = dorado;
+    } else {
+      avanceColor = Colors.orange;
+    }
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _mostrarDetalleObra(context, obra, isDark, textColor, subtextColor, borderColor),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(16),
+              color: isDark ? const Color(0xFF252530) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(color: borderColor),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withAlpha(isDark ? 15 : 8),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -3109,60 +4310,423 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: dorado.withAlpha(26),
-                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          colors: [color, color.withAlpha(180)],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      child: const Icon(
-                        Icons.engineering_rounded,
-                        color: dorado,
-                        size: 22,
+                      child: Icon(
+                        obra['icono'] as IconData,
+                        color: Colors.white,
+                        size: 24,
                       ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
-                      child: Text(
-                        obra['nombre'] as String,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: textColor,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            obra['nombre'] as String,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: color.withAlpha(20),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  obra['etapa'] as String,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: color,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(Icons.location_on_rounded, size: 12, color: subtextColor),
+                              const SizedBox(width: 3),
+                              Text(
+                                obra['ubicacion'] as String,
+                                style: TextStyle(fontSize: 11, color: subtextColor),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    Text(
-                      '${((obra['avance'] as double) * 100).toInt()}%',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: verde,
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${(avance * 100).toInt()}%',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: avanceColor,
+                          ),
+                        ),
+                        Text(
+                          obra['actualizado'] as String,
+                          style: TextStyle(fontSize: 10, color: subtextColor),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
+                // Barra de progreso mejorada
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: obra['avance'] as double,
-                    backgroundColor: isDark
-                        ? Colors.grey.shade800
-                        : Colors.grey.shade300,
-                    valueColor: const AlwaysStoppedAnimation(verde),
-                    minHeight: 10,
+                  child: Stack(
+                    children: [
+                      Container(
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                        ),
+                      ),
+                      FractionallySizedBox(
+                        widthFactor: avance,
+                        child: Container(
+                          height: 12,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [avanceColor, avanceColor.withAlpha(180)],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  obra['actualizado'] as String,
-                  style: TextStyle(fontSize: 12, color: subtextColor),
+                const SizedBox(height: 12),
+                // Info resumida
+                Row(
+                  children: [
+                    Icon(Icons.attach_money_rounded, size: 16, color: dorado),
+                    const SizedBox(width: 4),
+                    Text(
+                      obra['inversion'] as String,
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor),
+                    ),
+                    const Spacer(),
+                    Icon(Icons.people_rounded, size: 16, color: subtextColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${obra['empleosPermanentes']} empleos',
+                      style: TextStyle(fontSize: 12, color: subtextColor),
+                    ),
+                    const Spacer(),
+                    Icon(Icons.arrow_forward_rounded, size: 18, color: color),
+                  ],
                 ),
               ],
             ),
           ),
         ),
-      ],
+      ),
+    );
+  }
+
+  void _mostrarDetalleObra(
+    BuildContext context,
+    Map<String, dynamic> obra,
+    bool isDark,
+    Color textColor,
+    Color subtextColor,
+    Color borderColor,
+  ) {
+    final avance = obra['avance'] as double;
+    final color = obra['color'] as Color;
+    final hitos = obra['hitos'] as List<Map<String, dynamic>>;
+    
+    _mostrarModalAdaptativo(
+      context: context,
+      isDark: isDark,
+      desktopWidth: 700,
+      contentBuilder: (scrollController) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header con gradiente
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [color, color.withAlpha(180)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(30),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        obra['icono'] as IconData,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${(avance * 100).toInt()}% completado',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  obra['nombre'] as String,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(30),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        obra['etapa'] as String,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Icon(Icons.location_on, size: 16, color: Colors.white70),
+                    const SizedBox(width: 4),
+                    Text(
+                      obra['ubicacion'] as String,
+                      style: const TextStyle(fontSize: 13, color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Stats cards
+          Row(
+            children: [
+              Expanded(child: _buildObraStatCard(Icons.attach_money_rounded, obra['inversion'] as String, 'Inversión', dorado, isDark)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildObraStatCard(Icons.engineering_rounded, '${obra['empleosGenerados']}', 'En obra', Colors.orange, isDark)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildObraStatCard(Icons.work_rounded, '${obra['empleosPermanentes']}', 'Permanentes', verde, isDark)),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Descripción
+          Text('Descripción', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
+          const SizedBox(height: 12),
+          Text(
+            obra['descripcion'] as String,
+            style: TextStyle(fontSize: 15, color: subtextColor, height: 1.6),
+          ),
+          const SizedBox(height: 24),
+          // Fechas
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF252530) : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    children: [
+                      Icon(Icons.play_circle_outline_rounded, color: verde, size: 28),
+                      const SizedBox(height: 6),
+                      Text('Inicio', style: TextStyle(fontSize: 12, color: subtextColor)),
+                      Text(obra['fechaInicio'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor)),
+                    ],
+                  ),
+                ),
+                Container(width: 1, height: 50, color: borderColor),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Icon(Icons.flag_rounded, color: guinda, size: 28),
+                      const SizedBox(height: 6),
+                      Text('Fin estimado', style: TextStyle(fontSize: 12, color: subtextColor)),
+                      Text(obra['fechaFin'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Hitos
+          Text('Avance del proyecto', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
+          const SizedBox(height: 16),
+          ...hitos.asMap().entries.map((entry) {
+            final index = entry.key;
+            final hito = entry.value;
+            final completado = hito['completado'] as bool;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: completado ? verde : (isDark ? Colors.grey.shade700 : Colors.grey.shade300),
+                      shape: BoxShape.circle,
+                    ),
+                    child: completado
+                        ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)
+                        : Center(child: Text('${index + 1}', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white54 : Colors.grey))),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      hito['nombre'] as String,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: completado ? textColor : subtextColor,
+                        fontWeight: completado ? FontWeight.w600 : FontWeight.normal,
+                        decoration: completado ? TextDecoration.none : null,
+                      ),
+                    ),
+                  ),
+                  if (completado)
+                    Icon(Icons.verified_rounded, color: verde, size: 20),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 24),
+          // Responsable
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: color.withAlpha(15),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: color.withAlpha(30)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.account_balance_rounded, color: color),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Responsable', style: TextStyle(fontSize: 12, color: subtextColor)),
+                      Text(obra['responsable'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textColor)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          // Botones
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Recibirás actualizaciones de esta obra'),
+                    backgroundColor: color,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.notifications_active_rounded),
+              label: const Text('Seguir esta obra'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: color,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.share_rounded),
+              label: const Text('Compartir información'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: color,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                side: BorderSide(color: color),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildObraStatCard(IconData icon, String value, String label, Color color, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withAlpha(15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withAlpha(30)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 6),
+          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+          Text(label, style: TextStyle(fontSize: 10, color: isDark ? Colors.white60 : Colors.grey)),
+        ],
+      ),
     );
   }
 
@@ -3174,99 +4738,388 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     Color subtextColor,
     Color borderColor,
   ) {
+    const Color morado = Color(0xFF9333EA);
     final noticias = [
       {
-        'titulo': 'Inauguran nueva planta solar en Sonora',
+        'titulo': 'Inauguran nueva planta solar con capacidad de 500 MW en Sonora',
+        'resumen': 'La planta generará energía limpia para más de 200,000 hogares y creará 800 empleos permanentes en la región.',
         'tiempo': 'Hace 2 horas',
         'categoria': 'Energía',
+        'categoriaColor': verde,
+        'fuente': 'Secretaría de Energía',
+        'icono': Icons.solar_power_rounded,
+        'contenido': 'El Gobierno de México inauguró hoy la planta solar "Sol del Norte" en el municipio de Hermosillo, Sonora. Con una inversión de 450 millones de dólares, esta instalación representa un avance significativo en la transición energética del país.\n\nLa planta cuenta con más de 1.2 millones de paneles solares distribuidos en 800 hectáreas, convirtiéndose en una de las más grandes de Latinoamérica. Se espera que genere aproximadamente 1,100 GWh al año.',
+        'imagen': 'solar_plant',
       },
       {
-        'titulo': '500 empleos nuevos gracias al polo industrial',
-        'tiempo': 'Ayer',
+        'titulo': 'Polo Industrial Norte genera 500 nuevos empleos en manufactura',
+        'resumen': 'Tres nuevas empresas se instalan en el parque industrial con inversión combinada de 120 millones de dólares.',
+        'tiempo': 'Hace 5 horas',
         'categoria': 'Economía',
+        'categoriaColor': dorado,
+        'fuente': 'Secretaría de Economía',
+        'icono': Icons.factory_rounded,
+        'contenido': 'El Polo de Desarrollo Industrial Norte anunció la llegada de tres empresas del sector manufacturero que generarán 500 empleos directos en los próximos meses.\n\nLas compañías, provenientes de Estados Unidos y Alemania, iniciarán operaciones en el primer trimestre de 2026 con una inversión combinada de 120 millones de dólares.',
+        'imagen': 'factory',
+      },
+      {
+        'titulo': 'Gobierno lanza programa de becas para jóvenes en tecnología',
+        'resumen': 'Más de 10,000 becas disponibles para cursos de programación, inteligencia artificial y ciberseguridad.',
+        'tiempo': 'Ayer',
+        'categoria': 'Educación',
+        'categoriaColor': const Color(0xFF2563EB),
+        'fuente': 'SEP',
+        'icono': Icons.school_rounded,
+        'contenido': 'La Secretaría de Educación Pública presentó el programa "Código Futuro", que otorgará 10,000 becas para jóvenes de 18 a 29 años interesados en formarse en tecnologías de la información.\n\nEl programa incluye cursos en programación, inteligencia artificial, ciberseguridad y análisis de datos, con una duración de 6 a 12 meses y certificación oficial.',
+        'imagen': 'education',
+      },
+      {
+        'titulo': 'Avanza construcción del Tren Interoceánico con 78% de avance',
+        'resumen': 'El megaproyecto conectará los océanos Pacífico y Atlántico, impulsando el comercio internacional.',
+        'tiempo': 'Hace 2 días',
+        'categoria': 'Infraestructura',
+        'categoriaColor': guinda,
+        'fuente': 'SICT',
+        'icono': Icons.train_rounded,
+        'contenido': 'La Secretaría de Infraestructura reportó un avance del 78% en la construcción del Corredor Interoceánico del Istmo de Tehuantepec.\n\nEste proyecto estratégico modernizará 300 km de vías férreas y creará 10 polos de desarrollo industrial a lo largo de su trayecto, generando más de 100,000 empleos directos e indirectos.',
+        'imagen': 'train',
       },
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Últimas noticias de $_estadoUsuario',
-          style: TextStyle(fontSize: 14, color: subtextColor),
+        // Header
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [morado.withAlpha(20), morado.withAlpha(8)],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: morado.withAlpha(30)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.newspaper_rounded, color: morado, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Noticias de tu región',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                    Text(
+                      'Mantente informado de lo que pasa en $_estadoUsuario',
+                      style: TextStyle(fontSize: 12, color: subtextColor),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
-        ...noticias.map(
-          (noticia) => Container(
-            margin: const EdgeInsets.only(bottom: 12),
+        const SizedBox(height: 20),
+        // Lista de noticias
+        ...noticias.map((noticia) => _buildNoticiaCardMejorada(
+          noticia,
+          isDark,
+          textColor,
+          subtextColor,
+          borderColor,
+          context,
+          morado,
+        )),
+      ],
+    );
+  }
+
+  Widget _buildNoticiaCardMejorada(
+    Map<String, dynamic> noticia,
+    bool isDark,
+    Color textColor,
+    Color subtextColor,
+    Color borderColor,
+    BuildContext context,
+    Color morado,
+  ) {
+    final categoriaColor = noticia['categoriaColor'] as Color;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _mostrarDetalleNoticia(context, noticia, isDark, textColor, subtextColor, morado),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(16),
+              color: isDark ? const Color(0xFF252530) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(color: borderColor),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.purple.withAlpha(26),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.article_rounded,
-                    color: Colors.purple,
-                    size: 24,
-                  ),
+              boxShadow: [
+                BoxShadow(
+                  color: morado.withAlpha(isDark ? 15 : 8),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        noticia['titulo']!,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: textColor,
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [categoriaColor, categoriaColor.withAlpha(180)],
                         ),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      const SizedBox(height: 6),
-                      Row(
+                      child: Icon(
+                        noticia['icono'] as IconData,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            noticia['tiempo']!,
-                            style: TextStyle(fontSize: 12, color: subtextColor),
-                          ),
-                          const SizedBox(width: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: dorado.withAlpha(26),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              noticia['categoria']!,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: dorado,
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: categoriaColor.withAlpha(20),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  noticia['categoria'] as String,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: categoriaColor,
+                                  ),
+                                ),
                               ),
+                              const Spacer(),
+                              Icon(Icons.access_time_rounded, size: 12, color: subtextColor),
+                              const SizedBox(width: 4),
+                              Text(
+                                noticia['tiempo'] as String,
+                                style: TextStyle(fontSize: 11, color: subtextColor),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            noticia['titulo'] as String,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                              height: 1.3,
                             ),
                           ),
                         ],
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  noticia['resumen'] as String,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: subtextColor,
+                    height: 1.4,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(Icons.source_rounded, size: 14, color: subtextColor),
+                    const SizedBox(width: 6),
+                    Text(
+                      noticia['fuente'] as String,
+                      style: TextStyle(fontSize: 12, color: subtextColor),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Leer más',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: morado,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_rounded, size: 16, color: morado),
+                  ],
                 ),
               ],
             ),
           ),
         ),
-      ],
+      ),
+    );
+  }
+
+  void _mostrarDetalleNoticia(
+    BuildContext context,
+    Map<String, dynamic> noticia,
+    bool isDark,
+    Color textColor,
+    Color subtextColor,
+    Color morado,
+  ) {
+    final categoriaColor = noticia['categoriaColor'] as Color;
+    
+    _mostrarModalAdaptativo(
+      context: context,
+      isDark: isDark,
+      desktopWidth: 700,
+      contentBuilder: (scrollController) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Imagen representativa (placeholder con gradiente)
+          Container(
+            height: 200,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [categoriaColor, categoriaColor.withAlpha(150)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Stack(
+              children: [
+                Center(
+                  child: Icon(
+                    noticia['icono'] as IconData,
+                    size: 80,
+                    color: Colors.white.withAlpha(60),
+                  ),
+                ),
+                Positioned(
+                  bottom: 16,
+                  left: 16,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(noticia['icono'] as IconData, size: 16, color: categoriaColor),
+                        const SizedBox(width: 6),
+                        Text(
+                          noticia['categoria'] as String,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: categoriaColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Metadata
+          Row(
+            children: [
+              Icon(Icons.access_time_rounded, size: 16, color: subtextColor),
+              const SizedBox(width: 6),
+              Text(noticia['tiempo'] as String, style: TextStyle(color: subtextColor)),
+              const SizedBox(width: 16),
+              Icon(Icons.source_rounded, size: 16, color: subtextColor),
+              const SizedBox(width: 6),
+              Text(noticia['fuente'] as String, style: TextStyle(color: subtextColor)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Título
+          Text(
+            noticia['titulo'] as String,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+              height: 1.3,
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Contenido
+          Text(
+            noticia['contenido'] as String,
+            style: TextStyle(
+              fontSize: 16,
+              color: textColor,
+              height: 1.7,
+            ),
+          ),
+          const SizedBox(height: 32),
+          // Acciones
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.share_rounded),
+                  label: const Text('Compartir'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: morado,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    side: BorderSide(color: morado),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.bookmark_rounded),
+                  label: const Text('Guardar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: morado,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
     );
   }
 
@@ -3278,60 +5131,201 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     Color subtextColor,
     Color borderColor,
   ) {
+    // Datos de ejemplo de polos de desarrollo
+    final polosEjemplo = [
+      {
+        'nombre': 'Polo de Desarrollo Tecnológico Norte',
+        'region': 'Zona Metropolitana Norte',
+        'descripcion': 'Hub de innovación tecnológica con incubadoras de startups, laboratorios de I+D y espacios de coworking para emprendedores.',
+        'sector': 'Tecnología',
+        'empresas': 45,
+        'empleos': 2800,
+        'inversion': '\$4,500 MDP',
+        'servicios': ['Incubadora de empresas', 'Laboratorio de prototipos', 'Centro de capacitación', 'Bolsa de trabajo'],
+        'icono': Icons.computer_rounded,
+        'color': const Color(0xFF2563EB),
+      },
+      {
+        'nombre': 'Parque Agroindustrial del Valle',
+        'region': 'Corredor Agrícola Sur',
+        'descripcion': 'Centro de procesamiento y transformación de productos agrícolas con certificaciones de calidad internacional.',
+        'sector': 'Agroindustria',
+        'empresas': 28,
+        'empleos': 1500,
+        'inversion': '\$2,200 MDP',
+        'servicios': ['Plantas de procesamiento', 'Almacenamiento frío', 'Laboratorio de calidad', 'Centro de exportación'],
+        'icono': Icons.agriculture_rounded,
+        'color': verde,
+      },
+      {
+        'nombre': 'Corredor Industrial de Manufactura',
+        'region': 'Zona Industrial Este',
+        'descripcion': 'Complejo manufacturero especializado en electrónica, automotriz y aeroespacial con acceso a mercados internacionales.',
+        'sector': 'Manufactura',
+        'empresas': 62,
+        'empleos': 8500,
+        'inversion': '\$12,800 MDP',
+        'servicios': ['Naves industriales', 'Centro logístico', 'Aduana interior', 'Parque de proveedores'],
+        'icono': Icons.precision_manufacturing_rounded,
+        'color': dorado,
+      },
+      {
+        'nombre': 'Polo de Energías Renovables',
+        'region': 'Zona Desértica Oeste',
+        'descripcion': 'Desarrollo integral de proyectos de energía solar y eólica con capacitación especializada y centro de investigación.',
+        'sector': 'Energía',
+        'empresas': 18,
+        'empleos': 950,
+        'inversion': '\$6,100 MDP',
+        'servicios': ['Plantas solares', 'Parque eólico', 'Centro de capacitación', 'Laboratorio de baterías'],
+        'icono': Icons.solar_power_rounded,
+        'color': Colors.orange,
+      },
+    ];
+
+    final totalEmpresas = polosEjemplo.fold<int>(0, (s, p) => s + (p['empresas'] as int));
+    final totalEmpleos = polosEjemplo.fold<int>(0, (s, p) => s + (p['empleos'] as int));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '${_polosCercanos.length} polos disponibles en $_estadoUsuario',
-          style: TextStyle(fontSize: 14, color: subtextColor),
-        ),
-        const SizedBox(height: 16),
-        if (_polosCercanos.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(16),
+        // Header
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [guinda.withAlpha(20), guinda.withAlpha(8)],
             ),
-            child: Column(
-              children: [
-                Icon(Icons.info_outline_rounded, color: dorado, size: 40),
-                const SizedBox(height: 12),
-                Text(
-                  'Próximamente habrá polos de desarrollo en tu región',
-                  style: TextStyle(fontSize: 14, color: textColor),
-                  textAlign: TextAlign.center,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: guinda.withAlpha(30)),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.hub_rounded, color: guinda, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${polosEjemplo.length} polos de desarrollo',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                          ),
+                        ),
+                        Text(
+                          'Zonas estratégicas de inversión en tu región',
+                          style: TextStyle(fontSize: 12, color: subtextColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildPoloStatBadge(Icons.business_rounded, '$totalEmpresas', 'Empresas', guinda, isDark),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildPoloStatBadge(Icons.people_rounded, '$totalEmpleos', 'Empleos', verde, isDark),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        // Lista de polos
+        ...polosEjemplo.map((polo) => _buildPoloCardMejorado(
+          polo,
+          isDark,
+          textColor,
+          subtextColor,
+          borderColor,
+          context,
+        )),
+      ],
+    );
+  }
+
+  Widget _buildPoloStatBadge(IconData icon, String value, String label, Color color, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.black26 : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+              Text(label, style: TextStyle(fontSize: 10, color: isDark ? Colors.white60 : Colors.grey)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPoloCardMejorado(
+    Map<String, dynamic> polo,
+    bool isDark,
+    Color textColor,
+    Color subtextColor,
+    Color borderColor,
+    BuildContext context,
+  ) {
+    final color = polo['color'] as Color;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _mostrarDetallePoloMejorado(context, polo, isDark, textColor, subtextColor),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF252530) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: borderColor),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withAlpha(isDark ? 15 : 8),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
                 ),
               ],
             ),
-          )
-        else
-          ..._polosCercanos.map(
-            (polo) => GestureDetector(
-              onTap: () {
-                Navigator.pop(context);
-                _mostrarDetallePolo(context, polo);
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: guinda.withAlpha(51)),
-                ),
-                child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: guinda.withAlpha(26),
-                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          colors: [color, color.withAlpha(180)],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      child: const Icon(
-                        Icons.location_city_rounded,
-                        color: guinda,
-                        size: 24,
+                      child: Icon(
+                        polo['icono'] as IconData,
+                        color: Colors.white,
+                        size: 26,
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -3340,28 +5334,321 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            polo.nombre,
+                            polo['nombre'] as String,
                             style: TextStyle(
                               fontSize: 15,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.bold,
                               color: textColor,
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            polo.region,
-                            style: TextStyle(fontSize: 12, color: subtextColor),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: color.withAlpha(20),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  polo['sector'] as String,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: color,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                    Icon(Icons.chevron_right_rounded, color: subtextColor),
                   ],
                 ),
+                const SizedBox(height: 14),
+                // Ubicación
+                Row(
+                  children: [
+                    Icon(Icons.location_on_rounded, size: 14, color: subtextColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      polo['region'] as String,
+                      style: TextStyle(fontSize: 12, color: subtextColor),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Stats en línea
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.black26 : Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildPoloMiniStat(Icons.business_rounded, '${polo['empresas']}', 'Empresas', color),
+                      Container(width: 1, height: 30, color: borderColor),
+                      _buildPoloMiniStat(Icons.people_rounded, '${polo['empleos']}', 'Empleos', verde),
+                      Container(width: 1, height: 30, color: borderColor),
+                      _buildPoloMiniStat(Icons.attach_money_rounded, (polo['inversion'] as String).replaceAll(' MDP', ''), 'MDP', dorado),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Ver detalles',
+                      style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_rounded, size: 16, color: color),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPoloMiniStat(IconData icon, String value, String label, Color color) {
+    return Column(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(height: 4),
+        Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+      ],
+    );
+  }
+
+  void _mostrarDetallePoloMejorado(
+    BuildContext context,
+    Map<String, dynamic> polo,
+    bool isDark,
+    Color textColor,
+    Color subtextColor,
+  ) {
+    final color = polo['color'] as Color;
+    final servicios = polo['servicios'] as List<String>;
+    
+    _mostrarModalAdaptativo(
+      context: context,
+      isDark: isDark,
+      desktopWidth: 700,
+      contentBuilder: (scrollController) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header con gradiente
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [color, color.withAlpha(180)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(30),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        polo['icono'] as IconData,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        polo['sector'] as String,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  polo['nombre'] as String,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 16, color: Colors.white70),
+                    const SizedBox(width: 6),
+                    Text(
+                      polo['region'] as String,
+                      style: const TextStyle(fontSize: 14, color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Stats cards
+          Row(
+            children: [
+              Expanded(child: _buildPoloDetailStat(Icons.business_rounded, '${polo['empresas']}', 'Empresas', color, isDark)),
+              const SizedBox(width: 10),
+              Expanded(child: _buildPoloDetailStat(Icons.people_rounded, '${polo['empleos']}', 'Empleos', verde, isDark)),
+              const SizedBox(width: 10),
+              Expanded(child: _buildPoloDetailStat(Icons.attach_money_rounded, polo['inversion'] as String, 'Inversión', dorado, isDark)),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Descripción
+          Text('Descripción', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
+          const SizedBox(height: 12),
+          Text(
+            polo['descripcion'] as String,
+            style: TextStyle(fontSize: 15, color: subtextColor, height: 1.6),
+          ),
+          const SizedBox(height: 24),
+          // Servicios
+          Text('Servicios e Infraestructura', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: servicios.map((servicio) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: color.withAlpha(15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: color.withAlpha(30)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle_rounded, size: 18, color: color),
+                  const SizedBox(width: 8),
+                  Text(
+                    servicio,
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: textColor),
+                  ),
+                ],
+              ),
+            )).toList(),
+          ),
+          const SizedBox(height: 32),
+          // Botones
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Solicitud de información enviada'),
+                    backgroundColor: color,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.info_outline_rounded),
+              label: const Text('Solicitar más información'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: color,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
             ),
           ),
-      ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.map_rounded),
+                  label: const Text('Ver en mapa'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: color,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    side: BorderSide(color: color),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.share_rounded),
+                  label: const Text('Compartir'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: color,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    side: BorderSide(color: color),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPoloDetailStat(IconData icon, String value, String label, Color color, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withAlpha(15),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withAlpha(30)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          Text(label, style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.grey)),
+        ],
+      ),
     );
   }
 
@@ -3373,37 +5660,583 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     Color subtextColor,
     Color borderColor,
   ) {
-    // Módulo aún no implementado - mostrar mensaje
+    const Color teal = Color(0xFF0D9488);
+    final eventos = [
+      {
+        'titulo': 'Feria del Empleo 2025',
+        'fecha': '15 Dic',
+        'hora': '9:00 - 18:00',
+        'lugar': 'Centro de Convenciones',
+        'direccion': 'Av. Reforma 123, Centro',
+        'descripcion': 'Más de 50 empresas ofreciendo vacantes en manufactura, tecnología, servicios y más. Trae tu CV impreso y vístete formal.',
+        'tipo': 'Empleo',
+        'tipoColor': verde,
+        'icono': Icons.work_rounded,
+        'cupoMaximo': 500,
+        'registrados': 312,
+        'esGratis': true,
+      },
+      {
+        'titulo': 'Taller de Emprendimiento Social',
+        'fecha': '18 Dic',
+        'hora': '10:00 - 14:00',
+        'lugar': 'Biblioteca Pública',
+        'direccion': 'Calle Juárez 45, Zona Centro',
+        'descripcion': 'Aprende a desarrollar proyectos de impacto social. Incluye mentoría con emprendedores exitosos y certificado de participación.',
+        'tipo': 'Capacitación',
+        'tipoColor': const Color(0xFF2563EB),
+        'icono': Icons.lightbulb_rounded,
+        'cupoMaximo': 40,
+        'registrados': 28,
+        'esGratis': true,
+      },
+      {
+        'titulo': 'Expo Agroindustria Norte',
+        'fecha': '20-22 Dic',
+        'hora': '10:00 - 20:00',
+        'lugar': 'Parque Industrial',
+        'direccion': 'Carretera Norte km 5',
+        'descripcion': 'Exposición de maquinaria agrícola, tecnología de riego, semillas y productos orgánicos. Conferencias magistrales y rueda de negocios.',
+        'tipo': 'Exposición',
+        'tipoColor': dorado,
+        'icono': Icons.agriculture_rounded,
+        'cupoMaximo': 2000,
+        'registrados': 856,
+        'esGratis': false,
+      },
+      {
+        'titulo': 'Conferencia: Energías Renovables',
+        'fecha': '28 Dic',
+        'hora': '17:00 - 19:00',
+        'lugar': 'Auditorio Municipal',
+        'direccion': 'Plaza Principal s/n',
+        'descripcion': 'Expertos nacionales e internacionales hablarán sobre el futuro de las energías limpias en México y las oportunidades de inversión.',
+        'tipo': 'Conferencia',
+        'tipoColor': guinda,
+        'icono': Icons.solar_power_rounded,
+        'cupoMaximo': 300,
+        'registrados': 187,
+        'esGratis': true,
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [teal.withAlpha(20), teal.withAlpha(8)],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: teal.withAlpha(30)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.event_rounded, color: teal, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${eventos.length} eventos próximos',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                    Text(
+                      'Ferias, talleres y conferencias en tu región',
+                      style: TextStyle(fontSize: 12, color: subtextColor),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: teal,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'Esta semana',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        // Lista de eventos
+        ...eventos.map((evento) => _buildEventoCardMejorado(
+          evento,
+          isDark,
+          textColor,
+          subtextColor,
+          borderColor,
+          context,
+          teal,
+        )),
+      ],
+    );
+  }
+
+  Widget _buildEventoCardMejorado(
+    Map<String, dynamic> evento,
+    bool isDark,
+    Color textColor,
+    Color subtextColor,
+    Color borderColor,
+    BuildContext context,
+    Color teal,
+  ) {
+    final tipoColor = evento['tipoColor'] as Color;
+    final registrados = evento['registrados'] as int;
+    final cupoMaximo = evento['cupoMaximo'] as int;
+    final porcentajeOcupado = registrados / cupoMaximo;
+    final cuposDisponibles = cupoMaximo - registrados;
+    
     return Container(
-      padding: const EdgeInsets.all(32),
-      child: Column(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _mostrarDetalleEvento(context, evento, isDark, textColor, subtextColor, teal),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF252530) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: borderColor),
+              boxShadow: [
+                BoxShadow(
+                  color: teal.withAlpha(isDark ? 15 : 8),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Fecha destacada
+                Container(
+                  width: 60,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [tipoColor, tipoColor.withAlpha(180)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        (evento['fecha'] as String).split(' ')[0],
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        (evento['fecha'] as String).contains(' ')
+                            ? (evento['fecha'] as String).split(' ')[1]
+                            : 'Dic',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withAlpha(200),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                // Info del evento
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: tipoColor.withAlpha(20),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              evento['tipo'] as String,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: tipoColor,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          if (evento['esGratis'] as bool)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: verde.withAlpha(20),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'GRATIS',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: verde,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        evento['titulo'] as String,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.schedule_rounded, size: 14, color: subtextColor),
+                          const SizedBox(width: 4),
+                          Text(
+                            evento['hora'] as String,
+                            style: TextStyle(fontSize: 12, color: subtextColor),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.location_on_rounded, size: 14, color: subtextColor),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              evento['lugar'] as String,
+                              style: TextStyle(fontSize: 12, color: subtextColor),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      // Barra de cupo
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: porcentajeOcupado,
+                                    backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                                    valueColor: AlwaysStoppedAnimation(
+                                      porcentajeOcupado > 0.8 ? Colors.orange : teal,
+                                    ),
+                                    minHeight: 6,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '$cuposDisponibles lugares disponibles',
+                                  style: TextStyle(fontSize: 11, color: subtextColor),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Icon(Icons.arrow_forward_rounded, size: 18, color: teal),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _mostrarDetalleEvento(
+    BuildContext context,
+    Map<String, dynamic> evento,
+    bool isDark,
+    Color textColor,
+    Color subtextColor,
+    Color teal,
+  ) {
+    final tipoColor = evento['tipoColor'] as Color;
+    final registrados = evento['registrados'] as int;
+    final cupoMaximo = evento['cupoMaximo'] as int;
+    final cuposDisponibles = cupoMaximo - registrados;
+    
+    _mostrarModalAdaptativo(
+      context: context,
+      isDark: isDark,
+      desktopWidth: 650,
+      contentBuilder: (scrollController) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header con gradiente
           Container(
+            width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.teal.withAlpha(26),
-              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [tipoColor, tipoColor.withAlpha(180)],
+              ),
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: const Icon(
-              Icons.event_rounded,
-              color: Colors.teal,
-              size: 48,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(30),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        evento['icono'] as IconData,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (evento['esGratis'] as bool)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          '✓ ENTRADA GRATIS',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  evento['titulo'] as String,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(30),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    evento['tipo'] as String,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 24),
+          // Info cards
+          Row(
+            children: [
+              Expanded(
+                child: _buildEventoInfoCard(
+                  Icons.calendar_today_rounded,
+                  'Fecha',
+                  evento['fecha'] as String,
+                  isDark,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildEventoInfoCard(
+                  Icons.schedule_rounded,
+                  'Horario',
+                  evento['hora'] as String,
+                  isDark,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildEventoInfoCard(
+            Icons.location_on_rounded,
+            evento['lugar'] as String,
+            evento['direccion'] as String,
+            isDark,
+          ),
+          const SizedBox(height: 24),
+          // Descripción
           Text(
-            'Próximamente',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
+            'Descripción',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
           ),
           const SizedBox(height: 12),
           Text(
-            'Estamos trabajando para traerte información sobre ferias de empleo, conferencias y talleres en tu región.',
-            style: TextStyle(fontSize: 14, color: subtextColor, height: 1.5),
-            textAlign: TextAlign.center,
+            evento['descripcion'] as String,
+            style: TextStyle(fontSize: 15, color: subtextColor, height: 1.6),
+          ),
+          const SizedBox(height: 24),
+          // Cupo
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: teal.withAlpha(15),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: teal.withAlpha(30)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.people_rounded, color: teal, size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$cuposDisponibles lugares disponibles',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                      ),
+                      Text(
+                        '$registrados de $cupoMaximo registrados',
+                        style: TextStyle(fontSize: 13, color: subtextColor),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          // Botón registrar
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('¡Te has registrado a "${evento['titulo']}"!'),
+                    backgroundColor: teal,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: teal,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.event_available_rounded, size: 22),
+                  SizedBox(width: 10),
+                  Text('Registrarme al evento', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.share_rounded),
+              label: const Text('Compartir evento'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: teal,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                side: BorderSide(color: teal),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEventoInfoCard(IconData icon, String title, String value, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF252530) : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 22, color: isDark ? Colors.white70 : Colors.grey.shade700),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.white54 : Colors.grey.shade600,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : Colors.grey.shade800,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -3417,187 +6250,220 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     final subtextColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
     final borderColor = isDark ? Colors.grey.shade800 : Colors.grey.shade200;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.75,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        builder: (context, scrollController) => Container(
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade400,
-                  borderRadius: BorderRadius.circular(2),
+    final contentWidget = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Row(
+          children: [
+            Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [guinda, Color(0xFF8B2346)],
                 ),
+                borderRadius: BorderRadius.circular(14),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [guinda, Color(0xFF8B2346)],
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${polo.id}',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            polo.nombre,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: textColor,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${polo.estado} • ${polo.region}',
-                            style: TextStyle(fontSize: 13, color: subtextColor),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.grey.shade800
-                              : Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.close_rounded,
-                          color: subtextColor,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      if (polo.vocacion.isNotEmpty)
-                        _buildInfoCard(
-                          Icons.lightbulb_rounded,
-                          dorado,
-                          'Vocación',
-                          polo.vocacion,
-                          isDark,
-                          textColor,
-                          subtextColor,
-                          borderColor,
-                        ),
-                      if (polo.sectoresClave.isNotEmpty)
-                        _buildInfoCard(
-                          Icons.business_rounded,
-                          const Color(0xFF2563EB),
-                          'Sectores Clave',
-                          polo.sectoresClave.join(', '),
-                          isDark,
-                          textColor,
-                          subtextColor,
-                          borderColor,
-                        ),
-                      if (polo.infraestructura.isNotEmpty)
-                        _buildInfoCard(
-                          Icons.construction_rounded,
-                          Colors.orange,
-                          'Infraestructura',
-                          polo.infraestructura,
-                          isDark,
-                          textColor,
-                          subtextColor,
-                          borderColor,
-                        ),
-                      if (polo.empleoEstimado.isNotEmpty)
-                        _buildInfoCard(
-                          Icons.groups_rounded,
-                          verde,
-                          'Empleo Estimado',
-                          polo.empleoEstimado,
-                          isDark,
-                          textColor,
-                          subtextColor,
-                          borderColor,
-                        ),
-                      const SizedBox(height: 20),
-                    ],
+              child: Center(
+                child: Text(
+                  '${polo.id}',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  border: Border(top: BorderSide(color: borderColor)),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _showEncuestaDialog(polo);
-                        },
-                        icon: const Icon(Icons.rate_review_rounded, size: 20),
-                        label: const Text('Dar mi opinión'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: guinda,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          elevation: 0,
-                        ),
-                      ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    polo.nombre,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
                     ),
-                  ],
-                ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${polo.estado} • ${polo.region}',
+                    style: TextStyle(fontSize: 13, color: subtextColor),
+                  ),
+                ],
               ),
-            ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        if (polo.vocacion.isNotEmpty)
+          _buildInfoCard(
+            Icons.lightbulb_rounded,
+            dorado,
+            'Vocación',
+            polo.vocacion,
+            isDark,
+            textColor,
+            subtextColor,
+            borderColor,
+          ),
+        if (polo.sectoresClave.isNotEmpty)
+          _buildInfoCard(
+            Icons.business_rounded,
+            const Color(0xFF2563EB),
+            'Sectores Clave',
+            polo.sectoresClave.join(', '),
+            isDark,
+            textColor,
+            subtextColor,
+            borderColor,
+          ),
+        if (polo.infraestructura.isNotEmpty)
+          _buildInfoCard(
+            Icons.construction_rounded,
+            Colors.orange,
+            'Infraestructura',
+            polo.infraestructura,
+            isDark,
+            textColor,
+            subtextColor,
+            borderColor,
+          ),
+        if (polo.empleoEstimado.isNotEmpty)
+          _buildInfoCard(
+            Icons.groups_rounded,
+            verde,
+            'Empleo Estimado',
+            polo.empleoEstimado,
+            isDark,
+            textColor,
+            subtextColor,
+            borderColor,
+          ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              _showEncuestaDialog(polo);
+            },
+            icon: const Icon(Icons.rate_review_rounded, size: 20),
+            label: const Text('Dar mi opinión'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: guinda,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              elevation: 0,
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: 20),
+      ],
     );
+
+    if (_isWideScreen(context)) {
+      // Desktop: Diálogo centrado
+      showDialog(
+        context: context,
+        barrierColor: Colors.black54,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
+          child: Container(
+            width: 650,
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85,
+            ),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(40),
+                  blurRadius: 30,
+                  offset: const Offset(0, 15),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: subtextColor,
+                      ),
+                      style: IconButton.styleFrom(
+                        backgroundColor: isDark ? Colors.white10 : Colors.grey.shade100,
+                      ),
+                    ),
+                  ),
+                ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                    child: contentWidget,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } else {
+      // Mobile: Bottom sheet
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) => Container(
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(20),
+                    child: contentWidget,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildInfoCard(
