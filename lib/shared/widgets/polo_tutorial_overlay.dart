@@ -9,7 +9,7 @@ import '../../service/tts_service.dart';
 
 class PoloTutorialOverlay extends StatefulWidget {
   final int step; // 1: Info general, 2: Sectores, 3: Explorar, 4: Opinar
-  final Rect? targetRect; // Puede ser null si es tutorial general
+  final Rect? targetRect; // Se mantiene por compatibilidad pero no se usa
   final VoidCallback onNext;
   final VoidCallback onSkip;
   final VoidCallback? onTargetTap;
@@ -27,10 +27,24 @@ class PoloTutorialOverlay extends StatefulWidget {
   State<PoloTutorialOverlay> createState() => _PoloTutorialOverlayState();
 }
 
-class _PoloTutorialOverlayState extends State<PoloTutorialOverlay> {
+class _PoloTutorialOverlayState extends State<PoloTutorialOverlay>
+    with SingleTickerProviderStateMixin {
+  final TtsService _tts = TtsService();
+  late AnimationController _animController;
+  late Animation<double> _scaleAnim;
+
   @override
   void initState() {
     super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _scaleAnim = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.elasticOut,
+    );
+    _animController.forward();
     _speak();
   }
 
@@ -38,244 +52,171 @@ class _PoloTutorialOverlayState extends State<PoloTutorialOverlay> {
   void didUpdateWidget(covariant PoloTutorialOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.step != widget.step) {
+      _animController.forward(from: 0);
       _speak();
     }
   }
 
   @override
   void dispose() {
-    TtsService().stop();
+    _tts.stopImmediately();
+    _animController.dispose();
     super.dispose();
   }
 
   void _speak() {
     String message = '${_getTitle()}. ${_getDescription()}';
-    TtsService().speak(message);
+    _tts.speak(message);
+  }
+
+  void _handleSkip() {
+    _tts.stopImmediately();
+    widget.onSkip();
+  }
+
+  void _handleNext() {
+    _tts.stop();
+    widget.onNext();
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    // Si no hay targetRect, mostrar tutorial general (paso 1)
-    if (widget.targetRect == null || widget.step == 1) {
-      return _buildGeneralTutorial(context);
-    }
-
-    // Para otros pasos, mostrar el overlay con el target resaltado
-    // Forzar mostrar arriba para el paso 2 (sectores) para evitar tapar el botón siguiente
-    final bool showAbove = widget.step == 2
-        ? true
-        : (screenHeight - widget.targetRect!.bottom) < 250;
+    final screenSize = MediaQuery.of(context).size;
+    final isDesktop = screenSize.width >= 768;
 
     return Stack(
       children: [
-        // 1. Pintor que oscurece todo MENOS el rectángulo del target
-        Positioned.fill(
-          child: CustomPaint(
-            painter: _HolePainter(targetRect: widget.targetRect!),
-          ),
-        ),
-
-        // 2. Detector de toques "Bloqueante"
+        // Fondo oscuro uniforme
         Positioned.fill(
           child: GestureDetector(
-            onTap: () {}, // Absorbe clics fuera del objetivo
-            behavior: HitTestBehavior.opaque,
-            child: Stack(
-              children: [
-                // Área interactiva transparente sobre el target
-                Positioned.fromRect(
-                  rect: widget.targetRect!,
-                  child: GestureDetector(
-                    onTap: widget.onTargetTap ?? () {},
-                    child: Container(color: Colors.transparent),
-                  ),
-                ),
-              ],
+            onTap: () {}, // Bloquea toques
+            child: Container(
+              color: Colors.black.withOpacity(0.75),
             ),
           ),
         ),
 
-        // 3. TecJolotito y Mensaje
-        Positioned(
-          top: showAbove ? null : (widget.targetRect!.bottom + 20),
-          bottom: showAbove
-              ? (screenHeight - widget.targetRect!.top + 20)
-              : null,
-          left: 20,
-          right: 20,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (showAbove) ...[
-                _buildMessageCard(context),
-                const SizedBox(height: 10),
-              ],
-
-              // TecJolotito
-              Image.asset(
-                'assets/images/ajolote.gif',
-                width: 105,
-                height: 105,
-                fit: BoxFit.contain,
-                gaplessPlayback: true,
-              ),
-
-              if (!showAbove) ...[
-                const SizedBox(height: 10),
-                _buildMessageCard(context),
-              ],
-            ],
-          ),
-        ),
-
-        // 4. Botón Saltar
-        Positioned(
-          top: 40,
-          right: 20,
-          child: SafeArea(
-            child: TextButton(
-              onPressed: widget.onSkip,
-              child: const Text(
-                "Omitir",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Tutorial general cuando no hay target (paso 1)
-  Widget _buildGeneralTutorial(BuildContext context) {
-    return Stack(
-      children: [
-        // Fondo oscuro
-        Positioned.fill(
-          child: GestureDetector(
-            onTap: () {}, // Absorbe clics
-            behavior: HitTestBehavior.opaque,
-            child: Container(color: Colors.black.withOpacity(0.8)),
-          ),
-        ),
-
-        // Mensaje central
+        // Contenido centrado
         Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // TecJolotito
-              Image.asset(
-                'assets/images/ajolote.gif',
-                width: 120,
-                height: 120,
-                fit: BoxFit.contain,
-                gaplessPlayback: true,
+          child: ScaleTransition(
+            scale: _scaleAnim,
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: isDesktop ? 40 : 24),
+              constraints: BoxConstraints(maxWidth: isDesktop ? 520 : 400),
+              padding: EdgeInsets.all(isDesktop ? 32 : 24),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFDF3E7),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-              const SizedBox(height: 20),
-              _buildMessageCard(context),
-            ],
-          ),
-        ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Botón cerrar
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: GestureDetector(
+                      onTap: _handleSkip,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.close,
+                          size: isDesktop ? 22 : 18,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                  ),
 
-        // Botón Saltar
-        Positioned(
-          top: 40,
-          right: 20,
-          child: SafeArea(
-            child: TextButton(
-              onPressed: widget.onSkip,
-              child: const Text(
-                "Omitir",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+                  // Ajolote
+                  Image.asset(
+                    'assets/images/ajolote.gif',
+                    width: isDesktop ? 130 : 100,
+                    height: isDesktop ? 130 : 100,
+                    fit: BoxFit.contain,
+                    gaplessPlayback: true,
+                  ),
+                  SizedBox(height: isDesktop ? 20 : 16),
+
+                  // Título
+                  Text(
+                    _getTitle(),
+                    style: TextStyle(
+                      fontSize: isDesktop ? 24 : 20,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF691C32), // guinda
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: isDesktop ? 16 : 12),
+
+                  // Descripción
+                  Text(
+                    _getDescription(),
+                    style: TextStyle(
+                      fontSize: isDesktop ? 17 : 15,
+                      color: Colors.black87,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: isDesktop ? 24 : 18),
+
+                  // Barra de progreso del tutorial
+                  Row(
+                    children: [
+                      _buildProgressBar(1),
+                      const SizedBox(width: 4),
+                      _buildProgressBar(2),
+                      const SizedBox(width: 4),
+                      _buildProgressBar(3),
+                      const SizedBox(width: 4),
+                      _buildProgressBar(4),
+                    ],
+                  ),
+                  SizedBox(height: isDesktop ? 20 : 16),
+
+                  // Botón Siguiente
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _handleNext,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF691C32), // guinda
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          vertical: isDesktop ? 16 : 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: Text(
+                        widget.step == 4 ? '¡Perfecto!' : 'Siguiente',
+                        style: TextStyle(
+                          fontSize: isDesktop ? 18 : 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildMessageCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      constraints: const BoxConstraints(maxWidth: 420),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(
-            _getTitle(),
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.pink[800],
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _getDescription(),
-            style: const TextStyle(fontSize: 14, color: Colors.black87),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-
-          // Barra de progreso del tutorial
-          Row(
-            children: [
-              _buildProgressBar(1),
-              const SizedBox(width: 4),
-              _buildProgressBar(2),
-              const SizedBox(width: 4),
-              _buildProgressBar(3),
-              const SizedBox(width: 4),
-              _buildProgressBar(4),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Botón Siguiente
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: widget.onNext,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF691C32),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-              child: Text(
-                widget.step == 4 ? '¡Perfecto!' : 'Siguiente',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -322,41 +263,4 @@ class _PoloTutorialOverlayState extends State<PoloTutorialOverlay> {
         return '';
     }
   }
-}
-
-// Pintor para el efecto "Recorte"
-class _HolePainter extends CustomPainter {
-  final Rect targetRect;
-
-  _HolePainter({required this.targetRect});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.black.withOpacity(0.8);
-
-    // Fondo completo
-    final backgroundPath = Path()
-      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    // Hueco (Target)
-    final holePath = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          targetRect.inflate(4),
-          const Radius.circular(12),
-        ),
-      );
-
-    // Resta: Fondo - Hueco
-    final finalPath = Path.combine(
-      PathOperation.difference,
-      backgroundPath,
-      holePath,
-    );
-
-    canvas.drawPath(finalPath, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

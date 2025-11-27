@@ -22,17 +22,17 @@ class TtsService extends ChangeNotifier {
   // Obtén una gratis en: https://elevenlabs.io/
   static const String _elevenLabsApiKey = 'sk_21f5a952eaf133de154789e0f96d320c95b4be116c91f2de';
   
-  // Voz de ElevenLabs - Carlos (masculina, joven, enérgica)
+  // Voz de ElevenLabs - Jaider (masculina mexicana)
   static const Map<String, Map<String, dynamic>> _elevenLabsVoices = {
-    'carlos': {
-      'id': 'iP95p4xoKVk53GoZ742B',
-      'name': 'Carlos', 
-      'description': 'Masculina, joven, enérgica',
+    'jaider': {
+      'id': 'rpqlUOplj0Q0PIilat8h',
+      'name': 'Jaider', 
+      'description': 'Masculina, mexicana',
     },
   };
   
   // Voz seleccionada por defecto
-  String _selectedElevenLabsVoice = 'carlos';
+  String _selectedElevenLabsVoice = 'jaider';
   
   // Configuración de voz ElevenLabs
   // Ajustados para voz joven, aguda y ritmo normal-rápido
@@ -46,7 +46,7 @@ class TtsService extends ChangeNotifier {
   
   // Lista de voces disponibles
   List<Map<String, String>> _availableVoices = [];
-  String _currentVoiceName = 'Carlos (ElevenLabs)';
+  String _currentVoiceName = 'Jaider (ElevenLabs)';
   
   List<Map<String, String>> get availableVoices => _availableVoices;
   String get currentVoiceName => _currentVoiceName;
@@ -304,12 +304,34 @@ class TtsService extends ChangeNotifier {
   }
 
   Future<void> stop() async {
-    if (_isPlaying) {
-      await _audioPlayer.stop();
+    try {
+      // Detener AudioPlayer (ElevenLabs en Web)
+      if (_isPlaying) {
+        await _audioPlayer.stop();
+        await _audioPlayer.release(); // Liberar recursos
+        _isPlaying = false;
+      }
+      
+      // Detener flutter_tts (móviles)
+      if (_isInitialized) {
+        await _flutterTts.stop();
+      }
+    } catch (e) {
+      // Ignorar errores al detener
       _isPlaying = false;
     }
-    if (_isInitialized) {
+    notifyListeners();
+  }
+
+  /// Detiene todo el audio inmediatamente (para cerrar tutoriales)
+  Future<void> stopImmediately() async {
+    _isPlaying = false;
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.release();
       await _flutterTts.stop();
+    } catch (e) {
+      // Ignorar errores
     }
     notifyListeners();
   }
