@@ -172,8 +172,11 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
     return Scaffold(
       body: Stack(
         children: [
-          // Contenido ocupa toda la pantalla
-          _buildContent(context),
+          // Contenido con padding para el bottom nav
+          Padding(
+            padding: const EdgeInsets.only(bottom: 80),
+            child: _buildContent(context),
+          ),
 
           // Botón de configuración (Arriba derecha)
           Positioned(
@@ -182,12 +185,13 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
             child: _buildSettingsButton(context),
           ),
 
-          // Bottom Nav flotante sobre el contenido
+          // Bottom Nav fijo en la parte inferior
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
             child: SafeArea(
+              top: false,
               child: MobileBottomNav(
                 items: _navItems,
                 selectedIndex: _selectedIndex,
@@ -197,7 +201,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
           ),
 
           // Botón flotante Ajolote (Móvil) - encima del nav
-          Positioned(bottom: 110, right: 16, child: _buildAjoloteFab(context)),
+          Positioned(bottom: 100, right: 16, child: _buildAjoloteFab(context)),
         ],
       ),
     );
