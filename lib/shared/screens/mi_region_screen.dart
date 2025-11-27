@@ -205,7 +205,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // LAYOUT WEB/DESKTOP
+  // LAYOUT WEB/DESKTOP - Rediseñado
   // ════════════════════════════════════════════════════════════════════════════
   Widget _buildWebLayout(
     BuildContext context,
@@ -216,16 +216,12 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     double horizontalPadding,
     double maxContentWidth,
   ) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    // Si es muy ancho, mostrar layout de 2 columnas, sino todo en una
-    final showTwoColumns = screenWidth > 1100;
-
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
         // Hero full width pegado arriba
         SliverToBoxAdapter(child: _buildHeroSection(isDark, isWide: true)),
-        // Contenido con ancho máximo centrado
+        // Contenido principal con nuevo diseño
         SliverToBoxAdapter(
           child: Center(
             child: ConstrainedBox(
@@ -235,62 +231,674 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                   horizontal: horizontalPadding,
                   vertical: 32,
                 ),
-                child: showTwoColumns
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Columna izquierda: Módulos (más espacio)
-                          Expanded(
-                            flex: 5,
-                            child: _buildModulosPanelWeb(
-                              context,
-                              isDark,
-                              cardColor,
-                              textColor,
-                              subtextColor,
-                            ),
-                          ),
-                          const SizedBox(width: 28),
-                          // Columna derecha: Pregunta del día (flexible)
-                          Expanded(
-                            flex: 3,
-                            child: Column(
-                              children: [
-                                const SizedBox(height: 108),
-                                _buildPreguntaDelDia(
-                                  isDark,
-                                  cardColor,
-                                  textColor,
-                                  subtextColor,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      )
-                    : Column(
-                        children: [
-                          _buildModulosPanelWeb(
-                            context,
-                            isDark,
-                            cardColor,
-                            textColor,
-                            subtextColor,
-                          ),
-                          const SizedBox(height: 28),
-                          _buildPreguntaDelDia(
-                            isDark,
-                            cardColor,
-                            textColor,
-                            subtextColor,
-                          ),
-                        ],
-                      ),
+                child: _buildDesktopDashboard(
+                  context,
+                  isDark,
+                  cardColor,
+                  textColor,
+                  subtextColor,
+                ),
               ),
             ),
           ),
         ),
         const SliverToBoxAdapter(child: SizedBox(height: 48)),
+      ],
+    );
+  }
+
+  // Dashboard principal para desktop
+  Widget _buildDesktopDashboard(
+    BuildContext context,
+    bool isDark,
+    Color cardColor,
+    Color textColor,
+    Color subtextColor,
+  ) {
+    final modulos = _getModulos(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final showSidebar = screenWidth > 1100;
+
+    if (showSidebar) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Columna principal (módulos)
+          Expanded(
+            flex: 7,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header de sección
+                _buildSectionHeader(isDark, textColor, subtextColor),
+                const SizedBox(height: 24),
+                
+                // Módulos destacados (Empleos y Cursos) - Cards grandes
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildPrimaryModuleCard(
+                        modulo: modulos[0], // Empleos
+                        isDark: isDark,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        subtextColor: subtextColor,
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: _buildPrimaryModuleCard(
+                        modulo: modulos[1], // Cursos
+                        isDark: isDark,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        subtextColor: subtextColor,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                
+                // Módulos secundarios en grid de 4
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildSecondaryModuleCard(
+                        modulo: modulos[2], // Obras
+                        isDark: isDark,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        subtextColor: subtextColor,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildSecondaryModuleCard(
+                        modulo: modulos[3], // Noticias
+                        isDark: isDark,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        subtextColor: subtextColor,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildSecondaryModuleCard(
+                        modulo: modulos[4], // Polos
+                        isDark: isDark,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        subtextColor: subtextColor,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildSecondaryModuleCard(
+                        modulo: modulos[5], // Eventos
+                        isDark: isDark,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        subtextColor: subtextColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 28),
+          // Sidebar derecha - Solo pregunta del día
+          SizedBox(
+            width: 320,
+            child: _buildPreguntaDelDia(isDark, cardColor, textColor, subtextColor),
+          ),
+        ],
+      );
+    } else {
+      // Layout de una columna para pantallas medianas
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(isDark, textColor, subtextColor),
+          const SizedBox(height: 24),
+          // Módulos destacados
+          Row(
+            children: [
+              Expanded(
+                child: _buildPrimaryModuleCard(
+                  modulo: modulos[0],
+                  isDark: isDark,
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtextColor: subtextColor,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildPrimaryModuleCard(
+                  modulo: modulos[1],
+                  isDark: isDark,
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtextColor: subtextColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Grid de 3x2 para los demás
+          Row(
+            children: [
+              Expanded(
+                child: _buildSecondaryModuleCard(
+                  modulo: modulos[2],
+                  isDark: isDark,
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtextColor: subtextColor,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildSecondaryModuleCard(
+                  modulo: modulos[3],
+                  isDark: isDark,
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtextColor: subtextColor,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildSecondaryModuleCard(
+                  modulo: modulos[4],
+                  isDark: isDark,
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtextColor: subtextColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSecondaryModuleCard(
+                  modulo: modulos[5],
+                  isDark: isDark,
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtextColor: subtextColor,
+                ),
+              ),
+              const Spacer(flex: 2),
+            ],
+          ),
+          const SizedBox(height: 28),
+          _buildPreguntaDelDia(isDark, cardColor, textColor, subtextColor),
+        ],
+      );
+    }
+  }
+
+  // Header de sección mejorado
+  Widget _buildSectionHeader(bool isDark, Color textColor, Color subtextColor) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark 
+              ? [const Color(0xFF1E1E2E), const Color(0xFF252536)]
+              : [Colors.white, const Color(0xFFFAFAFC)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? Colors.white.withAlpha(10) : guinda.withAlpha(15),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: guinda.withAlpha(isDark ? 20 : 12),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [guinda, Color(0xFF8B2346)],
+              ),
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: guinda.withAlpha(80),
+                  blurRadius: 15,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.explore_rounded, color: Colors.white, size: 28),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Explora Tu Región',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Descubre servicios, oportunidades y proyectos disponibles en tu comunidad',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: subtextColor,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Badge de actualizado
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [verde.withAlpha(25), verde.withAlpha(12)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: verde.withAlpha(40)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: verde,
+                    shape: BoxShape.circle,
+                    boxShadow: [BoxShadow(color: verde.withAlpha(150), blurRadius: 6)],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Actualizado hoy',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: verde,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card de módulo principal (grande) para desktop
+  Widget _buildPrimaryModuleCard({
+    required Map<String, dynamic> modulo,
+    required bool isDark,
+    required Color cardColor,
+    required Color textColor,
+    required Color subtextColor,
+  }) {
+    final color = modulo['color'] as Color;
+    final gradient = modulo['gradient'] as List<Color>;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: modulo['onTap'] as VoidCallback,
+        borderRadius: BorderRadius.circular(24),
+        hoverColor: color.withAlpha(8),
+        splashColor: color.withAlpha(15),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isDark ? Colors.white.withAlpha(8) : color.withAlpha(20),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: color.withAlpha(isDark ? 20 : 15),
+                blurRadius: 25,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: gradient),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withAlpha(80),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Icon(modulo['icon'] as IconData, color: Colors.white, size: 22),
+                  ),
+                  const Spacer(),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        modulo['valor'] as String,
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                          height: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: color.withAlpha(18),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          modulo['unidad'] as String,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: color,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                modulo['titulo'] as String,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                modulo['descripcion'] as String,
+                style: TextStyle(fontSize: 12, color: subtextColor),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 10),
+              _buildExploreButton(color, isDark),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Card de módulo secundario (compacto) para desktop
+  Widget _buildSecondaryModuleCard({
+    required Map<String, dynamic> modulo,
+    required bool isDark,
+    required Color cardColor,
+    required Color textColor,
+    required Color subtextColor,
+  }) {
+    final color = modulo['color'] as Color;
+    final gradient = modulo['gradient'] as List<Color>;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: modulo['onTap'] as VoidCallback,
+        borderRadius: BorderRadius.circular(20),
+        hoverColor: color.withAlpha(8),
+        splashColor: color.withAlpha(15),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white.withAlpha(8) : color.withAlpha(15),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: color.withAlpha(isDark ? 15 : 10),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: gradient),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(modulo['icon'] as IconData, color: Colors.white, size: 20),
+                  ),
+                  const Spacer(),
+                  Text(
+                    modulo['valor'] as String,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(
+                modulo['titulo'] as String,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                modulo['descripcion'] as String,
+                style: TextStyle(fontSize: 11, color: subtextColor),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Botón de explorar reutilizable
+  Widget _buildExploreButton(Color color, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color.withAlpha(20), color.withAlpha(10)],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withAlpha(25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Explorar',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Icon(Icons.arrow_forward_rounded, size: 16, color: color),
+        ],
+      ),
+    );
+  }
+
+  // Card de resumen rápido para sidebar
+  Widget _buildQuickSummaryCard(bool isDark, Color cardColor, Color textColor, Color subtextColor) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white.withAlpha(10) : Colors.grey.withAlpha(20),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: guinda.withAlpha(isDark ? 15 : 8),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [guinda, Color(0xFF8B2346)]),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.insights_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Resumen de Tu Región',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // Stats en grid
+          _buildSummaryItem(
+            icon: Icons.work_rounded,
+            label: 'Empleos disponibles',
+            value: '$_empleosNuevos nuevos',
+            color: verde,
+            isDark: isDark,
+            textColor: textColor,
+          ),
+          const SizedBox(height: 12),
+          _buildSummaryItem(
+            icon: Icons.school_rounded,
+            label: 'Cursos activos',
+            value: '$_cursosDisponibles disponibles',
+            color: const Color(0xFF2563EB),
+            isDark: isDark,
+            textColor: textColor,
+          ),
+          const SizedBox(height: 12),
+          _buildSummaryItem(
+            icon: Icons.location_city_rounded,
+            label: 'Polos cercanos',
+            value: '${_polosCercanos.length} en tu estado',
+            color: guinda,
+            isDark: isDark,
+            textColor: textColor,
+          ),
+          const SizedBox(height: 12),
+          _buildSummaryItem(
+            icon: Icons.event_rounded,
+            label: 'Eventos próximos',
+            value: '$_eventosProximos esta semana',
+            color: const Color(0xFF0D9488),
+            isDark: isDark,
+            textColor: textColor,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Item del resumen
+  Widget _buildSummaryItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+    required bool isDark,
+    required Color textColor,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withAlpha(isDark ? 30 : 15),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: textColor.withAlpha(150),
+                ),
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

@@ -3,6 +3,7 @@ import '../../core/theme/theme_provider.dart';
 import '../../web/widgets/web_sidebar.dart';
 import '../../mobile/widgets/mobile_bottom_nav.dart';
 import '../../service/tts_service.dart';
+import '../../service/user_session_service.dart';
 import '../screens/home_screen.dart';
 import '../screens/polos_screen.dart';
 import '../screens/inversiones_screen.dart';
@@ -231,13 +232,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold>
             child: _buildContent(context),
           ),
 
-          // Botón de perfil (solo en Inicio - index 2)
-          if (_selectedIndex == 2)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 12,
-              right: 16,
-              child: _buildProfileButton(context),
-            ),
+          // Botón de perfil ELIMINADO - ya existe en el bottom nav
 
           // Bottom Nav fijo en la parte inferior
           Positioned(
