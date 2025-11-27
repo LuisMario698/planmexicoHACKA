@@ -9,6 +9,7 @@ class MexicoMapWidget extends StatefulWidget {
   final Function(PoloInfo polo)? onPoloSelected;
   final Function(String? stateName)? onStateHover;
   final String? selectedStateCode;
+  final String? selectedPoloId; // ID del polo seleccionado para resaltarlo
   final VoidCallback? onBackToMap;
   final List<String>? highlightedStates;
   final bool autoShowDetail; // Si es false, no muestra detalle al hacer tap
@@ -23,6 +24,7 @@ class MexicoMapWidget extends StatefulWidget {
     this.onPoloSelected,
     this.onStateHover,
     this.selectedStateCode,
+    this.selectedPoloId,
     this.onBackToMap,
     this.highlightedStates,
     this.autoShowDetail = true,
@@ -717,6 +719,9 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
       final markerX = (markerGeoX - minX) * scale + offsetX;
       final markerY = size.height - ((markerGeoY - minY) * scale + offsetY);
 
+      // Verificar si este polo está seleccionado
+      final isSelected = widget.selectedPoloId == polo.idString;
+
       return Positioned(
         left: markerX - 20,
         top: markerY - 20,
@@ -738,32 +743,49 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
           },
           child: MouseRegion(
             cursor: SystemMouseCursors.click,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutBack,
+              transform: Matrix4.translationValues(0, isSelected ? -8 : 0, 0),
+              child: AnimatedScale(
+                duration: const Duration(milliseconds: 250),
+                scale: isSelected ? 1.3 : 1.0,
                 child: Container(
-                  width: 28,
-                  height: 28,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: polo.color,
-                  ),
-                  child: const Icon(
-                    Icons.location_on,
                     color: Colors.white,
-                    size: 16,
+                    border: isSelected
+                        ? Border.all(
+                            color: const Color(0xFFBC955C),
+                            width: 3,
+                          )
+                        : null,
+                    boxShadow: [
+                      BoxShadow(
+                        color: isSelected
+                            ? const Color(0xFFBC955C).withValues(alpha: 0.5)
+                            : Colors.black.withValues(alpha: 0.3),
+                        blurRadius: isSelected ? 16 : 8,
+                        offset: Offset(0, isSelected ? 6 : 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: polo.color,
+                      ),
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
                   ),
                 ),
               ),

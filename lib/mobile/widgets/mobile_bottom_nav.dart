@@ -73,28 +73,36 @@ class _MobileBottomNavState extends State<MobileBottomNav> {
     return GestureDetector(
       onTap: () => widget.onItemSelected(index),
       behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Botón de Inicio con círculo dorado especial
-          if (isHome)
-            _buildHomeButton(item, isSelected, isDark)
-          else
-            _buildRegularButton(item, isSelected, isDark),
-          const SizedBox(height: 4),
-          // Label
-          Text(
-            item.label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-              color: isSelected
-                  ? Colors.white
-                  : Colors.white.withValues(alpha: 0.7),
-              letterSpacing: 0.1,
+      child: SizedBox(
+        height: 60,
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          clipBehavior: Clip.none,
+          children: [
+            // Label - siempre en la misma posición en la parte inferior
+            Positioned(
+              bottom: 0,
+              child: Text(
+                item.label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.7),
+                  letterSpacing: 0.1,
+                ),
+              ),
             ),
-          ),
-        ],
+            // Icono o botón - posicionado arriba del label
+            Positioned(
+              bottom: 16,
+              child: isHome
+                  ? _buildHomeButton(item, isSelected, isDark)
+                  : _buildRegularButton(item, isSelected, isDark),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -104,8 +112,8 @@ class _MobileBottomNavState extends State<MobileBottomNav> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOutCubic,
-      // Sobresale siempre -12, y un poco más cuando está seleccionado
-      transform: Matrix4.translationValues(0, isSelected ? -18 : -12, 0),
+      // Solo el círculo se eleva, el label queda abajo
+      transform: Matrix4.translationValues(0, isSelected ? -14 : -8, 0),
       child: Container(
         width: 56,
         height: 56,
@@ -144,11 +152,13 @@ class _MobileBottomNavState extends State<MobileBottomNav> {
                   ? Border.all(color: _goldColor.withValues(alpha: 0.3), width: 2)
                   : null,
             ),
-            child: Icon(
-              item.icon,
-              // Bronce cuando está seleccionado, blanco cuando no
-              color: isSelected ? _goldColor : Colors.white,
-              size: 26,
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Image.asset(
+                'images/logo_aguila.png',
+                // Bronce cuando está seleccionado, blanco cuando no
+                color: isSelected ? _goldColor : Colors.white,
+              ),
             ),
           ),
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../widgets/mexico_map_widget.dart';
 import '../data/polos_data.dart';
 
@@ -622,6 +623,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
         borderRadius: BorderRadius.circular(24),
         child: MexicoMapWidget(
           selectedStateCode: _selectedStateCode,
+          selectedPoloId: _selectedPolo?.id,
           highlightedStates: _statePoloData.keys.toList(),
           showOnlySelected: true, // CLAVE: Solo muestra el estado, no México
           hidePoloMarkers: false,
@@ -694,6 +696,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
               child: MexicoMapWidget(
                 key: const ValueKey('expanding_state'),
                 selectedStateCode: _selectedStateCode,
+                selectedPoloId: _selectedPolo?.id,
                 highlightedStates: _statePoloData.keys.toList(),
                 showOnlySelected: true,
                 hidePoloMarkers: false,
@@ -758,6 +761,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
               child: MexicoMapWidget(
                 key: const ValueKey('collapsing_state'),
                 selectedStateCode: _selectedStateCode,
+                selectedPoloId: _selectedPolo?.id,
                 highlightedStates: _statePoloData.keys.toList(),
                 showOnlySelected: true,
                 hidePoloMarkers: false,
@@ -943,6 +947,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
           children: [
             MexicoMapWidget(
               selectedStateCode: _selectedStateCode,
+              selectedPoloId: _selectedPolo?.id,
               highlightedStates: _statePoloData.keys.toList(),
               onStateSelected: (code, name) {
                 setState(() {
@@ -1449,7 +1454,16 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                   onTap: () => _openLocation(polo.latitud, polo.longitud),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildActionButton(
+                  icon: Icons.share_rounded,
+                  label: 'Compartir',
+                  color: const Color(0xFFBC955C),
+                  onTap: () => _sharePolo(polo, poloData),
+                ),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: _buildActionButton(
                   icon: Icons.rate_review_rounded,
@@ -1595,7 +1609,16 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                   onTap: () => _openLocation(polo.latitud, polo.longitud),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildActionButton(
+                  icon: Icons.share_rounded,
+                  label: 'Compartir',
+                  color: const Color(0xFFBC955C),
+                  onTap: () => _sharePolo(polo, poloData),
+                ),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: _buildActionButton(
                   icon: Icons.rate_review_rounded,
@@ -2362,6 +2385,92 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
+  }
+
+  // Método para compartir información del polo
+  Future<void> _sharePolo(PoloInfo polo, PoloMarker? poloData) async {
+    // Construir el texto para compartir
+    final buffer = StringBuffer();
+    buffer.writeln('🇲🇽 Plan México - Polo de Desarrollo');
+    buffer.writeln('');
+    buffer.writeln('📍 ${polo.nombre}');
+    buffer.writeln('📌 ${polo.estado}');
+    buffer.writeln('');
+    
+    if (poloData != null) {
+      // Tipo de polo
+      String tipoLabel = '';
+      switch (poloData.tipo) {
+        case 'nuevo':
+          tipoLabel = '🆕 Nuevo Polo';
+          break;
+        case 'en_marcha':
+          tipoLabel = '✅ En Marcha';
+          break;
+        case 'en_proceso':
+          tipoLabel = '⏳ En Proceso';
+          break;
+        case 'tercera_etapa':
+          tipoLabel = '🔄 Tercera Etapa';
+          break;
+        default:
+          tipoLabel = '📋 ${poloData.tipo}';
+      }
+      buffer.writeln(tipoLabel);
+      buffer.writeln('');
+      
+      if (poloData.region.isNotEmpty) {
+        buffer.writeln('🌎 Región: ${poloData.region}');
+      }
+      
+      if (poloData.vocacion.isNotEmpty) {
+        buffer.writeln('🎯 Vocación: ${poloData.vocacion}');
+      }
+      
+      if (poloData.sectoresClave.isNotEmpty) {
+        buffer.writeln('');
+        buffer.writeln('🏭 Sectores Clave:');
+        for (final sector in poloData.sectoresClave) {
+          buffer.writeln('  • $sector');
+        }
+      }
+      
+      if (poloData.infraestructura.isNotEmpty) {
+        buffer.writeln('');
+        buffer.writeln('🏗️ Infraestructura: ${poloData.infraestructura}');
+      }
+      
+      if (poloData.empleoEstimado.isNotEmpty) {
+        buffer.writeln('👥 Empleo: ${poloData.empleoEstimado}');
+      }
+      
+      if (poloData.beneficiosLargoPlazo.isNotEmpty) {
+        buffer.writeln('');
+        buffer.writeln('✨ Beneficios: ${poloData.beneficiosLargoPlazo}');
+      }
+    }
+    
+    buffer.writeln('');
+    buffer.writeln('📲 Conoce más en la app Plan México');
+    buffer.writeln('#PlanMéxico #DesarrolloNacional');
+    
+    try {
+      await Share.share(
+        buffer.toString(),
+        subject: 'Plan México - ${polo.nombre}',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Error al compartir'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
   }
 
   void _openLocation(double lat, double lng) {

@@ -7,6 +7,8 @@ import '../screens/polos_screen.dart';
 import '../screens/inversiones_screen.dart';
 import '../screens/asistente_screen.dart';
 import '../screens/voice_chat_widget.dart';
+import '../screens/perfil_screen.dart';
+import '../screens/encuestas_screen.dart';
 
 class ResponsiveScaffold extends StatefulWidget {
   final ThemeProvider themeProvider;
@@ -45,6 +47,8 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
         return const HomeScreen();
       case 3:
         return const PolosScreen();
+      case 4:
+        return const EncuestasScreen();
       default:
         return Center(
           child: Text(
@@ -178,12 +182,13 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
             child: _buildContent(context),
           ),
 
-          // Botón de configuración (Arriba derecha)
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 12,
-            right: 16,
-            child: _buildSettingsButton(context),
-          ),
+          // Botón de perfil (solo en Inicio - index 2)
+          if (_selectedIndex == 2)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 12,
+              right: 16,
+              child: _buildProfileButton(context),
+            ),
 
           // Bottom Nav fijo en la parte inferior
           Positioned(
@@ -203,6 +208,41 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
           // Botón flotante Ajolote (Móvil) - encima del nav
           Positioned(bottom: 100, right: 16, child: _buildAjoloteFab(context)),
         ],
+      ),
+    );
+  }
+
+  // --- BOTÓN DE PERFIL ---
+  Widget _buildProfileButton(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const PerfilScreen()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFBC955C), Color(0xFF8B6914)],
+          ),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFBC955C).withOpacity(0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.person_rounded,
+          color: Colors.white,
+          size: 22,
+        ),
       ),
     );
   }
