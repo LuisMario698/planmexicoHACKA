@@ -158,6 +158,10 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     double horizontalPadding,
     double maxContentWidth,
   ) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Si es muy ancho, mostrar layout de 2 columnas, sino todo en una
+    final showTwoColumns = screenWidth > 1100;
+    
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
@@ -172,34 +176,47 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
               constraints: BoxConstraints(maxWidth: maxContentWidth),
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 32),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Columna izquierda: Módulos
-                    Expanded(
-                      flex: 3,
-                      child: _buildModulosPanelWeb(
-                        context,
-                        isDark,
-                        cardColor,
-                        textColor,
-                        subtextColor,
+                child: showTwoColumns
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Columna izquierda: Módulos (más espacio)
+                          Expanded(
+                            flex: 5,
+                            child: _buildModulosPanelWeb(
+                              context,
+                              isDark,
+                              cardColor,
+                              textColor,
+                              subtextColor,
+                            ),
+                          ),
+                          const SizedBox(width: 28),
+                          // Columna derecha: Pregunta del día (flexible)
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 108),
+                                _buildPreguntaDelDia(isDark, cardColor, textColor, subtextColor),
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          _buildModulosPanelWeb(
+                            context,
+                            isDark,
+                            cardColor,
+                            textColor,
+                            subtextColor,
+                          ),
+                          const SizedBox(height: 28),
+                          _buildPreguntaDelDia(isDark, cardColor, textColor, subtextColor),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 32),
-                    // Columna derecha: Pregunta del día
-
-                    Column(
-                      children: [
-                        const SizedBox(height: 108),
-                        SizedBox(
-                          width: 360,
-                          child: _buildPreguntaDelDia(isDark, cardColor, textColor, subtextColor),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
               ),
             ),
           ),
@@ -582,25 +599,27 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
           LayoutBuilder(
             builder: (context, constraints) {
               final screenWidth = constraints.maxWidth;
-              final spacing = screenWidth > 600 ? 20.0 : 14.0;
+              final spacing = screenWidth > 600 ? 16.0 : 12.0;
               
-              // Calcular columnas según el ancho
+              // Calcular columnas según el ancho disponible
               int columns;
-              if (screenWidth > 700) {
+              if (screenWidth > 900) {
+                columns = 4;
+              } else if (screenWidth > 650) {
                 columns = 3;
-              } else if (screenWidth > 450) {
-                columns = 2;
+              } else if (screenWidth > 400) {
+                columns = 3;
               } else {
-                columns = 2; // Mínimo 2 columnas pero más pequeñas
+                columns = 2;
               }
               
               final cardWidth = (screenWidth - (spacing * (columns - 1))) / columns;
-              // Altura responsiva según el ancho de la card
-              final cardHeight = cardWidth < 150 
-                  ? cardWidth * 1.1 
-                  : cardWidth < 200 
-                      ? cardWidth * 0.95 
-                      : cardWidth * 0.85;
+              // Altura más compacta para cards cuadradas
+              final cardHeight = cardWidth < 130 
+                  ? cardWidth * 1.15 
+                  : cardWidth < 180 
+                      ? cardWidth * 1.0 
+                      : cardWidth * 0.9;
 
               return Wrap(
                 spacing: spacing,
@@ -1017,24 +1036,25 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        // Grid de módulos responsivo para web
+        // Grid de módulos responsivo para web - usar GridView para mejor distribución
         LayoutBuilder(
           builder: (context, constraints) {
             final screenWidth = constraints.maxWidth;
-            final spacing = 20.0;
+            final spacing = 16.0;
             
-            // Calcular columnas según el ancho disponible
+            // Más columnas en pantallas anchas
             int columns;
-            if (screenWidth > 900) {
+            if (screenWidth > 700) {
               columns = 3;
-            } else if (screenWidth > 600) {
-              columns = 3;
+            } else if (screenWidth > 450) {
+              columns = 2;
             } else {
               columns = 2;
             }
             
             final cardWidth = (screenWidth - (spacing * (columns - 1))) / columns;
-            final cardHeight = cardWidth * 0.8;
+            // Cards más cuadradas y compactas
+            final cardHeight = cardWidth < 180 ? cardWidth * 0.95 : cardWidth * 0.85;
 
             return Wrap(
               spacing: spacing,
