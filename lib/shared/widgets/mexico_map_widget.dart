@@ -84,6 +84,12 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
   static const double _minZoom = 1.0;
   static const double _maxZoom = 4.0;
 
+  // Control de gestos para evitar selección accidental durante zoom/pan
+  bool _isInteracting = false;
+  Offset? _interactionStartPosition;
+  DateTime? _interactionStartTime;
+  int _interactionPointerCount = 0;
+
   // Bounds para normalizar las coordenadas
   double _minX = double.infinity;
   double _maxX = double.negativeInfinity;
@@ -355,30 +361,59 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
             AnimatedOpacity(
               duration: const Duration(milliseconds: 300),
               opacity: _showStateDetail ? 0.3 : 1.0,
-              child: InteractiveViewer(
-                transformationController: _transformationController,
-                minScale: _minZoom,
-                maxScale: _maxZoom,
-                panEnabled: true,
-                scaleEnabled: true,
-                boundaryMargin: const EdgeInsets.all(100),
-                constrained: false,
-                onInteractionUpdate: (details) {
-                  setState(() {
-                    _currentZoom = _transformationController.value.getMaxScaleOnAxis();
-                  });
+              child: GestureDetector(
+                // Detectar tap solo cuando NO hay gesto de zoom/pan
+                onTapUp: (details) {
+                  // Solo procesar tap si no hubo interacción de zoom/pan
+                  if (!_isInteracting) {
+                    _handleTapAtPosition(details.localPosition, constraints);
+                  }
                 },
-                child: SizedBox(
-                  width: mapSize.width,
-                  height: mapSize.height,
-                  child: MouseRegion(
-                    cursor: _hoveredStateCode != null
-                        ? SystemMouseCursors.click
-                        : SystemMouseCursors.basic,
-                    onHover: (event) => _handleHover(event, constraints),
-                    onExit: (_) => _handleHoverExit(),
-                    child: GestureDetector(
-                      onTapDown: (details) => _handleTap(details, constraints),
+                child: InteractiveViewer(
+                  transformationController: _transformationController,
+                  minScale: _minZoom,
+                  maxScale: _maxZoom,
+                  panEnabled: true,
+                  scaleEnabled: true,
+                  boundaryMargin: const EdgeInsets.all(100),
+                  constrained: false,
+                  onInteractionStart: (details) {
+                    _isInteracting = false;
+                    _interactionStartPosition = details.focalPoint;
+                    _interactionStartTime = DateTime.now();
+                    _interactionPointerCount = details.pointerCount;
+                  },
+                  onInteractionUpdate: (details) {
+                    // Si hay más de un dedo o movimiento significativo, es zoom/pan
+                    if (details.pointerCount > 1) {
+                      _isInteracting = true;
+                    } else if (_interactionStartPosition != null) {
+                      final distance = (details.focalPoint - _interactionStartPosition!).distance;
+                      if (distance > 10) {
+                        _isInteracting = true;
+                      }
+                    }
+                    setState(() {
+                      _currentZoom = _transformationController.value.getMaxScaleOnAxis();
+                    });
+                  },
+                  onInteractionEnd: (details) {
+                    // Pequeño delay para que el GestureDetector no capture el tap
+                    Future.delayed(const Duration(milliseconds: 50), () {
+                      if (mounted) {
+                        _isInteracting = false;
+                      }
+                    });
+                  },
+                  child: SizedBox(
+                    width: mapSize.width,
+                    height: mapSize.height,
+                    child: MouseRegion(
+                      cursor: _hoveredStateCode != null
+                          ? SystemMouseCursors.click
+                          : SystemMouseCursors.basic,
+                      onHover: (event) => _handleHover(event, constraints),
+                      onExit: (_) => _handleHoverExit(),
                       child: CustomPaint(
                         size: mapSize,
                         painter: MexicoMapPainter(
@@ -1027,6 +1062,30 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
     if (_showStateDetail) return;
 
     final state = _findStateAtPosition(details.localPosition, constraints);
+    if (state != null) {
+      widget.onStateSelected?.call(state.code, state.name);
+
+      // Solo mostrar detalle automáticamente si autoShowDetail es true
+      if (widget.autoShowDetail) {
+        setState(() {
+          _detailState = state;
+          _showStateDetail = true;
+        });
+        _selectionController.forward(from: 0);
+      }
+    }
+  }
+
+  // Versión que acepta directamente la posición (para uso con GestureDetector externo)
+  void _handleTapAtPosition(Offset position, BoxConstraints constraints) {
+    if (_showStateDetail) return;
+
+    // Transformar la posición según el zoom actual
+    final matrix = _transformationController.value;
+    final inverseMatrix = Matrix4.inverted(matrix);
+    final transformedPoint = MatrixUtils.transformPoint(inverseMatrix, position);
+
+    final state = _findStateAtPosition(transformedPoint, constraints);
     if (state != null) {
       widget.onStateSelected?.call(state.code, state.name);
 

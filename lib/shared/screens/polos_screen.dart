@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/polos_tutorial_overlay.dart'; // Tutorial para el mapa
 import '../widgets/state_tutorial_overlay.dart'; // Tutorial para estados
 import '../widgets/polo_tutorial_overlay.dart'; // Tutorial para polos
+import '../widgets/webview_dialog.dart'; // WebView para explorar polos
 
 class PolosScreen extends StatefulWidget {
   const PolosScreen({super.key});
@@ -1734,7 +1735,7 @@ class _PolosScreenState extends State<PolosScreen>
                     icon: Icons.explore_rounded,
                     label: 'Explorar',
                     color: const Color(0xFF691C32),
-                    onTap: () => _openLocation(polo.latitud, polo.longitud),
+                    onTap: () => _handleExplorarPolo(polo),
                   ),
                 ),
               ),
@@ -1915,7 +1916,7 @@ class _PolosScreenState extends State<PolosScreen>
                     icon: Icons.explore_rounded,
                     label: 'Explorar',
                     color: const Color(0xFF691C32),
-                    onTap: () => _openLocation(polo.latitud, polo.longitud),
+                    onTap: () => _handleExplorarPolo(polo),
                   ),
                 ),
               ),
@@ -2873,6 +2874,28 @@ class _PolosScreenState extends State<PolosScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
+  }
+
+  /// Maneja el clic en el botón "Explorar" del polo
+  /// Para el polo AIFA (DF/CDMX), abre un WebView 3D interactivo
+  void _handleExplorarPolo(PoloInfo polo) {
+    // URLs de experiencias 3D por polo
+    const Map<String, String> poloWebViews = {
+      'cdmx_poligono': 'https://piter-zfgbfaz2r9jjy-z2r9jjy.needle.run/',
+      'edomex_aifa': 'https://piter-zfgbfaz2r9jjy-z2r9jjy.needle.run/',
+    };
+
+    // Verificar si el polo tiene una experiencia 3D
+    if (poloWebViews.containsKey(polo.id)) {
+      WebViewDialog.show(
+        context,
+        url: poloWebViews[polo.id]!,
+        title: 'Explorar ${polo.nombre}',
+      );
+    } else {
+      // Para otros polos, abrir la ubicación en el mapa
+      _openLocation(polo.latitud, polo.longitud);
+    }
   }
 
   Widget _buildEmptyState(bool isDark) {
