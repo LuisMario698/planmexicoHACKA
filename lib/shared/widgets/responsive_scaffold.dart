@@ -59,10 +59,10 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold>
     NavItem(icon: Icons.trending_up_rounded, label: 'Inversiones'),
     NavItem(icon: Icons.home_rounded, label: 'Inicio'),
     NavItem(icon: Icons.hub_rounded, label: 'Polos'),
-    NavItem(icon: Icons.location_on_rounded, label: 'Mi Región'),
+    NavItem(icon: Icons.person_rounded, label: 'Perfil'),
   ];
 
-  // Orden para web (sidebar) - Inicio arriba, Mi Región prominente
+  // Orden para web (sidebar) - Inicio arriba, Perfil prominente
   // Mapeo: webIndex -> mobileIndex
   static const List<int> _webToMobileIndex = [
     2,
@@ -70,12 +70,12 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold>
     3,
     1,
     0,
-  ]; // Inicio, Mi Región, Polos, Inversiones, Asistente
+  ]; // Inicio, Perfil, Polos, Inversiones, Asistente
   static const List<int> _mobileToWebIndex = [4, 3, 0, 2, 1]; // Mapeo inverso
 
   List<NavItem> get _webNavItems => [
     _navItems[2], // Inicio
-    _navItems[4], // Mi Región
+    _navItems[4], // Perfil
     _navItems[3], // Polos
     _navItems[1], // Inversiones
     _navItems[0], // Asistente
@@ -109,11 +109,11 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold>
       case 1:
         return const InversionesScreen();
       case 2:
-        return _showHomeContent ? const HomeScreen() : const PerfilScreen();
+        return _showHomeContent ? const HomeScreen() : const MiRegionScreen();
       case 3:
         return const PolosScreen();
       case 4:
-        return const MiRegionScreen();
+        return const PerfilScreen();
       default:
         return Center(
           child: Text(
