@@ -233,15 +233,15 @@ class TtsService extends ChangeNotifier {
     return _availableVoices;
   }
 
-  /// Habla el texto usando ElevenLabs (Web) o flutter_tts (móvil)
+  /// Habla el texto usando ElevenLabs o flutter_tts como fallback
   Future<void> speak(String text) async {
     if (!_isInitialized) await _initTts();
     await stop();
     
     if (text.isEmpty) return;
     
-    // Usar ElevenLabs en Web si está habilitado y configurado
-    if (kIsWeb && _useElevenLabs && _elevenLabsApiKey != 'TU_API_KEY_AQUI') {
+    // Usar ElevenLabs si está habilitado y configurado (Web y Móvil)
+    if (_useElevenLabs && _elevenLabsApiKey != 'TU_API_KEY_AQUI') {
       await _speakWithElevenLabs(text);
     } else {
       // Fallback a flutter_tts
