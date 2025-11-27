@@ -42,7 +42,7 @@ class TtsService extends ChangeNotifier {
   
   bool _isInitialized = false;
   bool _isPlaying = false;
-  bool _useElevenLabs = true; // Usar ElevenLabs en Web por defecto
+  bool _useElevenLabs = true; // Usar ElevenLabs en Web y Móvil
   
   // Lista de voces disponibles
   List<Map<String, String>> _availableVoices = [];
@@ -51,7 +51,7 @@ class TtsService extends ChangeNotifier {
   List<Map<String, String>> get availableVoices => _availableVoices;
   String get currentVoiceName => _currentVoiceName;
   bool get isPlaying => _isPlaying;
-  bool get useElevenLabs => _useElevenLabs && kIsWeb;
+  bool get useElevenLabs => _useElevenLabs; // Ahora disponible en todas las plataformas
   
   TtsService._internal() {
     _initTts();
@@ -86,16 +86,14 @@ class TtsService extends ChangeNotifier {
   Future<void> _loadAvailableVoices() async {
     _availableVoices = [];
     
-    // Agregar voces de ElevenLabs primero (solo en Web)
-    if (kIsWeb) {
-      for (var entry in _elevenLabsVoices.entries) {
-        _availableVoices.add({
-          'name': entry.key,
-          'locale': 'es-MX',
-          'displayName': '${entry.value['name']} (ElevenLabs) - ${entry.value['description']}',
-          'type': 'elevenlabs',
-        });
-      }
+    // Agregar voces de ElevenLabs (disponible en todas las plataformas)
+    for (var entry in _elevenLabsVoices.entries) {
+      _availableVoices.add({
+        'name': entry.key,
+        'locale': 'es-MX',
+        'displayName': '${entry.value['name']} (ElevenLabs) - ${entry.value['description']}',
+        'type': 'elevenlabs',
+      });
     }
     
     // Agregar voces del sistema
