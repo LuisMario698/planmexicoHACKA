@@ -19,8 +19,39 @@ class ResponsiveScaffold extends StatefulWidget {
   State<ResponsiveScaffold> createState() => _ResponsiveScaffoldState();
 }
 
-class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
+class _ResponsiveScaffoldState extends State<ResponsiveScaffold>
+    with WidgetsBindingObserver {
   int _selectedIndex = 2; // Inicio está en posición 2 para móvil
+  bool _isFirstBuild = true; // Flag para saber si es el primer build
+  bool _showHomeContent =
+      true; // Flag para mostrar HomeScreen o PerfilScreen en tab Inicio
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Si la app regresa del background, cambiar a la pestaña de usuario (Perfil en Inicio)
+    if (state == AppLifecycleState.resumed && !_isFirstBuild) {
+      setState(() {
+        _selectedIndex = 2;
+        _showHomeContent = false;
+      });
+    }
+    // Marcar que no es el primer build
+    if (state == AppLifecycleState.resumed) {
+      _isFirstBuild = false;
+    }
+  }
 
   // Orden para móvil (bottom nav) - Inicio en el centro
   final List<NavItem> _navItems = const [
@@ -33,7 +64,13 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
 
   // Orden para web (sidebar) - Inicio arriba, Mi Región prominente
   // Mapeo: webIndex -> mobileIndex
-  static const List<int> _webToMobileIndex = [2, 4, 3, 1, 0]; // Inicio, Mi Región, Polos, Inversiones, Asistente
+  static const List<int> _webToMobileIndex = [
+    2,
+    4,
+    3,
+    1,
+    0,
+  ]; // Inicio, Mi Región, Polos, Inversiones, Asistente
   static const List<int> _mobileToWebIndex = [4, 3, 0, 2, 1]; // Mapeo inverso
 
   List<NavItem> get _webNavItems => [
@@ -45,12 +82,19 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
   ];
 
   void _onItemSelected(int index) {
+    if (index != 2) {
+      _showHomeContent = false;
+    }
     setState(() => _selectedIndex = index);
   }
 
   void _onWebItemSelected(int webIndex) {
     // Convertir índice web a índice móvil
-    setState(() => _selectedIndex = _webToMobileIndex[webIndex]);
+    final mobileIndex = _webToMobileIndex[webIndex];
+    if (mobileIndex != 2) {
+      _showHomeContent = false;
+    }
+    setState(() => _selectedIndex = mobileIndex);
   }
 
   int get _webSelectedIndex => _mobileToWebIndex[_selectedIndex];
@@ -65,7 +109,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
       case 1:
         return const InversionesScreen();
       case 2:
-        return const HomeScreen();
+        return _showHomeContent ? const HomeScreen() : const PerfilScreen();
       case 3:
         return const PolosScreen();
       case 4:
@@ -259,11 +303,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
             ),
           ],
         ),
-        child: const Icon(
-          Icons.person_rounded,
-          color: Colors.white,
-          size: 22,
-        ),
+        child: const Icon(Icons.person_rounded, color: Colors.white, size: 22),
       ),
     );
   }
