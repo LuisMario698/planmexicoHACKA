@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../service/encuesta_service.dart';
+import '../widgets/encuesta_tutorial.dart';
 
 /// Pantalla de encuesta para un polo de desarrollo
 /// Diseño formal estilo Gobierno de México
@@ -36,7 +38,7 @@ class EncuestaPoloScreen extends StatefulWidget {
   }) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
-    
+
     // En web con pantalla grande: diálogo flotante
     if (kIsWeb && !isMobile) {
       showDialog(
@@ -84,19 +86,35 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
   static const Color guinda = Color(0xFF691C32);
   static const Color dorado = Color(0xFFBC955C);
   static const Color verde = Color(0xFF006847);
-  
+
   // Servicio
   final EncuestaService _encuestaService = EncuestaService();
-  
+
   // Valores (0-10)
   int _pregunta1 = 5;
   int _pregunta2 = 5;
   int _pregunta3 = 5;
   final TextEditingController _pregunta4Controller = TextEditingController();
-  
+
   // Estado
   bool _isSubmitting = false;
   bool _submitted = false;
+
+  // Tutorial variables
+  bool _showTutorial = false;
+  int _tutorialStep = 1;
+  late GlobalKey _pregunta1Key;
+  late GlobalKey _pregunta4Key;
+  late GlobalKey _submitButtonKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _pregunta1Key = GlobalKey();
+    _pregunta4Key = GlobalKey();
+    _submitButtonKey = GlobalKey();
+    _checkIfShowTutorial();
+  }
 
   @override
   void dispose() {
@@ -112,11 +130,13 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
         borderRadius: BorderRadius.circular(16),
         child: Material(
           color: Colors.grey.shade50,
-          child: _submitted ? _buildSuccessViewDialog() : _buildSurveyViewDialog(),
+          child: _submitted
+              ? _buildSuccessViewDialog()
+              : _buildSurveyViewDialog(),
         ),
       );
     }
-    
+
     // Pantalla completa normal
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -126,22 +146,24 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
         elevation: 0,
         title: const Text(
           'Encuesta de Opinión',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _submitted ? _buildSuccessView() : _buildSurveyView(),
+      body: Stack(
+        children: [
+          _submitted ? _buildSuccessView() : _buildSurveyView(),
+          if (_showTutorial) _buildTutorialOverlay(),
+        ],
+      ),
     );
   }
 
   // ============ VISTAS PARA DIÁLOGO ============
-  
+
   Widget _buildSurveyViewDialog() {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -150,9 +172,7 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: guinda,
-          ),
+          decoration: BoxDecoration(color: guinda),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -164,10 +184,7 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
                       children: [
                         const Text(
                           'Tu opinión importa',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                          ),
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -192,7 +209,11 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
               const SizedBox(height: 4),
               Row(
                 children: [
-                  const Icon(Icons.location_on_outlined, color: Colors.white70, size: 14),
+                  const Icon(
+                    Icons.location_on_outlined,
+                    color: Colors.white70,
+                    size: 14,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     widget.poloEstado,
@@ -203,7 +224,7 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
             ],
           ),
         ),
-        
+
         // Contenido scrolleable
         Flexible(
           child: SingleChildScrollView(
@@ -231,70 +252,84 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 20),
-                
+
                 // Preguntas compactas
-                _buildQuestionCompact(
-                  number: 1,
-                  question: '¿Qué tan clara es la información?',
-                  value: _pregunta1,
-                  onChanged: (v) => setState(() => _pregunta1 = v),
+                Container(
+                  key: _pregunta1Key,
+                  child: _buildQuestionCompact(
+                    number: 1,
+                    question: '¿Qué tan clara es la información?',
+                    value: _pregunta1,
+                    onChanged: (v) => setState(() => _pregunta1 = v),
+                  ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 _buildQuestionCompact(
                   number: 2,
                   question: '¿Qué tanto beneficio traerá a tu región?',
                   value: _pregunta2,
                   onChanged: (v) => setState(() => _pregunta2 = v),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 _buildQuestionCompact(
                   number: 3,
                   question: '¿Qué tanto necesita mejoras el proyecto?',
                   value: _pregunta3,
                   onChanged: (v) => setState(() => _pregunta3 = v),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Pregunta abierta compacta
-                _buildOpenQuestionCompact(),
-                
+                Container(
+                  key: _pregunta4Key,
+                  child: _buildOpenQuestionCompact(),
+                ),
+
                 const SizedBox(height: 24),
-                
+
                 // Botón de envío
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isSubmitting ? null : _submitSurvey,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: guinda,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey.shade300,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                Container(
+                  key: _submitButtonKey,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isSubmitting ? null : _submitSurvey,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: guinda,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey.shade300,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 0,
                       ),
-                      elevation: 0,
-                    ),
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation(Colors.white),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : const Text(
+                              'Enviar encuesta',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          )
-                        : const Text(
-                            'Enviar encuesta',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                          ),
+                    ),
                   ),
                 ),
               ],
@@ -327,7 +362,11 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
               child: Center(
                 child: Text(
                   '$number',
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -335,7 +374,11 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
             Expanded(
               child: Text(
                 question,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
+                ),
               ),
             ),
             Container(
@@ -346,7 +389,11 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
               ),
               child: Text(
                 '$value',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: guinda),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: guinda,
+                ),
               ),
             ),
           ],
@@ -389,13 +436,24 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: const Center(
-                child: Text('4', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                child: Text(
+                  '4',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 10),
             const Text(
               '¿Alguna sugerencia?',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
             ),
             const SizedBox(width: 8),
             Text(
@@ -449,7 +507,11 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
           const SizedBox(height: 20),
           const Text(
             '¡Gracias por tu opinión!',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
@@ -487,9 +549,14 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
                 foregroundColor: guinda,
                 side: BorderSide(color: guinda),
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              child: const Text('Cerrar', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              child: const Text(
+                'Cerrar',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
             ),
           ),
         ],
@@ -541,7 +608,7 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
               ],
             ),
           ),
-          
+
           // Contenido del formulario
           Padding(
             padding: const EdgeInsets.all(20),
@@ -558,27 +625,20 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: guinda,
-                        size: 20,
-                      ),
+                      Icon(Icons.info_outline, color: guinda, size: 20),
                       const SizedBox(width: 12),
                       const Expanded(
                         child: Text(
                           'Evalúa cada aspecto del 0 al 10, donde 0 es muy bajo y 10 es muy alto.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.black87,
-                          ),
+                          style: TextStyle(fontSize: 13, color: Colors.black87),
                         ),
                       ),
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Pregunta 1
                 _buildQuestion(
                   number: 1,
@@ -586,9 +646,9 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
                   value: _pregunta1,
                   onChanged: (v) => setState(() => _pregunta1 = v),
                 ),
-                
+
                 const SizedBox(height: 20),
-                
+
                 // Pregunta 2
                 _buildQuestion(
                   number: 2,
@@ -596,9 +656,9 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
                   value: _pregunta2,
                   onChanged: (v) => setState(() => _pregunta2 = v),
                 ),
-                
+
                 const SizedBox(height: 20),
-                
+
                 // Pregunta 3
                 _buildQuestion(
                   number: 3,
@@ -606,14 +666,14 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
                   value: _pregunta3,
                   onChanged: (v) => setState(() => _pregunta3 = v),
                 ),
-                
+
                 const SizedBox(height: 20),
-                
+
                 // Pregunta 4 - Abierta
                 _buildOpenQuestion(),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Botón de envío
                 SizedBox(
                   width: double.infinity,
@@ -647,16 +707,13 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
                           ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Nota de privacidad
                 Text(
                   'Tu opinión es anónima y será utilizada para mejorar los proyectos de desarrollo.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -719,9 +776,9 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           // Valor seleccionado
           Center(
             child: Container(
@@ -740,9 +797,9 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Slider
           SliderTheme(
             data: SliderThemeData(
@@ -763,7 +820,7 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
               },
             ),
           ),
-          
+
           // Labels
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -772,17 +829,11 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
               children: [
                 Text(
                   '0 - Muy bajo',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                 ),
                 Text(
                   '10 - Muy alto',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                 ),
               ],
             ),
@@ -842,33 +893,25 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
                     SizedBox(height: 4),
                     Text(
                       'Opcional',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Campo de texto
           TextField(
             controller: _pregunta4Controller,
             maxLines: 4,
             maxLength: 300,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.black,
-            ),
+            style: const TextStyle(fontSize: 14, color: Colors.black),
             decoration: InputDecoration(
               hintText: 'Escribe tu comentario aquí...',
-              hintStyle: TextStyle(
-                color: Colors.grey.shade400,
-              ),
+              hintStyle: TextStyle(color: Colors.grey.shade400),
               filled: true,
               fillColor: Colors.grey.shade50,
               border: OutlineInputBorder(
@@ -909,15 +952,11 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
                 color: verde.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.check_circle,
-                color: verde,
-                size: 48,
-              ),
+              child: Icon(Icons.check_circle, color: verde, size: 48),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             const Text(
               '¡Gracias por tu opinión!',
               style: TextStyle(
@@ -927,9 +966,9 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
               ),
               textAlign: TextAlign.center,
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             Text(
               'Tu respuesta ha sido registrada y será de gran utilidad para mejorar el proyecto.',
               style: TextStyle(
@@ -939,9 +978,9 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
               ),
               textAlign: TextAlign.center,
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Resumen
             Container(
               padding: const EdgeInsets.all(20),
@@ -972,9 +1011,9 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Botón volver
             SizedBox(
               width: double.infinity,
@@ -993,10 +1032,7 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
                 ),
                 child: const Text(
                   'Volver',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -1020,10 +1056,7 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
         const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade600,
-          ),
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
         ),
       ],
     );
@@ -1032,7 +1065,7 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
   Future<void> _submitSurvey() async {
     HapticFeedback.mediumImpact();
     setState(() => _isSubmitting = true);
-    
+
     final success = await _encuestaService.enviarRespuesta(
       poloId: widget.poloId,
       poloNombre: widget.poloNombre,
@@ -1040,17 +1073,17 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
       pregunta1: _pregunta1,
       pregunta2: _pregunta2,
       pregunta3: _pregunta3,
-      pregunta4: _pregunta4Controller.text.isNotEmpty 
-          ? _pregunta4Controller.text 
+      pregunta4: _pregunta4Controller.text.isNotEmpty
+          ? _pregunta4Controller.text
           : null,
     );
-    
+
     if (mounted) {
       setState(() {
         _isSubmitting = false;
         _submitted = success;
       });
-      
+
       if (!success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1064,5 +1097,90 @@ class _EncuestaPoloScreenState extends State<EncuestaPoloScreen> {
         );
       }
     }
+  }
+
+  /// Verificar si debe mostrar tutorial
+  Future<void> _checkIfShowTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    final tutorialSeen =
+        prefs.getBool('encuesta_tutorial_seen_${widget.poloId}') ?? false;
+
+    if (!tutorialSeen && mounted) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      setState(() {
+        _showTutorial = true;
+        _tutorialStep = 1;
+      });
+    }
+  }
+
+  /// Avanzar al siguiente paso del tutorial
+  void _nextTutorialStep() {
+    if (_tutorialStep < 4) {
+      setState(() => _tutorialStep++);
+    } else {
+      _completeTutorial();
+    }
+  }
+
+  /// Marcar tutorial como completado
+  Future<void> _completeTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('encuesta_tutorial_seen_${widget.poloId}', true);
+    if (mounted) {
+      setState(() {
+        _showTutorial = false;
+      });
+    }
+  }
+
+  /// Saltar tutorial
+  void _skipTutorial() {
+    _completeTutorial();
+  }
+
+  /// Obtener Rect de un elemento por GlobalKey
+  Rect _getTutorialElementRect(GlobalKey key) {
+    final renderBox = key.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox != null) {
+      final position = renderBox.localToGlobal(Offset.zero);
+      return Rect.fromLTWH(
+        position.dx,
+        position.dy,
+        renderBox.size.width,
+        renderBox.size.height,
+      );
+    }
+    return const Rect.fromLTWH(0, 400, 300, 60);
+  }
+
+  /// Construir overlay del tutorial
+  Widget _buildTutorialOverlay() {
+    Rect? targetRect;
+
+    switch (_tutorialStep) {
+      case 1:
+        // Sin target (intro general)
+        break;
+      case 2:
+        // Target: Primera pregunta
+        targetRect = _getTutorialElementRect(_pregunta1Key);
+        break;
+      case 3:
+        // Target: Pregunta abierta
+        targetRect = _getTutorialElementRect(_pregunta4Key);
+        break;
+      case 4:
+        // Target: Botón submit
+        targetRect = _getTutorialElementRect(_submitButtonKey);
+        break;
+    }
+
+    return EncuestaTutorialOverlay(
+      step: _tutorialStep,
+      targetRect: targetRect,
+      onNext: _nextTutorialStep,
+      onSkip: _skipTutorial,
+    );
   }
 }

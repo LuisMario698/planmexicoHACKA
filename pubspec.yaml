@@ -21,6 +21,8 @@ dependencies:
   cached_network_image: ^3.4.1
   supabase_flutter: ^2.8.4
   geolocator: ^13.0.2
+  flutter_tts: ^4.2.3
+  shared_preferences: ^2.5.3
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -33,3 +35,6 @@ flutter:
     - assets/images/
     - assets/images/ajolotito.png
     - assets/images/Fondo.png
+    - assets/images/ajolote.gif
+
+      
