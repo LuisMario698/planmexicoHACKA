@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:supabase/supabase.dart' show SupabaseClient, CountOption;
 
 /// Modelo de respuesta de encuesta
 class EncuestaRespuesta {
@@ -8,8 +7,10 @@ class EncuestaRespuesta {
   final int poloId;
   final String poloNombre;
   final String poloEstado;
-  final int pregunta1Claridad; // 0-10: ¿Qué tan clara te pareció la información?
-  final int pregunta2Beneficios; // 0-10: ¿Consideras que traerá beneficios reales?
+  final int
+  pregunta1Claridad; // 0-10: ¿Qué tan clara te pareció la información?
+  final int
+  pregunta2Beneficios; // 0-10: ¿Consideras que traerá beneficios reales?
   final int pregunta3Mejoras; // 0-10: ¿Qué tan necesario es mejorar?
   final String? pregunta4Recomendacion; // Texto abierto
   final DateTime? createdAt;
@@ -48,8 +49,8 @@ class EncuestaRespuesta {
       pregunta2Beneficios: json['pregunta_2_beneficios'],
       pregunta3Mejoras: json['pregunta_3_mejoras'],
       pregunta4Recomendacion: json['pregunta_4_recomendacion'],
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at']) 
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
           : null,
     );
   }
@@ -139,38 +140,47 @@ class PolosDatabase {
   static int? getPoloId(String poloStringId) {
     return poloIdMap[poloStringId];
   }
-  
+
   /// Intentar encontrar el ID más cercano basándose en el nombre del polo
   static int? findPoloIdByName(String nombre, String estado) {
     final nombreLower = nombre.toLowerCase();
     final estadoLower = estado.toLowerCase();
-    
+
     // Mapeo por estado y nombre
     if (estadoLower.contains('sonora')) {
-      if (nombreLower.contains('golfo') || nombreLower.contains('hermosillo')) return 1;
-      if (nombreLower.contains('plan') || nombreLower.contains('peñasco')) return 2;
+      if (nombreLower.contains('golfo') || nombreLower.contains('hermosillo'))
+        return 1;
+      if (nombreLower.contains('plan') || nombreLower.contains('peñasco'))
+        return 2;
     }
     if (estadoLower.contains('tamaulipas')) {
       if (nombreLower.contains('laredo')) return 3;
-      if (nombreLower.contains('seco') || nombreLower.contains('golfo')) return 4;
+      if (nombreLower.contains('seco') || nombreLower.contains('golfo'))
+        return 4;
     }
     if (estadoLower.contains('puebla')) return 5;
     if (estadoLower.contains('durango')) return 6;
-    if (estadoLower.contains('yucatán') || estadoLower.contains('yucatan')) return 7;
+    if (estadoLower.contains('yucatán') || estadoLower.contains('yucatan'))
+      return 7;
     if (estadoLower.contains('coahuila')) {
-      if (nombreLower.contains('ahmsa') || nombreLower.contains('norte')) return 8;
+      if (nombreLower.contains('ahmsa') || nombreLower.contains('norte'))
+        return 8;
       if (nombreLower.contains('piedras')) return 9;
     }
-    if (estadoLower.contains('nuevo león') || estadoLower.contains('nuevo leon')) return 10;
+    if (estadoLower.contains('nuevo león') ||
+        estadoLower.contains('nuevo leon'))
+      return 10;
     if (estadoLower.contains('chihuahua')) return 11;
     if (estadoLower.contains('guanajuato')) return 12;
-    if (estadoLower.contains('méxico') && !estadoLower.contains('ciudad')) return 13;
-    if (estadoLower.contains('ciudad') || estadoLower.contains('cdmx')) return 14;
+    if (estadoLower.contains('méxico') && !estadoLower.contains('ciudad'))
+      return 13;
+    if (estadoLower.contains('ciudad') || estadoLower.contains('cdmx'))
+      return 14;
     if (estadoLower.contains('oaxaca')) return 15;
     if (estadoLower.contains('veracruz')) return 16;
     if (estadoLower.contains('tabasco')) return 17;
     if (estadoLower.contains('campeche')) return 18;
-    
+
     return null;
   }
 }
@@ -189,7 +199,9 @@ class EncuestaService {
   // Cliente de Supabase (solo acceder si está inicializado)
   SupabaseClient get _supabase {
     if (!_isInitialized) {
-      throw Exception('Supabase no está inicializado. Configura lib/app_config.dart');
+      throw Exception(
+        'Supabase no está inicializado. Configura lib/app_config.dart',
+      );
     }
     return Supabase.instance.client;
   }
@@ -203,11 +215,8 @@ class EncuestaService {
     required String supabaseAnonKey,
   }) async {
     if (_isInitialized) return; // Ya inicializado
-    
-    await Supabase.initialize(
-      url: supabaseUrl,
-      anonKey: supabaseAnonKey,
-    );
+
+    await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
     _isInitialized = true;
     debugPrint('✅ Supabase inicializado correctamente');
   }
@@ -229,10 +238,12 @@ class EncuestaService {
       // Guardar localmente como fallback (en producción podrías usar SharedPreferences)
       debugPrint('📝 Encuesta (local):');
       debugPrint('   Polo: $poloNombre ($poloEstado) - ID: $poloId');
-      debugPrint('   Claridad: $pregunta1/10, Beneficios: $pregunta2/10, Mejoras: $pregunta3/10');
+      debugPrint(
+        '   Claridad: $pregunta1/10, Beneficios: $pregunta2/10, Mejoras: $pregunta3/10',
+      );
       return true; // Retorna true para que la UI muestre éxito
     }
-    
+
     try {
       final data = {
         'polo_id': poloId,
@@ -243,7 +254,7 @@ class EncuestaService {
       };
 
       await _supabase.from(_tableName).insert(data);
-      
+
       debugPrint('✅ Encuesta enviada a Supabase:');
       debugPrint('   Polo: $poloNombre ($poloEstado) - ID: $poloId');
       debugPrint('   Claridad: $pregunta1/10');
@@ -252,7 +263,7 @@ class EncuestaService {
       if (pregunta4 != null && pregunta4.isNotEmpty) {
         debugPrint('   Recomendación: $pregunta4');
       }
-      
+
       return true;
     } catch (e) {
       debugPrint('❌ Error al enviar encuesta a Supabase: $e');
@@ -263,14 +274,14 @@ class EncuestaService {
   /// Obtener todas las respuestas de un polo
   Future<List<EncuestaRespuesta>> getRespuestasPorPolo(int poloId) async {
     if (!_isInitialized) return [];
-    
+
     try {
       final response = await _supabase
           .from(_tableName)
           .select()
           .eq('polo_id', poloId)
           .order('created_at', ascending: false);
-      
+
       return (response as List)
           .map((json) => EncuestaRespuesta.fromJson(json))
           .toList();
@@ -283,14 +294,14 @@ class EncuestaService {
   /// Obtener los promedios de un polo desde la vista
   Future<PoloPromedios?> getPromediosPolo(int poloId) async {
     if (!_isInitialized) return null;
-    
+
     try {
       final response = await _supabase
           .from('vista_promedios_polos')
           .select()
           .eq('polo_id', poloId)
           .single();
-      
+
       return PoloPromedios.fromJson(response);
     } catch (e) {
       debugPrint('❌ Error al obtener promedios del polo: $e');
@@ -301,13 +312,13 @@ class EncuestaService {
   /// Obtener promedios de todos los polos
   Future<List<PoloPromedios>> getPromediosTodosPolos() async {
     if (!_isInitialized) return [];
-    
+
     try {
       final response = await _supabase
           .from('vista_promedios_polos')
           .select()
           .order('promedio_general', ascending: false);
-      
+
       return (response as List)
           .map((json) => PoloPromedios.fromJson(json))
           .toList();
@@ -326,13 +337,13 @@ class EncuestaService {
         'promedio_general': 0.0,
       };
     }
-    
+
     try {
       final response = await _supabase
           .from('vista_resumen_general')
           .select()
           .single();
-      
+
       return response;
     } catch (e) {
       debugPrint('❌ Error al obtener resumen general: $e');
@@ -347,7 +358,7 @@ class EncuestaService {
   /// Obtener las recomendaciones (pregunta 4) de un polo
   Future<List<String>> getRecomendacionesPolo(int poloId) async {
     if (!_isInitialized) return [];
-    
+
     try {
       final response = await _supabase
           .from(_tableName)
@@ -355,7 +366,7 @@ class EncuestaService {
           .eq('polo_id', poloId)
           .not('pregunta_4_recomendacion', 'is', null)
           .order('created_at', ascending: false);
-      
+
       return (response as List)
           .map((json) => json['pregunta_4_recomendacion'] as String)
           .where((text) => text.isNotEmpty)
@@ -369,14 +380,12 @@ class EncuestaService {
   /// Contar el total de respuestas
   Future<int> getTotalRespuestas() async {
     if (!_isInitialized) return 0;
-    
+
     try {
-      final response = await _supabase
-          .from(_tableName)
-          .select('id')
-          .count(CountOption.exact);
-      
-      return response.count;
+      final response = await _supabase.from(_tableName).select('id');
+
+      // response is a List, so we use its length
+      return (response as List).length;
     } catch (e) {
       debugPrint('❌ Error al contar respuestas: $e');
       return 0;
@@ -386,7 +395,7 @@ class EncuestaService {
   /// Verificar conexión con Supabase
   Future<bool> verificarConexion() async {
     if (!_isInitialized) return false;
-    
+
     try {
       await _supabase.from('polos').select('id').limit(1);
       debugPrint('✅ Conexión con Supabase verificada');

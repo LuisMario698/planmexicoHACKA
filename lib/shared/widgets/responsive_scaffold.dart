@@ -3,6 +3,7 @@ import 'package:video_player/video_player.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../web/widgets/web_sidebar.dart';
 import '../../mobile/widgets/mobile_bottom_nav.dart';
+import '../../service/tts_service.dart';
 import '../screens/home_screen.dart';
 import '../screens/polos_screen.dart';
 import '../screens/inversiones_screen.dart';
@@ -363,6 +364,10 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold>
             ),
             const SizedBox(height: 24),
 
+            // Opción de Voz
+            _buildVoiceOption(context, isDark),
+            const SizedBox(height: 12),
+
             // Opción de Tema
             Material(
               color: Colors.transparent,
@@ -506,6 +511,198 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold>
       ),
     );
   }
+
+  Widget _buildVoiceOption(BuildContext context, bool isDark) {
+    final ttsService = TtsService();
+    
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Navigator.pop(context);
+          _showVoiceSelector(context);
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withOpacity(0.05)
+                : Colors.black.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withOpacity(0.1)
+                  : Colors.black.withOpacity(0.08),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF691C32), Color(0xFF8B2346)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.record_voice_over,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Voz del Asistente',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    ListenableBuilder(
+                      listenable: ttsService,
+                      builder: (context, _) {
+                        return Text(
+                          ttsService.currentVoiceName,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark
+                                ? Colors.white.withOpacity(0.6)
+                                : Colors.black.withOpacity(0.5),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: isDark
+                    ? Colors.white.withOpacity(0.5)
+                    : Colors.black.withOpacity(0.3),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showVoiceSelector(BuildContext context) async {
+    final ttsService = TtsService();
+    final voices = await ttsService.getVoices();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    if (!context.mounted) return;
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E2029) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  const Icon(Icons.record_voice_over, color: Color(0xFF691C32)),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Seleccionar Voz',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: voices.isEmpty
+                  ? const Center(child: Text('No hay voces disponibles'))
+                  : ListView.builder(
+                      itemCount: voices.length,
+                      itemBuilder: (context, index) {
+                        final voice = voices[index];
+                        final isSelected = ttsService.currentVoiceName == voice['displayName'];
+                        final isMexican = voice['locale']!.contains('MX');
+                        
+                        return ListTile(
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: isMexican 
+                                  ? const Color(0xFF691C32).withOpacity(0.1)
+                                  : Colors.grey.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              isMexican ? Icons.flag : Icons.language,
+                              color: isMexican ? const Color(0xFF691C32) : Colors.grey,
+                            ),
+                          ),
+                          title: Text(
+                            voice['displayName'] ?? voice['name'] ?? 'Desconocido',
+                            style: TextStyle(
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected ? const Color(0xFF691C32) : null,
+                            ),
+                          ),
+                          subtitle: Text(
+                            isMexican ? '🇲🇽 México' : voice['locale'] ?? '',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          trailing: isSelected
+                              ? const Icon(Icons.check_circle, color: Color(0xFF691C32))
+                              : IconButton(
+                                  icon: const Icon(Icons.play_circle_outline),
+                                  onPressed: () {
+                                    ttsService.setVoice(voice['name']!, voice['locale']!);
+                                    ttsService.speak('Hola, esta es mi voz');
+                                  },
+                                ),
+                          onTap: () {
+                            ttsService.setVoice(voice['name']!, voice['locale']!);
+                            ttsService.speak('Hola, esta es mi voz');
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class NavItem {
@@ -537,7 +734,11 @@ class _AjoloteVideoFabState extends State<AjoloteVideoFab> {
             _initialized = true;
           });
           _controller.setLooping(false); // No loop, se detiene al final
-          _controller.play();
+          _controller.setVolume(0); // Silenciar para permitir autoplay en web
+          _controller.play().catchError((e) {
+            // Ignorar error de autoplay en navegadores
+            debugPrint('Video autoplay blocked: $e');
+          });
         }
       });
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../shared/widgets/responsive_scaffold.dart';
+import '../../service/tts_service.dart';
 
 class WebSidebar extends StatefulWidget {
   final List<NavItem> items;
@@ -82,6 +83,8 @@ class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateM
               _buildHeader(isDark),
               const SizedBox(height: 24),
               Expanded(child: _buildNavItems(isDark)),
+              _buildVoiceSelector(isDark),
+              const SizedBox(height: 8),
               _buildThemeToggle(isDark),
               const SizedBox(height: 8),
               _buildToggleButton(isDark),
@@ -220,6 +223,134 @@ class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateM
           ),
         );
       },
+    );
+  }
+
+  Widget _buildVoiceSelector(bool isDark) {
+    final ttsService = TtsService();
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () => _showVoiceDialog(context),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: EdgeInsets.symmetric(
+              horizontal: _isExpanded ? 12 : 0,
+              vertical: 10,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: _isExpanded
+                  ? MainAxisAlignment.start
+                  : MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.record_voice_over,
+                  color: AppTheme.accentColor,
+                  size: 20,
+                ),
+                if (_expandAnimation.value > 0.5) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Opacity(
+                      opacity: ((_expandAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
+                      child: ListenableBuilder(
+                        listenable: ttsService,
+                        builder: (context, _) {
+                          return Text(
+                            ttsService.currentVoiceName.length > 12 
+                                ? '${ttsService.currentVoiceName.substring(0, 12)}...'
+                                : ttsService.currentVoiceName,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withValues(alpha: 0.8),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showVoiceDialog(BuildContext context) async {
+    final ttsService = TtsService();
+    final voices = await ttsService.getVoices();
+    
+    if (!context.mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.record_voice_over, color: AppTheme.primaryColor),
+            SizedBox(width: 12),
+            Text('Seleccionar Voz'),
+          ],
+        ),
+        content: SizedBox(
+          width: 350,
+          height: 400,
+          child: voices.isEmpty
+              ? const Center(child: Text('No hay voces disponibles'))
+              : ListView.builder(
+                  itemCount: voices.length,
+                  itemBuilder: (context, index) {
+                    final voice = voices[index];
+                    final isSelected = ttsService.currentVoiceName == voice['displayName'];
+                    final isMexican = voice['locale']!.contains('MX');
+                    
+                    return ListTile(
+                      leading: Icon(
+                        isMexican ? Icons.flag : Icons.language,
+                        color: isMexican ? AppTheme.primaryColor : Colors.grey,
+                      ),
+                      title: Text(
+                        voice['displayName'] ?? voice['name'] ?? 'Desconocido',
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected ? AppTheme.primaryColor : null,
+                        ),
+                      ),
+                      subtitle: Text(
+                        isMexican ? '🇲🇽 México' : voice['locale'] ?? '',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: isSelected
+                          ? const Icon(Icons.check_circle, color: AppTheme.primaryColor)
+                          : null,
+                      onTap: () {
+                        ttsService.setVoice(voice['name']!, voice['locale']!);
+                        // Probar la voz
+                        ttsService.speak('Hola, esta es mi voz');
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
     );
   }
 

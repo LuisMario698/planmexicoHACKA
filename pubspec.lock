@@ -1009,10 +1009,10 @@ packages:
     dependency: "direct main"
     description:
       name: video_player_win
-      sha256: a4caca55ead1eb469d10060592e7ecdcbcd4493c6e2b63e4e666ff5446c790f1
+      sha256: e7b92ae1050086f9be3787eba1fbecbea278b59453cb3589263daa0c62772a88
       url: "https://pub.dev"
     source: hosted
-    version: "3.2.2"
+    version: "2.3.11"
   vm_service:
     dependency: transitive
     description:

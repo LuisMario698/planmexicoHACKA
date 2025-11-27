@@ -1,4 +1,4 @@
-﻿name: planmexico
+name: planmexico
 description: "A new Flutter project."
 publish_to: 'none'
 version: 0.1.0
@@ -22,11 +22,11 @@ dependencies:
   share_plus: ^10.1.4
   shared_preferences: ^2.5.3
   supabase_flutter: ^2.10.3
+  video_player: ^2.8.6
+  video_player_win: ^2.0.0
+  webview_flutter: ^4.7.0
   flutter_tts: ^4.2.3
-  video_player: ^2.10.1
-  video_player_win: ^3.2.2
   screenshot: ^3.0.0
-  webview_flutter: ^4.13.0
 
 dev_dependencies:
   flutter_test:
@@ -44,5 +44,5 @@ flutter:
     - assets/images/logo_aguila.png
     - assets/images/espera.gif
     - assets/images/Ajolote_cubo.gif
-    - assets/images/cubo_a.png
     - assets/images/cubo_si.mp4
+      
