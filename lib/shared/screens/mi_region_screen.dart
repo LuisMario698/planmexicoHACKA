@@ -826,38 +826,51 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                           borderColor: borderColor,
                           isDark: isDark,
                         ),
-                      const SizedBox(height: 24),
-                      // Botones de acción
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildModalActionButton(
-                              icon: Icons.explore,
-                              label: 'Explorar',
-                              color: guinda,
-                              onTap: () {
-                                Navigator.pop(context);
-                                _openPoloLocation(polo);
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildModalActionButton(
-                              icon: Icons.rate_review,
-                              label: 'Opinar',
-                              color: dorado,
-                              onTap: () {
-                                Navigator.pop(context);
-                                _showEncuestaDialog(polo);
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 20),
                     ],
                   ),
+                ),
+              ),
+              // Botones de acción FIJOS en la parte inferior
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  border: Border(top: BorderSide(color: borderColor)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildModalActionButton(
+                        icon: Icons.explore,
+                        label: 'Explorar',
+                        color: guinda,
+                        onTap: () {
+                          Navigator.pop(context);
+                          _openPoloLocation(polo);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildModalActionButton(
+                        icon: Icons.rate_review,
+                        label: 'Opinar',
+                        color: dorado,
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showEncuestaDialog(polo);
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
