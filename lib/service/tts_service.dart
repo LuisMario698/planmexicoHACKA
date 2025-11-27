@@ -60,7 +60,7 @@ class TtsService extends ChangeNotifier {
   Future<void> _initTts() async {
     _flutterTts = FlutterTts();
 
-    // Configuración para flutter_tts (móviles))
+    // Configuración para flutter_tts (fallback si ElevenLabs falla)
     await _flutterTts.setLanguage("es-MX");
     await _flutterTts.setVolume(0.9);
     await _flutterTts.setSpeechRate(0.5);
@@ -69,10 +69,8 @@ class TtsService extends ChangeNotifier {
     // Cargar voces disponibles
     await _loadAvailableVoices();
     
-    // Seleccionar la mejor voz disponible
-    if (!kIsWeb) {
-      await _selectBestVoice();
-    }
+    // Ya no seleccionamos voz del sistema automáticamente
+    // Por defecto usamos ElevenLabs con Jaider en todas las plataformas
 
     // Configurar AudioPlayer para ElevenLabs
     _audioPlayer.onPlayerComplete.listen((_) {
