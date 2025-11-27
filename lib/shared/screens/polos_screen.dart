@@ -2979,8 +2979,8 @@ class _PolosScreenState extends State<PolosScreen>
   void _handleExplorarPolo(PoloInfo polo) {
     // URLs de experiencias 3D por polo
     const Map<String, String> poloWebViews = {
-      'cdmx_poligono': 'https://aifa-zfgbfa1lsvxu-zxmejh.needle.run/',
-      'edomex_aifa': 'https://aifa-zfgbfa1lsvxu-zxmejh.needle.run/',
+      'cdmx_poligono': 'https://aifa-zfgbfa1lsvxu-1hjgqs.needle.run/',
+      'edomex_aifa': 'https://aifa-zfgbfa1lsvxu-1hjgqs.needle.run/',
     };
 
     // Verificar si el polo tiene una experiencia 3D

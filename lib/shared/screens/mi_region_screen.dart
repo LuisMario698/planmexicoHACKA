@@ -2,7 +2,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../data/polos_data.dart';
 import 'encuesta_polo_screen.dart';
+import 'registro_screen.dart';
 import '../../service/encuesta_service.dart';
+import '../../service/user_session_service.dart';
 
 // Colores institucionales
 const Color guinda = Color(0xFF691C32);
@@ -17,10 +19,30 @@ class MiRegionScreen extends StatefulWidget {
 }
 
 class _MiRegionScreenState extends State<MiRegionScreen> {
-  // Datos del usuario (simulados - después vendrán de SharedPreferences)
-  String _municipioUsuario = 'Puerto Peñasco';
-  String _estadoUsuario = 'Sonora';
-  String _descripcionMunicipio = 'Destino turístico del noroeste mexicano, conocido por sus playas y desarrollo industrial sostenible.';
+  // Servicio de sesión de usuario
+  final UserSessionService _sessionService = UserSessionService();
+
+  // Getters que obtienen datos del usuario logueado o valores por defecto
+  String get _municipioUsuario => _sessionService.currentUser?.ciudad ?? 'Sin ubicación';
+  String get _estadoUsuario => _sessionService.currentUser?.estado ?? '';
+  String get _descripcionMunicipio => _getDescripcionMunicipio();
+  bool get _isLoggedIn => _sessionService.isLoggedIn;
+
+  String _getDescripcionMunicipio() {
+    if (!_isLoggedIn) return 'Regístrate para ver información personalizada de tu región.';
+    // Descripciones por municipio/ciudad
+    final descripciones = {
+      'Puerto Peñasco': 'Destino turístico del noroeste mexicano, conocido por sus playas y desarrollo industrial sostenible.',
+      'Hermosillo': 'Capital de Sonora, centro industrial y de servicios del noroeste de México.',
+      'Monterrey': 'Centro industrial y financiero del norte de México, conocida como la Sultana del Norte.',
+      'Guadalajara': 'Capital de Jalisco, centro tecnológico y cultural del occidente de México.',
+      'Ciudad de México': 'Capital del país, centro político, económico y cultural de México.',
+      'Mérida': 'Capital de Yucatán, ciudad histórica y puerta de entrada a la cultura maya.',
+      'Tijuana': 'Ciudad fronteriza con gran actividad industrial y comercial.',
+      'Cancún': 'Principal destino turístico del Caribe mexicano.',
+    };
+    return descripciones[_municipioUsuario] ?? 'Explora las oportunidades de desarrollo en tu región.';
+  }
 
   // Helper para detectar si es pantalla ancha (web/desktop)
   bool _isWideScreen(BuildContext context) {
@@ -46,10 +68,17 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     // Seleccionar pregunta aleatoria
     final random = Random();
     _preguntaActual = _preguntasDelDia[random.nextInt(_preguntasDelDia.length)];
+    // Escuchar cambios en la sesión del usuario
+    _sessionService.addListener(_onSessionChanged);
+  }
+
+  void _onSessionChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _sessionService.removeListener(_onSessionChanged);
     _respuestaController.dispose();
     super.dispose();
   }
@@ -251,6 +280,11 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
   }
 
   Widget _buildHeroContentMobile() {
+    // Si no está logueado, mostrar hero de bienvenida con botón registrarse
+    if (!_isLoggedIn) {
+      return _buildWelcomeHeroMobile();
+    }
+    
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       child: Column(
@@ -288,48 +322,33 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                         height: 1.1,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: dorado.withAlpha(60),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: dorado.withAlpha(80)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.flag_rounded, color: dorado, size: 16),
-                          const SizedBox(width: 6),
-                          Text(
-                            _estadoUsuario,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: dorado,
-                              fontWeight: FontWeight.w600,
+                    if (_estadoUsuario.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: dorado.withAlpha(60),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: dorado.withAlpha(80)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.flag_rounded, color: dorado, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              _estadoUsuario,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: dorado,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ],
-                ),
-              ),
-              // Botón cambiar ubicación
-              Material(
-                color: Colors.white.withAlpha(20),
-                borderRadius: BorderRadius.circular(16),
-                child: InkWell(
-                  onTap: () => _mostrarSelectorUbicacion(context),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withAlpha(30)),
-                    ),
-                    child: const Icon(Icons.edit_location_alt_rounded, color: Colors.white, size: 24),
-                  ),
                 ),
               ),
             ],
@@ -374,6 +393,11 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
   }
 
   Widget _buildHeroContentWide() {
+    // Si no está logueado, mostrar hero de bienvenida con botón registrarse
+    if (!_isLoggedIn) {
+      return _buildWelcomeHeroWide();
+    }
+    
     return Container(
       constraints: const BoxConstraints(maxWidth: 1200),
       margin: const EdgeInsets.symmetric(horizontal: 32),
@@ -451,31 +475,80 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 32),
-          // Botón cambiar ubicación (más visible en web)
+        ],
+      ),
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // HERO DE BIENVENIDA (Usuario no registrado)
+  // ════════════════════════════════════════════════════════════════════════════
+  
+  Widget _buildWelcomeHeroMobile() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+      child: Column(
+        children: [
+          // Icono de bienvenida
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withAlpha(40),
+                  Colors.white.withAlpha(15),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withAlpha(30)),
+            ),
+            child: const Icon(Icons.waving_hand_rounded, color: dorado, size: 48),
+          ),
+          const SizedBox(height: 20),
+          // Título de bienvenida
+          const Text(
+            '¡Bienvenido a Plan México!',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: -0.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          // Descripción
+          Text(
+            'Regístrate para ver información personalizada sobre empleos, cursos y proyectos en tu región.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white.withAlpha(200),
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          // Botón de registro
           Material(
-            color: Colors.white.withAlpha(20),
-            borderRadius: BorderRadius.circular(18),
+            color: dorado,
+            borderRadius: BorderRadius.circular(16),
             child: InkWell(
-              onTap: () => _mostrarSelectorUbicacion(context),
-              borderRadius: BorderRadius.circular(18),
+              onTap: _navegarARegistro,
+              borderRadius: BorderRadius.circular(16),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: Colors.white.withAlpha(30)),
-                ),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 child: const Row(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.edit_location_alt_rounded, color: Colors.white, size: 22),
+                    Icon(Icons.person_add_rounded, color: Colors.white, size: 22),
                     SizedBox(width: 10),
                     Text(
-                      'Cambiar ubicación',
+                      'Registrarse',
                       style: TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
                       ),
                     ),
                   ],
@@ -484,6 +557,97 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildWelcomeHeroWide() {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 1200),
+      margin: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.symmetric(vertical: 48),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Icono de bienvenida
+          Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withAlpha(40),
+                  Colors.white.withAlpha(15),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: Colors.white.withAlpha(30)),
+            ),
+            child: const Icon(Icons.waving_hand_rounded, color: dorado, size: 56),
+          ),
+          const SizedBox(width: 40),
+          // Contenido
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '¡Bienvenido a Plan México!',
+                  style: TextStyle(
+                    fontSize: 38,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: -1,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Regístrate para ver información personalizada sobre empleos, cursos y proyectos de desarrollo en tu región.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white.withAlpha(200),
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 40),
+          // Botón de registro
+          Material(
+            color: dorado,
+            borderRadius: BorderRadius.circular(18),
+            child: InkWell(
+              onTap: _navegarARegistro,
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.person_add_rounded, color: Colors.white, size: 24),
+                    SizedBox(width: 12),
+                    Text(
+                      'Registrarse',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navegarARegistro() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const RegistroScreen(),
       ),
     );
   }
@@ -1760,72 +1924,6 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     'Yucatán': ['Mérida', 'Valladolid', 'Tizimín', 'Progreso', 'Kanasín'],
     'Zacatecas': ['Zacatecas', 'Fresnillo', 'Guadalupe', 'Jerez', 'Río Grande'],
   };
-
-  void _mostrarSelectorUbicacion(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF2A2A2A) : Colors.white;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final subtextColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
-    final screenSize = MediaQuery.of(context).size;
-    final isWide = screenSize.width > 800;
-
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Cerrar',
-      barrierColor: Colors.black.withAlpha(150),
-      transitionDuration: const Duration(milliseconds: 300),
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(
-          opacity: animation,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.9, end: 1.0).animate(
-              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-            ),
-            child: child,
-          ),
-        );
-      },
-      pageBuilder: (context, animation, secondaryAnimation) {
-        return _SelectorUbicacionDialog(
-          isDark: isDark,
-          cardColor: cardColor,
-          textColor: textColor,
-          subtextColor: subtextColor,
-          isWide: isWide,
-          screenSize: screenSize,
-          estadoActual: _estadoUsuario,
-          municipioActual: _municipioUsuario,
-          municipiosPorEstado: _municipiosPorEstado,
-          onUbicacionSeleccionada: (estado, municipio) {
-            setState(() {
-              _estadoUsuario = estado;
-              _municipioUsuario = municipio;
-              // Actualizar descripción según el municipio
-              _descripcionMunicipio = _getDescripcionMunicipio(municipio, estado);
-            });
-          },
-        );
-      },
-    );
-  }
-
-  String _getDescripcionMunicipio(String municipio, String estado) {
-    // Descripciones personalizadas para algunos municipios importantes
-    final descripciones = {
-      'Puerto Peñasco': 'Destino turístico del noroeste mexicano, conocido por sus playas y desarrollo industrial sostenible.',
-      'Monterrey': 'Centro industrial y financiero del norte de México, con gran actividad económica.',
-      'Guadalajara': 'Capital tecnológica de México, centro cultural e industrial del occidente.',
-      'Cancún': 'Principal destino turístico internacional de México en el Caribe.',
-      'Tijuana': 'Ciudad fronteriza con gran actividad maquiladora y comercial.',
-      'Querétaro': 'Polo de desarrollo industrial y aeroespacial en el Bajío.',
-      'León': 'Capital del calzado y la manufactura de cuero en México.',
-      'Puebla': 'Centro industrial automotriz y ciudad histórica.',
-      'Mérida': 'Ciudad blanca, centro cultural y económico del sureste.',
-    };
-    return descripciones[municipio] ?? 'Municipio de $estado con oportunidades de desarrollo en la región.';
-  }
 
   void _mostrarDetallePolo(BuildContext context, PoloMarker polo) {
     final theme = Theme.of(context);
