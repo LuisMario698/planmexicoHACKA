@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../service/tts_service.dart';
 
-class InversionesTutorialOverlay extends StatelessWidget {
+class InversionesTutorialOverlay extends StatefulWidget {
   final Rect targetRect; // Coordenadas de la tarjeta a resaltar
   final VoidCallback onTargetTap; // Qué pasa cuando tocan la tarjeta
   final VoidCallback onSkip; // Botón saltar
@@ -13,10 +14,35 @@ class InversionesTutorialOverlay extends StatelessWidget {
   });
 
   @override
+  State<InversionesTutorialOverlay> createState() =>
+      _InversionesTutorialOverlayState();
+}
+
+class _InversionesTutorialOverlayState
+    extends State<InversionesTutorialOverlay> {
+  @override
+  void initState() {
+    super.initState();
+    _speak();
+  }
+
+  @override
+  void dispose() {
+    TtsService().stop();
+    super.dispose();
+  }
+
+  void _speak() {
+    TtsService().speak(
+      "¡Mira estas Oportunidades! Toca esta tarjeta para ver los detalles del proyecto. ¡Es el primer paso para invertir!",
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     // Calculamos si hay espacio arriba o abajo para poner a TecJolotito
     final screenHeight = MediaQuery.of(context).size.height;
-    final spaceBelow = screenHeight - targetRect.bottom;
+    final spaceBelow = screenHeight - widget.targetRect.bottom;
     final showBelow =
         spaceBelow > 300; // Preferimos mostrar abajo si hay espacio
 
@@ -24,7 +50,9 @@ class InversionesTutorialOverlay extends StatelessWidget {
       children: [
         // 1. El Pintor que oscurece todo MENOS el rectángulo objetivo
         Positioned.fill(
-          child: CustomPaint(painter: _HolePainter(targetRect: targetRect)),
+          child: CustomPaint(
+            painter: _HolePainter(targetRect: widget.targetRect),
+          ),
         ),
 
         // 2. Detector de toques "Falso" (Bloquea todo excepto el hueco)
@@ -37,9 +65,9 @@ class InversionesTutorialOverlay extends StatelessWidget {
               children: [
                 // Área interactiva transparente sobre la tarjeta
                 Positioned.fromRect(
-                  rect: targetRect,
+                  rect: widget.targetRect,
                   child: GestureDetector(
-                    onTap: onTargetTap,
+                    onTap: widget.onTargetTap,
                     child: Container(color: Colors.transparent),
                   ),
                 ),
@@ -50,8 +78,10 @@ class InversionesTutorialOverlay extends StatelessWidget {
 
         // 3. TecJolotito y Texto
         Positioned(
-          top: showBelow ? targetRect.bottom + 20 : null,
-          bottom: showBelow ? null : (screenHeight - targetRect.top) + 20,
+          top: showBelow ? widget.targetRect.bottom + 20 : null,
+          bottom: showBelow
+              ? null
+              : (screenHeight - widget.targetRect.top) + 20,
           left: 20,
           right: 20,
           child: Column(
@@ -85,7 +115,7 @@ class InversionesTutorialOverlay extends StatelessWidget {
           right: 20,
           child: SafeArea(
             child: TextButton(
-              onPressed: onSkip,
+              onPressed: widget.onSkip,
               child: const Text(
                 "Omitir",
                 style: TextStyle(

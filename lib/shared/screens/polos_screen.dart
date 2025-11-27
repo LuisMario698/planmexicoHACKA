@@ -1730,10 +1730,11 @@ class _PolosScreenState extends State<PolosScreen>
               ),
             ),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                Container(
                   key: _explorarButtonKey,
                   child: _buildActionButton(
                     icon: Icons.explore_rounded,
@@ -1742,19 +1743,15 @@ class _PolosScreenState extends State<PolosScreen>
                     onTap: () => _handleExplorarPolo(polo),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildActionButton(
+                const SizedBox(width: 8),
+                _buildActionButton(
                   icon: Icons.share_rounded,
                   label: 'Compartir',
                   color: const Color(0xFFBC955C),
                   onTap: () => _sharePolo(polo, poloData),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Container(
+                const SizedBox(width: 8),
+                Container(
                   key: _opinarButtonKey,
                   child: _buildActionButton(
                     icon: Icons.rate_review_rounded,
@@ -1763,8 +1760,8 @@ class _PolosScreenState extends State<PolosScreen>
                     onTap: () => _showFeedbackDialog(),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -1911,10 +1908,11 @@ class _PolosScreenState extends State<PolosScreen>
               ),
             ),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                Container(
                   key: _explorarButtonKey,
                   child: _buildActionButton(
                     icon: Icons.explore_rounded,
@@ -1923,19 +1921,15 @@ class _PolosScreenState extends State<PolosScreen>
                     onTap: () => _handleExplorarPolo(polo),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildActionButton(
+                const SizedBox(width: 8),
+                _buildActionButton(
                   icon: Icons.share_rounded,
                   label: 'Compartir',
                   color: const Color(0xFFBC955C),
                   onTap: () => _sharePolo(polo, poloData),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Container(
+                const SizedBox(width: 8),
+                Container(
                   key: _opinarButtonKey,
                   child: _buildActionButton(
                     icon: Icons.rate_review_rounded,
@@ -1944,8 +1938,8 @@ class _PolosScreenState extends State<PolosScreen>
                     onTap: () => _showFeedbackDialog(),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -1964,49 +1958,53 @@ class _PolosScreenState extends State<PolosScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Header con Tipo, Región y botón Saber más
-        Row(
-          children: [
-            _buildTypeBadge(poloData?.tipo ?? polo.tipo, poloData?.color),
-            const SizedBox(width: 8),
-            if (poloData?.region.isNotEmpty ?? false)
-              _buildRegionBadge(poloData!.region, isDark),
-            const Spacer(),
-            // Botón Saber más pequeño a la derecha
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _showDetailedInfo = true;
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFBC955C), Color(0xFFD4AF37)],
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildTypeBadge(poloData?.tipo ?? polo.tipo, poloData?.color),
+              const SizedBox(width: 8),
+              if (poloData?.region.isNotEmpty ?? false) ...[
+                _buildRegionBadge(poloData!.region, isDark),
+                const SizedBox(width: 8),
+              ],
+              // Botón Saber más pequeño a la derecha
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _showDetailedInfo = true;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFBC955C).withValues(alpha: 0.3),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFBC955C), Color(0xFFD4AF37)],
                     ),
-                  ],
-                ),
-                child: const Text(
-                  'Saber más',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFBC955C).withValues(alpha: 0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Text(
+                    'Saber más',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 16),
 
@@ -2705,7 +2703,7 @@ class _PolosScreenState extends State<PolosScreen>
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [color, color.withValues(alpha: 0.85)],

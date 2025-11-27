@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../service/tts_service.dart';
 
 // Tutorial de múltiples pasos para cuando seleccionas un polo
 // step 1: Información general del polo
@@ -6,7 +7,7 @@ import 'package:flutter/material.dart';
 // step 3: Botón Explorar (ubicación)
 // step 4: Botón Opinar (feedback)
 
-class PoloTutorialOverlay extends StatelessWidget {
+class PoloTutorialOverlay extends StatefulWidget {
   final int step; // 1: Info general, 2: Sectores, 3: Explorar, 4: Opinar
   final Rect? targetRect; // Puede ser null si es tutorial general
   final VoidCallback onNext;
@@ -23,25 +24,57 @@ class PoloTutorialOverlay extends StatelessWidget {
   });
 
   @override
+  State<PoloTutorialOverlay> createState() => _PoloTutorialOverlayState();
+}
+
+class _PoloTutorialOverlayState extends State<PoloTutorialOverlay> {
+  @override
+  void initState() {
+    super.initState();
+    _speak();
+  }
+
+  @override
+  void didUpdateWidget(covariant PoloTutorialOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.step != widget.step) {
+      _speak();
+    }
+  }
+
+  @override
+  void dispose() {
+    TtsService().stop();
+    super.dispose();
+  }
+
+  void _speak() {
+    String message = '${_getTitle()}. ${_getDescription()}';
+    TtsService().speak(message);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
 
     // Si no hay targetRect, mostrar tutorial general (paso 1)
-    if (targetRect == null || step == 1) {
+    if (widget.targetRect == null || widget.step == 1) {
       return _buildGeneralTutorial(context);
     }
 
     // Para otros pasos, mostrar el overlay con el target resaltado
     // Forzar mostrar arriba para el paso 2 (sectores) para evitar tapar el botón siguiente
-    final bool showAbove = step == 2
+    final bool showAbove = widget.step == 2
         ? true
-        : (screenHeight - targetRect!.bottom) < 250;
+        : (screenHeight - widget.targetRect!.bottom) < 250;
 
     return Stack(
       children: [
         // 1. Pintor que oscurece todo MENOS el rectángulo del target
         Positioned.fill(
-          child: CustomPaint(painter: _HolePainter(targetRect: targetRect!)),
+          child: CustomPaint(
+            painter: _HolePainter(targetRect: widget.targetRect!),
+          ),
         ),
 
         // 2. Detector de toques "Bloqueante"
@@ -53,9 +86,9 @@ class PoloTutorialOverlay extends StatelessWidget {
               children: [
                 // Área interactiva transparente sobre el target
                 Positioned.fromRect(
-                  rect: targetRect!,
+                  rect: widget.targetRect!,
                   child: GestureDetector(
-                    onTap: onTargetTap ?? () {},
+                    onTap: widget.onTargetTap ?? () {},
                     child: Container(color: Colors.transparent),
                   ),
                 ),
@@ -66,8 +99,10 @@ class PoloTutorialOverlay extends StatelessWidget {
 
         // 3. TecJolotito y Mensaje
         Positioned(
-          top: showAbove ? null : (targetRect!.bottom + 20),
-          bottom: showAbove ? (screenHeight - targetRect!.top + 20) : null,
+          top: showAbove ? null : (widget.targetRect!.bottom + 20),
+          bottom: showAbove
+              ? (screenHeight - widget.targetRect!.top + 20)
+              : null,
           left: 20,
           right: 20,
           child: Column(
@@ -101,7 +136,7 @@ class PoloTutorialOverlay extends StatelessWidget {
           right: 20,
           child: SafeArea(
             child: TextButton(
-              onPressed: onSkip,
+              onPressed: widget.onSkip,
               child: const Text(
                 "Omitir",
                 style: TextStyle(
@@ -154,7 +189,7 @@ class PoloTutorialOverlay extends StatelessWidget {
           right: 20,
           child: SafeArea(
             child: TextButton(
-              onPressed: onSkip,
+              onPressed: widget.onSkip,
               child: const Text(
                 "Omitir",
                 style: TextStyle(
@@ -221,7 +256,7 @@ class PoloTutorialOverlay extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: onNext,
+              onPressed: widget.onNext,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF691C32),
                 shape: RoundedRectangleBorder(
@@ -230,7 +265,7 @@ class PoloTutorialOverlay extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 10),
               ),
               child: Text(
-                step == 4 ? '¡Perfecto!' : 'Siguiente',
+                widget.step == 4 ? '¡Perfecto!' : 'Siguiente',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -249,7 +284,7 @@ class PoloTutorialOverlay extends StatelessWidget {
       child: Container(
         height: 4,
         decoration: BoxDecoration(
-          color: step >= stepNumber
+          color: widget.step >= stepNumber
               ? const Color(0xFF691C32)
               : const Color(0xFFE5E7EB),
           borderRadius: BorderRadius.circular(2),
@@ -259,7 +294,7 @@ class PoloTutorialOverlay extends StatelessWidget {
   }
 
   String _getTitle() {
-    switch (step) {
+    switch (widget.step) {
       case 1:
         return '¡Información del Polo!';
       case 2:
@@ -274,7 +309,7 @@ class PoloTutorialOverlay extends StatelessWidget {
   }
 
   String _getDescription() {
-    switch (step) {
+    switch (widget.step) {
       case 1:
         return 'Has seleccionado un polo de desarrollo. Aquí verás toda su información: nombre, estado, tipo de proyecto y descripción. ¡Desplázate para explorar más!';
       case 2:

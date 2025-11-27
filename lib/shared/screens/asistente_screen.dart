@@ -201,132 +201,151 @@ class _AsistenteScreenState extends State<AsistenteScreen> {
         return Scaffold(
           backgroundColor: backgroundColor,
           resizeToAvoidBottomInset: true,
-          body: Column(
+          body: Stack(
             children: [
-              // --- HEADER SUPERIOR (FIJO) ---
-              SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    children: [
-                      const Spacer(),
-                      Text(
-                        "Asistente IA",
-                        style: TextStyle(
-                          color: subTextColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const Spacer(),
-                    ],
-                  ),
-                ),
-              ),
-
-              // --- BANNER + MICRÓFONO (FIJO - NO SCROLL) ---
-              // Al estar fuera del ListView, esto siempre se quedará arriba
-              SizedBox(
-                height: bannerHeight + 40,
-                child: Stack(
-                  alignment: Alignment.topCenter,
-                  clipBehavior: Clip.none,
+              Positioned.fill(
+                child: Column(
                   children: [
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 20),
-                      height: bannerHeight,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(30),
-                        image: const DecorationImage(
-                          image: AssetImage('assets/images/Fondo.png'),
-                          fit: BoxFit.cover,
+                    // --- HEADER SUPERIOR (FIJO) ---
+                    SafeArea(
+                      bottom: false,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(isDark ? 0.3 : 0.2),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 30),
-                          child: Image.asset(
-                            'assets/images/ajolotito.png',
-                            height: ajoloteSize,
-                            fit: BoxFit.contain,
-                          ),
+                        child: Row(
+                          children: [
+                            const Spacer(),
+                            Text(
+                              "Asistente IA",
+                              style: TextStyle(
+                                color: subTextColor,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const Spacer(),
+                          ],
                         ),
                       ),
                     ),
 
-                    Positioned(
-                      top: bannerHeight - 35,
-                      child: _buildMicButton(isDark),
+                    // --- BANNER + MICRÓFONO (FIJO - NO SCROLL) ---
+                    // Al estar fuera del ListView, esto siempre se quedará arriba
+                    SizedBox(
+                      height: bannerHeight + 40,
+                      child: Stack(
+                        alignment: Alignment.topCenter,
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 20),
+                            height: bannerHeight,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(30),
+                              image: const DecorationImage(
+                                image: AssetImage('assets/images/Fondo.png'),
+                                fit: BoxFit.cover,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(
+                                    isDark ? 0.3 : 0.2,
+                                  ),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 10),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 30),
+                                child: Image.asset(
+                                  'assets/images/ajolotito.png',
+                                  height: ajoloteSize,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          Positioned(
+                            top: bannerHeight - 35,
+                            child: _buildMicButton(isDark),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // --- ZONA DE CHAT (SCROLLABLE) ---
+                    // Usamos Expanded + ListView.builder para eficiencia y manejo de listas
+                    Expanded(
+                      child: _messages.isEmpty && !loading
+                          // Mensaje de Bienvenida si está vacío
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(40.0),
+                                child: Text(
+                                  "Hola, soy tu asistente inteligente.\nMantén presionado el micrófono para preguntar.",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: subTextColor,
+                                    fontSize: 15,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+                            )
+                          // Lista de mensajes si hay datos
+                          : ListView.builder(
+                              controller: _scrollController,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 10,
+                              ),
+                              itemCount:
+                                  _messages.length +
+                                  (loading
+                                      ? 1
+                                      : 0), // +1 para el loader si es necesario
+                              itemBuilder: (context, index) {
+                                // Si estamos cargando y es el último elemento, mostrar spinner
+                                if (loading && index == _messages.length) {
+                                  return Padding(
+                                    padding: const EdgeInsets.all(20.0),
+                                    child: Center(
+                                      child: Image.asset(
+                                        'assets/images/espera.gif',
+                                        height: 100,
+                                      ),
+                                    ),
+                                  );
+                                }
+
+                                final msg = _messages[index];
+                                return _buildChatBubble(
+                                  msg['text'],
+                                  isUser: msg['isUser'],
+                                  botBgColor: botBubbleColorDynamic,
+                                  textColor: textColor,
+                                );
+                              },
+                            ),
                     ),
                   ],
                 ),
               ),
-
-              // --- ZONA DE CHAT (SCROLLABLE) ---
-              // Usamos Expanded + ListView.builder para eficiencia y manejo de listas
-              Expanded(
-                child: _messages.isEmpty && !loading
-                    // Mensaje de Bienvenida si está vacío
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(40.0),
-                          child: Text(
-                            "Hola, soy tu asistente inteligente.\nMantén presionado el micrófono para preguntar.",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: subTextColor,
-                              fontSize: 15,
-                              height: 1.5,
-                            ),
-                          ),
-                        ),
-                      )
-                    // Lista de mensajes si hay datos
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
-                        ),
-                        itemCount:
-                            _messages.length +
-                            (loading
-                                ? 1
-                                : 0), // +1 para el loader si es necesario
-                        itemBuilder: (context, index) {
-                          // Si estamos cargando y es el último elemento, mostrar spinner
-                          if (loading && index == _messages.length) {
-                            return Padding(
-                              padding: const EdgeInsets.all(20.0),
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  color: isDark ? Colors.white : primaryColor,
-                                ),
-                              ),
-                            );
-                          }
-
-                          final msg = _messages[index];
-                          return _buildChatBubble(
-                            msg['text'],
-                            isUser: msg['isUser'],
-                            botBgColor: botBubbleColorDynamic,
-                            textColor: textColor,
-                          );
-                        },
-                      ),
+              Positioned(
+                bottom: 20,
+                right: 20,
+                child: IgnorePointer(
+                  child: Image.asset(
+                    'assets/images/Ajolote_cubo.gif',
+                    height: 80,
+                  ),
+                ),
               ),
             ],
           ),

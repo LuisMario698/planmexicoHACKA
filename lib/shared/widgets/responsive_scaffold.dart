@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../web/widgets/web_sidebar.dart';
 import '../../mobile/widgets/mobile_bottom_nav.dart';
@@ -130,31 +131,9 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold>
 
   // --- 1. WIDGET DEL BOTÓN (AJOLOTE) ---
   Widget _buildAjoloteFab(BuildContext context) {
-    return GestureDetector(
+    return AjoloteVideoFab(
+      key: ValueKey(_selectedIndex), // Reinicia al cambiar de pestaña
       onTap: () => _openChatModal(context),
-      child: Container(
-        width: 65,
-        height: 65,
-        decoration: BoxDecoration(
-          color: const Color(0xFF9D2449),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-          border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Image.asset(
-            'assets/images/ajolotito.png',
-            fit: BoxFit.contain,
-          ),
-        ),
-      ),
     );
   }
 
@@ -230,8 +209,13 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold>
                 Expanded(child: _buildContent(context)),
               ],
             ),
-            // Botón flotante Ajolote (Escritorio)
-            Positioned(bottom: 30, right: 30, child: _buildAjoloteFab(context)),
+            // Botón flotante Ajolote (Escritorio) - Oculto en Asistente (index 0)
+            if (_selectedIndex != 0)
+              Positioned(
+                bottom: 30,
+                right: 30,
+                child: _buildAjoloteFab(context),
+              ),
           ],
         ),
       );
@@ -271,7 +255,13 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold>
           ),
 
           // Botón flotante Ajolote (Móvil) - encima del nav
-          Positioned(bottom: 100, right: 16, child: _buildAjoloteFab(context)),
+          // Oculto en Asistente (index 0)
+          if (_selectedIndex != 0)
+            Positioned(
+              bottom: 100,
+              right: 16,
+              child: _buildAjoloteFab(context),
+            ),
         ],
       ),
     );
@@ -523,4 +513,74 @@ class NavItem {
   final String label;
 
   const NavItem({required this.icon, required this.label});
+}
+
+class AjoloteVideoFab extends StatefulWidget {
+  final VoidCallback onTap;
+  const AjoloteVideoFab({super.key, required this.onTap});
+
+  @override
+  State<AjoloteVideoFab> createState() => _AjoloteVideoFabState();
+}
+
+class _AjoloteVideoFabState extends State<AjoloteVideoFab> {
+  late VideoPlayerController _controller;
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.asset('assets/images/cubo_si.mp4')
+      ..initialize().then((_) {
+        if (mounted) {
+          setState(() {
+            _initialized = true;
+          });
+          _controller.setLooping(false); // No loop, se detiene al final
+          _controller.play();
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Container(
+        width: 70,
+        height: 70,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: _initialized
+            ? ClipOval(
+                child: FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: _controller.value.size.width,
+                    height: _controller.value.size.height,
+                    child: VideoPlayer(_controller),
+                  ),
+                ),
+              )
+            : const SizedBox(
+                width: 70,
+                height: 70,
+              ), // Placeholder transparente mientras carga
+      ),
+    );
+  }
 }

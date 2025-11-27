@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../service/tts_service.dart';
 
-class StateTutorialOverlay extends StatelessWidget {
+class StateTutorialOverlay extends StatefulWidget {
   final Rect targetRect; // Coordenadas del panel de información del estado
   final VoidCallback onTargetTap; // Acción al tocar el panel
   final VoidCallback onSkip; // Botón omitir
@@ -13,18 +14,43 @@ class StateTutorialOverlay extends StatelessWidget {
   });
 
   @override
+  State<StateTutorialOverlay> createState() => _StateTutorialOverlayState();
+}
+
+class _StateTutorialOverlayState extends State<StateTutorialOverlay> {
+  @override
+  void initState() {
+    super.initState();
+    _speak();
+  }
+
+  @override
+  void dispose() {
+    TtsService().stop();
+    super.dispose();
+  }
+
+  void _speak() {
+    TtsService().speak(
+      "¡Conoce más del Estado! Aquí encontrarás información detallada sobre los polos de desarrollo, sectores estratégicos y proyectos federales. Toca para explorar.",
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     // Calculamos espacio para poner a TecJolotito
     final screenHeight = MediaQuery.of(context).size.height;
 
     // Si el panel está en la parte inferior, ponemos el mensaje arriba
-    final bool showAbove = (screenHeight - targetRect.bottom) < 200;
+    final bool showAbove = (screenHeight - widget.targetRect.bottom) < 200;
 
     return Stack(
       children: [
         // 1. Pintor que oscurece todo MENOS el rectángulo del panel
         Positioned.fill(
-          child: CustomPaint(painter: _HolePainter(targetRect: targetRect)),
+          child: CustomPaint(
+            painter: _HolePainter(targetRect: widget.targetRect),
+          ),
         ),
 
         // 2. Detector de toques "Bloqueante"
@@ -36,9 +62,9 @@ class StateTutorialOverlay extends StatelessWidget {
               children: [
                 // Área interactiva transparente sobre el panel
                 Positioned.fromRect(
-                  rect: targetRect,
+                  rect: widget.targetRect,
                   child: GestureDetector(
-                    onTap: onTargetTap,
+                    onTap: widget.onTargetTap,
                     child: Container(color: Colors.transparent),
                   ),
                 ),
@@ -49,8 +75,10 @@ class StateTutorialOverlay extends StatelessWidget {
 
         // 3. TecJolotito y Mensaje
         Positioned(
-          top: showAbove ? null : (targetRect.bottom + 20),
-          bottom: showAbove ? (screenHeight - targetRect.top + 20) : null,
+          top: showAbove ? null : (widget.targetRect.bottom + 20),
+          bottom: showAbove
+              ? (screenHeight - widget.targetRect.top + 20)
+              : null,
           left: 20,
           right: 20,
           child: Column(
@@ -84,7 +112,7 @@ class StateTutorialOverlay extends StatelessWidget {
           right: 20,
           child: SafeArea(
             child: TextButton(
-              onPressed: onSkip,
+              onPressed: widget.onSkip,
               child: const Text(
                 "Omitir",
                 style: TextStyle(

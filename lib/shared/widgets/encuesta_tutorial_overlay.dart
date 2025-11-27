@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../service/tts_service.dart';
 
 /// Tutorial interactivo para la encuesta de opinión del polo
 /// Guía al usuario a través de los elementos de la encuesta
-class EncuestaTutorialOverlay extends StatelessWidget {
+class EncuestaTutorialOverlay extends StatefulWidget {
   final int step; // 1: Intro, 2: Preguntas, 3: Pregunta abierta, 4: Enviar
   final Rect? targetRect; // Rectángulo del elemento a resaltar
   final VoidCallback? onNext;
@@ -17,25 +18,59 @@ class EncuestaTutorialOverlay extends StatelessWidget {
   });
 
   @override
+  State<EncuestaTutorialOverlay> createState() =>
+      _EncuestaTutorialOverlayState();
+}
+
+class _EncuestaTutorialOverlayState extends State<EncuestaTutorialOverlay> {
+  @override
+  void initState() {
+    super.initState();
+    _speak();
+  }
+
+  @override
+  void didUpdateWidget(covariant EncuestaTutorialOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.step != widget.step) {
+      _speak();
+    }
+  }
+
+  @override
+  void dispose() {
+    TtsService().stop();
+    super.dispose();
+  }
+
+  void _speak() {
+    String message =
+        '${_getTitleByStep(widget.step)}. ${_getDescriptionByStep(widget.step)}';
+    TtsService().speak(message);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
 
     // Paso 1: Tutorial general (sin target)
-    if (step == 1) {
+    if (widget.step == 1) {
       return _buildGeneralTutorial(context);
     }
 
     // Para otros pasos, mostrar overlay con el target resaltado
     // Forzar mostrar arriba en pasos 2 y 3 para evitar tapar botones
-    final bool showAbove = (step == 2 || step == 3)
+    final bool showAbove = (widget.step == 2 || widget.step == 3)
         ? true
-        : (screenHeight - targetRect!.bottom) < 250;
+        : (screenHeight - widget.targetRect!.bottom) < 250;
 
     return Stack(
       children: [
         // 1. Pintor que oscurece todo MENOS el rectángulo del target
         Positioned.fill(
-          child: CustomPaint(painter: _HolePainter(targetRect: targetRect!)),
+          child: CustomPaint(
+            painter: _HolePainter(targetRect: widget.targetRect!),
+          ),
         ),
 
         // 2. Detector de toques "Bloqueante"
@@ -47,7 +82,7 @@ class EncuestaTutorialOverlay extends StatelessWidget {
               children: [
                 // Área interactiva transparente sobre el target
                 Positioned.fromRect(
-                  rect: targetRect!,
+                  rect: widget.targetRect!,
                   child: GestureDetector(
                     onTap: () {},
                     child: Container(color: Colors.transparent),
@@ -60,8 +95,10 @@ class EncuestaTutorialOverlay extends StatelessWidget {
 
         // 3. TecJolotito y Mensaje
         Positioned(
-          top: showAbove ? null : (targetRect!.bottom + 20),
-          bottom: showAbove ? (screenHeight - targetRect!.top + 20) : null,
+          top: showAbove ? null : (widget.targetRect!.bottom + 20),
+          bottom: showAbove
+              ? (screenHeight - widget.targetRect!.top + 20)
+              : null,
           left: 20,
           right: 20,
           child: Column(
@@ -95,7 +132,7 @@ class EncuestaTutorialOverlay extends StatelessWidget {
           right: 20,
           child: SafeArea(
             child: TextButton(
-              onPressed: onSkip,
+              onPressed: widget.onSkip,
               child: const Text(
                 'Omitir',
                 style: TextStyle(
@@ -145,7 +182,7 @@ class EncuestaTutorialOverlay extends StatelessWidget {
                   children: [
                     Expanded(
                       child: TextButton(
-                        onPressed: onSkip,
+                        onPressed: widget.onSkip,
                         style: TextButton.styleFrom(
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -162,7 +199,7 @@ class EncuestaTutorialOverlay extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: onNext,
+                        onPressed: widget.onNext,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF691C32),
                           foregroundColor: Colors.white,
@@ -193,7 +230,7 @@ class EncuestaTutorialOverlay extends StatelessWidget {
           right: 20,
           child: SafeArea(
             child: TextButton(
-              onPressed: onSkip,
+              onPressed: widget.onSkip,
               child: const Text(
                 'Omitir',
                 style: TextStyle(
@@ -230,7 +267,7 @@ class EncuestaTutorialOverlay extends StatelessWidget {
         children: [
           // Título
           Text(
-            _getTitleByStep(step),
+            _getTitleByStep(widget.step),
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -241,7 +278,7 @@ class EncuestaTutorialOverlay extends StatelessWidget {
 
           // Descripción
           Text(
-            _getDescriptionByStep(step),
+            _getDescriptionByStep(widget.step),
             style: const TextStyle(
               fontSize: 14,
               color: Colors.black87,
@@ -251,15 +288,15 @@ class EncuestaTutorialOverlay extends StatelessWidget {
           const SizedBox(height: 12),
 
           // Barra de progreso
-          _buildProgressBar(step),
+          _buildProgressBar(widget.step),
           const SizedBox(height: 12),
 
           // Botones de acción
-          if (step > 1)
+          if (widget.step > 1)
             Row(
               children: [
                 TextButton(
-                  onPressed: onSkip,
+                  onPressed: widget.onSkip,
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.grey.shade700,
                   ),
@@ -267,7 +304,7 @@ class EncuestaTutorialOverlay extends StatelessWidget {
                 ),
                 const Spacer(),
                 ElevatedButton(
-                  onPressed: onNext,
+                  onPressed: widget.onNext,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF691C32),
                     foregroundColor: Colors.white,
@@ -276,7 +313,7 @@ class EncuestaTutorialOverlay extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    step == 4 ? '¡Perfecto!' : 'Siguiente',
+                    widget.step == 4 ? '¡Perfecto!' : 'Siguiente',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),

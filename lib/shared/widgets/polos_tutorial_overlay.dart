@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../service/tts_service.dart';
 
-class PolosTutorialOverlay extends StatelessWidget {
+class PolosTutorialOverlay extends StatefulWidget {
   final Rect targetRect; // Coordenadas del Mapa
   final VoidCallback onTargetTap; // Acción al tocar el mapa (desbloquear)
   final VoidCallback onSkip; // Botón omitir
@@ -13,17 +14,42 @@ class PolosTutorialOverlay extends StatelessWidget {
   });
 
   @override
+  State<PolosTutorialOverlay> createState() => _PolosTutorialOverlayState();
+}
+
+class _PolosTutorialOverlayState extends State<PolosTutorialOverlay> {
+  @override
+  void initState() {
+    super.initState();
+    _speak();
+  }
+
+  @override
+  void dispose() {
+    TtsService().stop();
+    super.dispose();
+  }
+
+  void _speak() {
+    TtsService().speak(
+      "¡Explora los Polos de Desarrollo! Este mapa interactivo te muestra las zonas estratégicas. Toca el mapa para desbloquearlo y selecciona un estado.",
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     // Calculamos espacio para poner a TecJolotito (preferiblemente abajo del mapa o en una esquina)
     final screenHeight = MediaQuery.of(context).size.height;
     // Si el mapa está muy abajo, ponemos el texto arriba, si no, abajo.
-    final bool showBelow = (screenHeight - targetRect.bottom) > 200;
+    final bool showBelow = (screenHeight - widget.targetRect.bottom) > 200;
 
     return Stack(
       children: [
         // 1. Pintor que oscurece todo MENOS el rectángulo del mapa
         Positioned.fill(
-          child: CustomPaint(painter: _HolePainter(targetRect: targetRect)),
+          child: CustomPaint(
+            painter: _HolePainter(targetRect: widget.targetRect),
+          ),
         ),
 
         // 2. Detector de toques "Bloqueante"
@@ -35,9 +61,9 @@ class PolosTutorialOverlay extends StatelessWidget {
               children: [
                 // Área interactiva transparente sobre el mapa
                 Positioned.fromRect(
-                  rect: targetRect,
+                  rect: widget.targetRect,
                   child: GestureDetector(
-                    onTap: onTargetTap,
+                    onTap: widget.onTargetTap,
                     child: Container(color: Colors.transparent),
                   ),
                 ),
@@ -48,8 +74,10 @@ class PolosTutorialOverlay extends StatelessWidget {
 
         // 3. TecJolotito y Mensaje
         Positioned(
-          top: showBelow ? targetRect.bottom + 10 : null,
-          bottom: showBelow ? null : (screenHeight - targetRect.top) + 10,
+          top: showBelow ? widget.targetRect.bottom + 10 : null,
+          bottom: showBelow
+              ? null
+              : (screenHeight - widget.targetRect.top) + 10,
           left: 20,
           right: 20,
           child: Column(
@@ -83,7 +111,7 @@ class PolosTutorialOverlay extends StatelessWidget {
           right: 20,
           child: SafeArea(
             child: TextButton(
-              onPressed: onSkip,
+              onPressed: widget.onSkip,
               child: const Text(
                 "Omitir",
                 style: TextStyle(

@@ -1,10 +1,11 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../data/polos_data.dart';
 import 'encuesta_polo_screen.dart';
-import 'registro_screen.dart';
 import '../../service/encuesta_service.dart';
-import '../../service/user_session_service.dart';
+import '../widgets/mi_region_tutorial.dart';
+import '../widgets/module_tutorial_overlay.dart';
 
 // Colores institucionales
 const Color guinda = Color(0xFF691C32);
@@ -19,30 +20,11 @@ class MiRegionScreen extends StatefulWidget {
 }
 
 class _MiRegionScreenState extends State<MiRegionScreen> {
-  // Servicio de sesión de usuario
-  final UserSessionService _sessionService = UserSessionService();
-
-  // Getters que obtienen datos del usuario logueado o valores por defecto
-  String get _municipioUsuario => _sessionService.currentUser?.ciudad ?? 'Sin ubicación';
-  String get _estadoUsuario => _sessionService.currentUser?.estado ?? '';
-  String get _descripcionMunicipio => _getDescripcionMunicipio();
-  bool get _isLoggedIn => _sessionService.isLoggedIn;
-
-  String _getDescripcionMunicipio() {
-    if (!_isLoggedIn) return 'Regístrate para ver información personalizada de tu región.';
-    // Descripciones por municipio/ciudad
-    final descripciones = {
-      'Puerto Peñasco': 'Destino turístico del noroeste mexicano, conocido por sus playas y desarrollo industrial sostenible.',
-      'Hermosillo': 'Capital de Sonora, centro industrial y de servicios del noroeste de México.',
-      'Monterrey': 'Centro industrial y financiero del norte de México, conocida como la Sultana del Norte.',
-      'Guadalajara': 'Capital de Jalisco, centro tecnológico y cultural del occidente de México.',
-      'Ciudad de México': 'Capital del país, centro político, económico y cultural de México.',
-      'Mérida': 'Capital de Yucatán, ciudad histórica y puerta de entrada a la cultura maya.',
-      'Tijuana': 'Ciudad fronteriza con gran actividad industrial y comercial.',
-      'Cancún': 'Principal destino turístico del Caribe mexicano.',
-    };
-    return descripciones[_municipioUsuario] ?? 'Explora las oportunidades de desarrollo en tu región.';
-  }
+  // Datos del usuario (simulados - después vendrán de SharedPreferences)
+  String _municipioUsuario = 'Puerto Peñasco';
+  String _estadoUsuario = 'Sonora';
+  String _descripcionMunicipio =
+      'Destino turístico del noroeste mexicano, conocido por sus playas y desarrollo industrial sostenible.';
 
   // Helper para detectar si es pantalla ancha (web/desktop)
   bool _isWideScreen(BuildContext context) {
@@ -57,10 +39,14 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     '¿Cómo crees que podría mejorar el transporte público local?',
     '¿Qué servicio público necesita más atención en tu municipio?',
   ];
-  
+
   late String _preguntaActual;
   final TextEditingController _respuestaController = TextEditingController();
   bool _respuestaEnviada = false;
+
+  // Tutorial state
+  bool _showTutorial = false;
+  int _tutorialStep = 1;
 
   @override
   void initState() {
@@ -68,17 +54,44 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     // Seleccionar pregunta aleatoria
     final random = Random();
     _preguntaActual = _preguntasDelDia[random.nextInt(_preguntasDelDia.length)];
-    // Escuchar cambios en la sesión del usuario
-    _sessionService.addListener(_onSessionChanged);
+
+    // Verificar tutorial
+    _checkTutorialStatus();
   }
 
-  void _onSessionChanged() {
-    if (mounted) setState(() {});
+  Future<void> _checkTutorialStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    // Usar una key única para este tutorial
+    bool seen = prefs.getBool('seen_mi_region_tutorial') ?? false;
+
+    if (!seen) {
+      // Pequeño delay para que la UI cargue primero
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        setState(() {
+          _showTutorial = true;
+          _tutorialStep = 1;
+        });
+      }
+    }
+  }
+
+  void _nextTutorialStep() {
+    if (_tutorialStep < 3) {
+      setState(() => _tutorialStep++);
+    } else {
+      _closeTutorial();
+    }
+  }
+
+  void _closeTutorial() async {
+    setState(() => _showTutorial = false);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('seen_mi_region_tutorial', true);
   }
 
   @override
   void dispose() {
-    _sessionService.removeListener(_onSessionChanged);
     _respuestaController.dispose();
     super.dispose();
   }
@@ -117,26 +130,38 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      body: SafeArea(
-        top: false,
-        child: isWide
-            ? _buildWebLayout(
-                context,
-                isDark,
-                cardColor,
-                textColor,
-                subtextColor,
-                horizontalPadding,
-                maxContentWidth,
-              )
-            : _buildMobileLayout(
-                context,
-                isDark,
-                cardColor,
-                textColor,
-                subtextColor,
-                horizontalPadding,
-              ),
+      body: Stack(
+        children: [
+          SafeArea(
+            top: false,
+            child: isWide
+                ? _buildWebLayout(
+                    context,
+                    isDark,
+                    cardColor,
+                    textColor,
+                    subtextColor,
+                    horizontalPadding,
+                    maxContentWidth,
+                  )
+                : _buildMobileLayout(
+                    context,
+                    isDark,
+                    cardColor,
+                    textColor,
+                    subtextColor,
+                    horizontalPadding,
+                  ),
+          ),
+
+          // Tutorial Overlay
+          if (_showTutorial)
+            MiRegionTutorialOverlay(
+              step: _tutorialStep,
+              onNext: _nextTutorialStep,
+              onSkip: _closeTutorial,
+            ),
+        ],
       ),
     );
   }
@@ -156,9 +181,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
       physics: const BouncingScrollPhysics(),
       slivers: [
         // Hero como SliverAppBar para que esté pegado arriba
-        SliverToBoxAdapter(
-          child: _buildHeroSection(isDark, isWide: false),
-        ),
+        SliverToBoxAdapter(child: _buildHeroSection(isDark, isWide: false)),
         // Contenido scrolleable
         SliverToBoxAdapter(
           child: _buildModulosPanel(
@@ -190,21 +213,22 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     // Si es muy ancho, mostrar layout de 2 columnas, sino todo en una
     final showTwoColumns = screenWidth > 1100;
-    
+
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
         // Hero full width pegado arriba
-        SliverToBoxAdapter(
-          child: _buildHeroSection(isDark, isWide: true),
-        ),
+        SliverToBoxAdapter(child: _buildHeroSection(isDark, isWide: true)),
         // Contenido con ancho máximo centrado
         SliverToBoxAdapter(
           child: Center(
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: maxContentWidth),
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 32),
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                  vertical: 32,
+                ),
                 child: showTwoColumns
                     ? Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,7 +251,12 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                             child: Column(
                               children: [
                                 const SizedBox(height: 108),
-                                _buildPreguntaDelDia(isDark, cardColor, textColor, subtextColor),
+                                _buildPreguntaDelDia(
+                                  isDark,
+                                  cardColor,
+                                  textColor,
+                                  subtextColor,
+                                ),
                               ],
                             ),
                           ),
@@ -243,7 +272,12 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                             subtextColor,
                           ),
                           const SizedBox(height: 28),
-                          _buildPreguntaDelDia(isDark, cardColor, textColor, subtextColor),
+                          _buildPreguntaDelDia(
+                            isDark,
+                            cardColor,
+                            textColor,
+                            subtextColor,
+                          ),
                         ],
                       ),
               ),
@@ -265,11 +299,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF8B1538),
-            guinda,
-            Color(0xFF4A1525),
-          ],
+          colors: [Color(0xFF8B1538), guinda, Color(0xFF4A1525)],
         ),
       ),
       child: SafeArea(
@@ -280,11 +310,6 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
   }
 
   Widget _buildHeroContentMobile() {
-    // Si no está logueado, mostrar hero de bienvenida con botón registrarse
-    if (!_isLoggedIn) {
-      return _buildWelcomeHeroMobile();
-    }
-    
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       child: Column(
@@ -305,7 +330,11 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: Colors.white.withAlpha(30)),
                 ),
-                child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 32),
+                child: const Icon(
+                  Icons.location_on_rounded,
+                  color: Colors.white,
+                  size: 32,
+                ),
               ),
               const SizedBox(width: 18),
               Expanded(
@@ -322,33 +351,59 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                         height: 1.1,
                       ),
                     ),
-                    if (_estadoUsuario.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: dorado.withAlpha(60),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: dorado.withAlpha(80)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.flag_rounded, color: dorado, size: 16),
-                            const SizedBox(width: 6),
-                            Text(
-                              _estadoUsuario,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: dorado,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
                       ),
-                    ],
+                      decoration: BoxDecoration(
+                        color: dorado.withAlpha(60),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: dorado.withAlpha(80)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.flag_rounded,
+                            color: dorado,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _estadoUsuario,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: dorado,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
+                ),
+              ),
+              // Botón cambiar ubicación
+              Material(
+                color: Colors.white.withAlpha(20),
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  onTap: () => _mostrarSelectorUbicacion(context),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withAlpha(30)),
+                    ),
+                    child: const Icon(
+                      Icons.edit_location_alt_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -371,7 +426,11 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                     color: Colors.white.withAlpha(15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.info_outline_rounded, color: Colors.white70, size: 20),
+                  child: const Icon(
+                    Icons.info_outline_rounded,
+                    color: Colors.white70,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -393,11 +452,6 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
   }
 
   Widget _buildHeroContentWide() {
-    // Si no está logueado, mostrar hero de bienvenida con botón registrarse
-    if (!_isLoggedIn) {
-      return _buildWelcomeHeroWide();
-    }
-    
     return Container(
       constraints: const BoxConstraints(maxWidth: 1200),
       margin: const EdgeInsets.symmetric(horizontal: 32),
@@ -418,7 +472,11 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
               borderRadius: BorderRadius.circular(28),
               border: Border.all(color: Colors.white.withAlpha(30)),
             ),
-            child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 44),
+            child: const Icon(
+              Icons.location_on_rounded,
+              color: Colors.white,
+              size: 44,
+            ),
           ),
           const SizedBox(width: 32),
           // Info del municipio
@@ -439,7 +497,10 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                     ),
                     const SizedBox(width: 16),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: dorado.withAlpha(60),
                         borderRadius: BorderRadius.circular(24),
@@ -448,7 +509,11 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.flag_rounded, color: dorado, size: 18),
+                          const Icon(
+                            Icons.flag_rounded,
+                            color: dorado,
+                            size: 18,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             _estadoUsuario,
@@ -475,163 +540,38 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // HERO DE BIENVENIDA (Usuario no registrado)
-  // ════════════════════════════════════════════════════════════════════════════
-  
-  Widget _buildWelcomeHeroMobile() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
-      child: Column(
-        children: [
-          // Icono de bienvenida
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white.withAlpha(40),
-                  Colors.white.withAlpha(15),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withAlpha(30)),
-            ),
-            child: const Icon(Icons.waving_hand_rounded, color: dorado, size: 48),
-          ),
-          const SizedBox(height: 20),
-          // Título de bienvenida
-          const Text(
-            '¡Bienvenido a Plan México!',
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: -0.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          // Descripción
-          Text(
-            'Regístrate para ver información personalizada sobre empleos, cursos y proyectos en tu región.',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white.withAlpha(200),
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          // Botón de registro
+          const SizedBox(width: 32),
+          // Botón cambiar ubicación (más visible en web)
           Material(
-            color: dorado,
-            borderRadius: BorderRadius.circular(16),
-            child: InkWell(
-              onTap: _navegarARegistro,
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.person_add_rounded, color: Colors.white, size: 22),
-                    SizedBox(width: 10),
-                    Text(
-                      'Registrarse',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWelcomeHeroWide() {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 1200),
-      margin: const EdgeInsets.symmetric(horizontal: 32),
-      padding: const EdgeInsets.symmetric(vertical: 48),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Icono de bienvenida
-          Container(
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white.withAlpha(40),
-                  Colors.white.withAlpha(15),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: Colors.white.withAlpha(30)),
-            ),
-            child: const Icon(Icons.waving_hand_rounded, color: dorado, size: 56),
-          ),
-          const SizedBox(width: 40),
-          // Contenido
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '¡Bienvenido a Plan México!',
-                  style: TextStyle(
-                    fontSize: 38,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: -1,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Regístrate para ver información personalizada sobre empleos, cursos y proyectos de desarrollo en tu región.',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white.withAlpha(200),
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 40),
-          // Botón de registro
-          Material(
-            color: dorado,
+            color: Colors.white.withAlpha(20),
             borderRadius: BorderRadius.circular(18),
             child: InkWell(
-              onTap: _navegarARegistro,
+              onTap: () => _mostrarSelectorUbicacion(context),
               borderRadius: BorderRadius.circular(18),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.white.withAlpha(30)),
+                ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.person_add_rounded, color: Colors.white, size: 24),
-                    SizedBox(width: 12),
+                    Icon(
+                      Icons.edit_location_alt_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    SizedBox(width: 10),
                     Text(
-                      'Registrarse',
+                      'Cambiar ubicación',
                       style: TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
                       ),
                     ),
                   ],
@@ -640,14 +580,6 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  void _navegarARegistro() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const RegistroScreen(),
       ),
     );
   }
@@ -655,7 +587,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
   // ════════════════════════════════════════════════════════════════════════════
   // PANEL DE MÓDULOS - Grid de botones de navegación
   // ════════════════════════════════════════════════════════════════════════════
-  
+
   List<Map<String, dynamic>> _getModulos(BuildContext context) {
     return [
       {
@@ -736,7 +668,11 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                   color: guinda.withAlpha(20),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.dashboard_rounded, color: guinda, size: 22),
+                child: const Icon(
+                  Icons.dashboard_rounded,
+                  color: guinda,
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 14),
               Text(
@@ -753,10 +689,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
           const SizedBox(height: 8),
           Text(
             'Accede a toda la información de tu comunidad',
-            style: TextStyle(
-              fontSize: 14,
-              color: subtextColor,
-            ),
+            style: TextStyle(fontSize: 14, color: subtextColor),
           ),
           const SizedBox(height: 24),
           // Grid de módulos responsivo
@@ -764,7 +697,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
             builder: (context, constraints) {
               final screenWidth = constraints.maxWidth;
               final spacing = screenWidth > 600 ? 16.0 : 12.0;
-              
+
               // Calcular columnas según el ancho disponible
               int columns;
               if (screenWidth > 900) {
@@ -776,14 +709,15 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
               } else {
                 columns = 2;
               }
-              
-              final cardWidth = (screenWidth - (spacing * (columns - 1))) / columns;
+
+              final cardWidth =
+                  (screenWidth - (spacing * (columns - 1))) / columns;
               // Altura más compacta para cards cuadradas
-              final cardHeight = cardWidth < 130 
-                  ? cardWidth * 1.15 
-                  : cardWidth < 180 
-                      ? cardWidth * 1.0 
-                      : cardWidth * 0.9;
+              final cardHeight = cardWidth < 130
+                  ? cardWidth * 1.15
+                  : cardWidth < 180
+                  ? cardWidth * 1.0
+                  : cardWidth * 0.9;
 
               return Wrap(
                 spacing: spacing,
@@ -835,17 +769,37 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     // Tamaños responsivos según el ancho de la card
     final isCompact = cardWidth < 160;
     final isSmall = cardWidth < 200;
-    
-    final emojiSize = isCompact ? 22.0 : isSmall ? 26.0 : 28.0;
+
+    final emojiSize = isCompact
+        ? 22.0
+        : isSmall
+        ? 26.0
+        : 28.0;
     final emojiPadding = isCompact ? 8.0 : 10.0;
-    final titleSize = isCompact ? 14.0 : isSmall ? 15.0 : 17.0;
-    final descSize = isCompact ? 10.0 : isSmall ? 11.0 : 12.0;
-    final badgeSize = isCompact ? 9.0 : isSmall ? 10.0 : 11.0;
-    final cardPadding = isCompact ? 12.0 : isSmall ? 14.0 : 16.0;
+    final titleSize = isCompact
+        ? 14.0
+        : isSmall
+        ? 15.0
+        : 17.0;
+    final descSize = isCompact
+        ? 10.0
+        : isSmall
+        ? 11.0
+        : 12.0;
+    final badgeSize = isCompact
+        ? 9.0
+        : isSmall
+        ? 10.0
+        : 11.0;
+    final cardPadding = isCompact
+        ? 12.0
+        : isSmall
+        ? 14.0
+        : 16.0;
     final borderRadius = isCompact ? 16.0 : 20.0;
     final buttonPaddingH = isCompact ? 8.0 : 12.0;
     final buttonPaddingV = isCompact ? 6.0 : 8.0;
-    
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -856,14 +810,18 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
           decoration: BoxDecoration(
             color: cardColor,
             borderRadius: BorderRadius.circular(borderRadius),
-            border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
-            boxShadow: isDark ? null : [
-              BoxShadow(
-                color: Colors.black.withAlpha(8),
-                blurRadius: 20,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            border: Border.all(
+              color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+            ),
+            boxShadow: isDark
+                ? null
+                : [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(8),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -884,7 +842,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                   Expanded(
                     child: Container(
                       padding: EdgeInsets.symmetric(
-                        horizontal: isCompact ? 6 : 10, 
+                        horizontal: isCompact ? 6 : 10,
                         vertical: isCompact ? 4 : 6,
                       ),
                       decoration: BoxDecoration(
@@ -935,7 +893,10 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
               SizedBox(height: isCompact ? 6 : 10),
               // Botón Ver más
               Container(
-                padding: EdgeInsets.symmetric(horizontal: buttonPaddingH, vertical: buttonPaddingV),
+                padding: EdgeInsets.symmetric(
+                  horizontal: buttonPaddingH,
+                  vertical: buttonPaddingV,
+                ),
                 decoration: BoxDecoration(
                   color: color.withAlpha(isDark ? 40 : 15),
                   borderRadius: BorderRadius.circular(isCompact ? 8 : 10),
@@ -952,7 +913,11 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                       ),
                     ),
                     SizedBox(width: isCompact ? 2 : 4),
-                    Icon(Icons.arrow_forward_rounded, size: isCompact ? 12 : 14, color: color),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      size: isCompact ? 12 : 14,
+                      color: color,
+                    ),
                   ],
                 ),
               ),
@@ -963,7 +928,12 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     );
   }
 
-  Widget _buildPreguntaDelDia(bool isDark, Color cardColor, Color textColor, Color subtextColor) {
+  Widget _buildPreguntaDelDia(
+    bool isDark,
+    Color cardColor,
+    Color textColor,
+    Color subtextColor,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -971,7 +941,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: isDark 
+          colors: isDark
               ? [guinda.withAlpha(51), guinda.withAlpha(26)]
               : [guinda.withAlpha(20), guinda.withAlpha(8)],
         ),
@@ -990,7 +960,11 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                   color: dorado.withAlpha(51),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.lightbulb_rounded, color: dorado, size: 28),
+                child: const Icon(
+                  Icons.lightbulb_rounded,
+                  color: dorado,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -1107,12 +1081,17 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                   }
                 },
                 icon: const Icon(Icons.send_rounded, size: 20),
-                label: const Text('Enviar Respuesta', style: TextStyle(fontWeight: FontWeight.w600)),
+                label: const Text(
+                  'Enviar Respuesta',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: guinda,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                   elevation: 0,
                 ),
               ),
@@ -1177,7 +1156,11 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                 color: guinda.withAlpha(20),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(Icons.dashboard_rounded, color: guinda, size: 26),
+              child: const Icon(
+                Icons.dashboard_rounded,
+                color: guinda,
+                size: 26,
+              ),
             ),
             const SizedBox(width: 16),
             Text(
@@ -1194,10 +1177,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
         const SizedBox(height: 8),
         Text(
           'Accede a toda la información de tu comunidad',
-          style: TextStyle(
-            fontSize: 15,
-            color: subtextColor,
-          ),
+          style: TextStyle(fontSize: 15, color: subtextColor),
         ),
         const SizedBox(height: 24),
         // Grid de módulos responsivo para web - usar GridView para mejor distribución
@@ -1205,7 +1185,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
           builder: (context, constraints) {
             final screenWidth = constraints.maxWidth;
             final spacing = 16.0;
-            
+
             // Más columnas en pantallas anchas
             int columns;
             if (screenWidth > 700) {
@@ -1215,10 +1195,13 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
             } else {
               columns = 2;
             }
-            
-            final cardWidth = (screenWidth - (spacing * (columns - 1))) / columns;
+
+            final cardWidth =
+                (screenWidth - (spacing * (columns - 1))) / columns;
             // Cards más cuadradas y compactas
-            final cardHeight = cardWidth < 180 ? cardWidth * 0.95 : cardWidth * 0.85;
+            final cardHeight = cardWidth < 180
+                ? cardWidth * 0.95
+                : cardWidth * 0.85;
 
             return Wrap(
               spacing: spacing,
@@ -1285,6 +1268,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
       icono: Icons.work_rounded,
       color: verde,
       contenido: _buildContenidoEmpleos,
+      moduleName: 'Empleos',
     );
   }
 
@@ -1295,6 +1279,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
       icono: Icons.school_rounded,
       color: const Color(0xFF2563EB),
       contenido: _buildContenidoCursos,
+      moduleName: 'Cursos',
     );
   }
 
@@ -1305,6 +1290,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
       icono: Icons.construction_rounded,
       color: dorado,
       contenido: _buildContenidoObras,
+      moduleName: 'Obras',
     );
   }
 
@@ -1315,6 +1301,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
       icono: Icons.newspaper_rounded,
       color: Colors.purple,
       contenido: _buildContenidoNoticias,
+      moduleName: 'Noticias',
     );
   }
 
@@ -1325,6 +1312,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
       icono: Icons.location_city_rounded,
       color: guinda,
       contenido: _buildContenidoPolos,
+      moduleName: 'Polos',
     );
   }
 
@@ -1335,6 +1323,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
       icono: Icons.event_rounded,
       color: Colors.teal,
       contenido: _buildContenidoEventos,
+      moduleName: 'Eventos',
     );
   }
 
@@ -1343,14 +1332,15 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     required String titulo,
     required IconData icono,
     required Color color,
-    required Widget Function(BuildContext, bool, Color, Color, Color, Color) contenido,
+    required Widget Function(BuildContext, bool, Color, Color, Color, Color)
+    contenido,
+    String? moduleName,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final cardColor = isDark ? const Color(0xFF2A2A2A) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
     final subtextColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
-    final borderColor = isDark ? Colors.grey.shade800 : Colors.grey.shade200;
     final screenSize = MediaQuery.of(context).size;
     final isWide = screenSize.width > 800;
 
@@ -1367,192 +1357,22 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
         );
         return ScaleTransition(
           scale: Tween<double>(begin: 0.8, end: 1.0).animate(curvedAnimation),
-          child: FadeTransition(
-            opacity: animation,
-            child: child,
-          ),
+          child: FadeTransition(opacity: animation, child: child),
         );
       },
       pageBuilder: (context, animation, secondaryAnimation) {
-        return Center(
-          child: Container(
-            margin: EdgeInsets.symmetric(
-              horizontal: isWide ? screenSize.width * 0.15 : 20,
-              vertical: isWide ? 40 : 60,
-            ),
-            constraints: BoxConstraints(
-              maxWidth: isWide ? 700 : screenSize.width - 40,
-              maxHeight: screenSize.height - (isWide ? 80 : 120),
-            ),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: color.withAlpha(40),
-                  blurRadius: 40,
-                  offset: const Offset(0, 20),
-                  spreadRadius: 0,
-                ),
-                BoxShadow(
-                  color: Colors.black.withAlpha(25),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(28),
-              child: Material(
-                color: Colors.transparent,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Header con gradiente
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(24, 24, 16, 20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            color.withAlpha(isDark ? 60 : 25),
-                            color.withAlpha(isDark ? 30 : 10),
-                          ],
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: color.withAlpha(isDark ? 80 : 40),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: color.withAlpha(60)),
-                            ),
-                            child: Icon(icono, color: color, size: 28),
-                          ),
-                          const SizedBox(width: 18),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  titulo,
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: textColor,
-                                    letterSpacing: -0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Información actualizada',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: subtextColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () => Navigator.pop(context),
-                              borderRadius: BorderRadius.circular(14),
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: isDark ? Colors.white.withAlpha(15) : Colors.black.withAlpha(8),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Icon(Icons.close_rounded, color: subtextColor, size: 22),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Contenido scrolleable
-                    Flexible(
-                      child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.all(24),
-                        child: contenido(context, isDark, cardColor, textColor, subtextColor, borderColor),
-                      ),
-                    ),
-                    // Footer con botón de cerrar
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withAlpha(5) : Colors.grey.shade50,
-                        border: Border(
-                          top: BorderSide(color: borderColor),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () => Navigator.pop(context),
-                              icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                              label: const Text('Volver'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: subtextColor,
-                                side: BorderSide(color: borderColor),
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            flex: 2,
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Row(
-                                      children: [
-                                        Icon(icono, color: Colors.white, size: 20),
-                                        const SizedBox(width: 12),
-                                        Text('Explorando $titulo...'),
-                                      ],
-                                    ),
-                                    backgroundColor: color,
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                              label: const Text('Ver todo'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: color,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                elevation: 0,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        return _ModuleDialog(
+          titulo: titulo,
+          icono: icono,
+          color: color,
+          contenidoBuilder: contenido,
+          isDark: isDark,
+          cardColor: cardColor,
+          textColor: textColor,
+          subtextColor: subtextColor,
+          isWide: isWide,
+          screenSize: screenSize,
+          moduleName: moduleName ?? titulo,
         );
       },
     );
@@ -1561,11 +1381,36 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
   // ════════════════════════════════════════════════════════════════════════════
   // CONTENIDO DE CADA MÓDULO
   // ════════════════════════════════════════════════════════════════════════════
-  Widget _buildContenidoEmpleos(BuildContext context, bool isDark, Color cardColor, Color textColor, Color subtextColor, Color borderColor) {
+  Widget _buildContenidoEmpleos(
+    BuildContext context,
+    bool isDark,
+    Color cardColor,
+    Color textColor,
+    Color subtextColor,
+    Color borderColor,
+  ) {
     final empleos = [
-      {'titulo': 'Técnico Soldador', 'empresa': 'Constructora Norte', 'sector': 'Manufactura', 'salario': '\$18,000/mes', 'distancia': '12 km'},
-      {'titulo': 'Operador de Maquinaria', 'empresa': 'Minera Sonora', 'sector': 'Minería', 'salario': '\$22,000/mes', 'distancia': '25 km'},
-      {'titulo': 'Ingeniero de Procesos', 'empresa': 'Planta Solar', 'sector': 'Energía', 'salario': '\$35,000/mes', 'distancia': '8 km'},
+      {
+        'titulo': 'Técnico Soldador',
+        'empresa': 'Constructora Norte',
+        'sector': 'Manufactura',
+        'salario': '\$18,000/mes',
+        'distancia': '12 km',
+      },
+      {
+        'titulo': 'Operador de Maquinaria',
+        'empresa': 'Minera Sonora',
+        'sector': 'Minería',
+        'salario': '\$22,000/mes',
+        'distancia': '25 km',
+      },
+      {
+        'titulo': 'Ingeniero de Procesos',
+        'empresa': 'Planta Solar',
+        'sector': 'Energía',
+        'salario': '\$35,000/mes',
+        'distancia': '8 km',
+      },
     ];
 
     return Column(
@@ -1576,12 +1421,28 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
           style: TextStyle(fontSize: 14, color: subtextColor),
         ),
         const SizedBox(height: 16),
-        ...empleos.map((empleo) => _buildEmpleoCard(empleo, isDark, cardColor, textColor, subtextColor, borderColor)),
+        ...empleos.map(
+          (empleo) => _buildEmpleoCard(
+            empleo,
+            isDark,
+            cardColor,
+            textColor,
+            subtextColor,
+            borderColor,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildEmpleoCard(Map<String, String> empleo, bool isDark, Color cardColor, Color textColor, Color subtextColor, Color borderColor) {
+  Widget _buildEmpleoCard(
+    Map<String, String> empleo,
+    bool isDark,
+    Color cardColor,
+    Color textColor,
+    Color subtextColor,
+    Color borderColor,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -1605,9 +1466,19 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(empleo['titulo']!, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: textColor)),
+                Text(
+                  empleo['titulo']!,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('${empleo['empresa']} • ${empleo['distancia']}', style: TextStyle(fontSize: 12, color: subtextColor)),
+                Text(
+                  '${empleo['empresa']} • ${empleo['distancia']}',
+                  style: TextStyle(fontSize: 12, color: subtextColor),
+                ),
               ],
             ),
           ),
@@ -1617,184 +1488,326 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
               color: verde.withAlpha(26),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Text(empleo['salario']!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: verde)),
+            child: Text(
+              empleo['salario']!,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: verde,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildContenidoCursos(BuildContext context, bool isDark, Color cardColor, Color textColor, Color subtextColor, Color borderColor) {
+  Widget _buildContenidoCursos(
+    BuildContext context,
+    bool isDark,
+    Color cardColor,
+    Color textColor,
+    Color subtextColor,
+    Color borderColor,
+  ) {
     final cursos = [
-      {'nombre': 'Soldadura Industrial', 'duracion': '40 horas', 'modalidad': 'Presencial'},
-      {'nombre': 'Excel Avanzado', 'duracion': '20 horas', 'modalidad': 'En línea'},
-      {'nombre': 'Electricidad Básica', 'duracion': '60 horas', 'modalidad': 'Presencial'},
+      {
+        'nombre': 'Soldadura Industrial',
+        'duracion': '40 horas',
+        'modalidad': 'Presencial',
+      },
+      {
+        'nombre': 'Excel Avanzado',
+        'duracion': '20 horas',
+        'modalidad': 'En línea',
+      },
+      {
+        'nombre': 'Electricidad Básica',
+        'duracion': '60 horas',
+        'modalidad': 'Presencial',
+      },
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Cursos disponibles para tu región', style: TextStyle(fontSize: 14, color: subtextColor)),
+        Text(
+          'Cursos disponibles para tu región',
+          style: TextStyle(fontSize: 14, color: subtextColor),
+        ),
         const SizedBox(height: 16),
-        ...cursos.map((curso) => Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderColor),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2563EB).withAlpha(26),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.school_rounded, color: Color(0xFF2563EB), size: 24),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(curso['nombre']!, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: textColor)),
-                    const SizedBox(height: 4),
-                    Text('${curso['duracion']} • ${curso['modalidad']}', style: TextStyle(fontSize: 12, color: subtextColor)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        )),
-      ],
-    );
-  }
-
-  Widget _buildContenidoObras(BuildContext context, bool isDark, Color cardColor, Color textColor, Color subtextColor, Color borderColor) {
-    final obras = [
-      {'nombre': 'Centro Logístico Peñasco', 'avance': 0.67, 'actualizado': 'Hace 3 días'},
-      {'nombre': 'Parque Industrial Norte', 'avance': 0.45, 'actualizado': 'Hace 1 semana'},
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Proyectos en desarrollo en tu región', style: TextStyle(fontSize: 14, color: subtextColor)),
-        const SizedBox(height: 16),
-        ...obras.map((obra) => Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderColor),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: dorado.withAlpha(26),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.engineering_rounded, color: dorado, size: 22),
+        ...cursos.map(
+          (curso) => Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderColor),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB).withAlpha(26),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(obra['nombre'] as String, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: textColor)),
+                  child: const Icon(
+                    Icons.school_rounded,
+                    color: Color(0xFF2563EB),
+                    size: 24,
                   ),
-                  Text('${((obra['avance'] as double) * 100).toInt()}%', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: verde)),
-                ],
-              ),
-              const SizedBox(height: 14),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: LinearProgressIndicator(
-                  value: obra['avance'] as double,
-                  backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                  valueColor: const AlwaysStoppedAnimation(verde),
-                  minHeight: 10,
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(obra['actualizado'] as String, style: TextStyle(fontSize: 12, color: subtextColor)),
-            ],
-          ),
-        )),
-      ],
-    );
-  }
-
-  Widget _buildContenidoNoticias(BuildContext context, bool isDark, Color cardColor, Color textColor, Color subtextColor, Color borderColor) {
-    final noticias = [
-      {'titulo': 'Inauguran nueva planta solar en Sonora', 'tiempo': 'Hace 2 horas', 'categoria': 'Energía'},
-      {'titulo': '500 empleos nuevos gracias al polo industrial', 'tiempo': 'Ayer', 'categoria': 'Economía'},
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Últimas noticias de $_estadoUsuario', style: TextStyle(fontSize: 14, color: subtextColor)),
-        const SizedBox(height: 16),
-        ...noticias.map((noticia) => Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderColor),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.purple.withAlpha(26),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.article_rounded, color: Colors.purple, size: 24),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(noticia['titulo']!, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textColor)),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Text(noticia['tiempo']!, style: TextStyle(fontSize: 12, color: subtextColor)),
-                        const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: dorado.withAlpha(26),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(noticia['categoria']!, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: dorado)),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        curso['nombre']!,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${curso['duracion']} • ${curso['modalidad']}',
+                        style: TextStyle(fontSize: 12, color: subtextColor),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        )),
+        ),
       ],
     );
   }
 
-  Widget _buildContenidoPolos(BuildContext context, bool isDark, Color cardColor, Color textColor, Color subtextColor, Color borderColor) {
+  Widget _buildContenidoObras(
+    BuildContext context,
+    bool isDark,
+    Color cardColor,
+    Color textColor,
+    Color subtextColor,
+    Color borderColor,
+  ) {
+    final obras = [
+      {
+        'nombre': 'Centro Logístico Peñasco',
+        'avance': 0.67,
+        'actualizado': 'Hace 3 días',
+      },
+      {
+        'nombre': 'Parque Industrial Norte',
+        'avance': 0.45,
+        'actualizado': 'Hace 1 semana',
+      },
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('${_polosCercanos.length} polos disponibles en $_estadoUsuario', style: TextStyle(fontSize: 14, color: subtextColor)),
+        Text(
+          'Proyectos en desarrollo en tu región',
+          style: TextStyle(fontSize: 14, color: subtextColor),
+        ),
+        const SizedBox(height: 16),
+        ...obras.map(
+          (obra) => Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderColor),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: dorado.withAlpha(26),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.engineering_rounded,
+                        color: dorado,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        obra['nombre'] as String,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${((obra['avance'] as double) * 100).toInt()}%',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: verde,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: obra['avance'] as double,
+                    backgroundColor: isDark
+                        ? Colors.grey.shade800
+                        : Colors.grey.shade300,
+                    valueColor: const AlwaysStoppedAnimation(verde),
+                    minHeight: 10,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  obra['actualizado'] as String,
+                  style: TextStyle(fontSize: 12, color: subtextColor),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContenidoNoticias(
+    BuildContext context,
+    bool isDark,
+    Color cardColor,
+    Color textColor,
+    Color subtextColor,
+    Color borderColor,
+  ) {
+    final noticias = [
+      {
+        'titulo': 'Inauguran nueva planta solar en Sonora',
+        'tiempo': 'Hace 2 horas',
+        'categoria': 'Energía',
+      },
+      {
+        'titulo': '500 empleos nuevos gracias al polo industrial',
+        'tiempo': 'Ayer',
+        'categoria': 'Economía',
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Últimas noticias de $_estadoUsuario',
+          style: TextStyle(fontSize: 14, color: subtextColor),
+        ),
+        const SizedBox(height: 16),
+        ...noticias.map(
+          (noticia) => Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderColor),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withAlpha(26),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.article_rounded,
+                    color: Colors.purple,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        noticia['titulo']!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Text(
+                            noticia['tiempo']!,
+                            style: TextStyle(fontSize: 12, color: subtextColor),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: dorado.withAlpha(26),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              noticia['categoria']!,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: dorado,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContenidoPolos(
+    BuildContext context,
+    bool isDark,
+    Color cardColor,
+    Color textColor,
+    Color subtextColor,
+    Color borderColor,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${_polosCercanos.length} polos disponibles en $_estadoUsuario',
+          style: TextStyle(fontSize: 14, color: subtextColor),
+        ),
         const SizedBox(height: 16),
         if (_polosCercanos.isEmpty)
           Container(
@@ -1807,55 +1820,82 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
               children: [
                 Icon(Icons.info_outline_rounded, color: dorado, size: 40),
                 const SizedBox(height: 12),
-                Text('Próximamente habrá polos de desarrollo en tu región', style: TextStyle(fontSize: 14, color: textColor), textAlign: TextAlign.center),
+                Text(
+                  'Próximamente habrá polos de desarrollo en tu región',
+                  style: TextStyle(fontSize: 14, color: textColor),
+                  textAlign: TextAlign.center,
+                ),
               ],
             ),
           )
         else
-          ..._polosCercanos.map((polo) => GestureDetector(
-            onTap: () {
-              Navigator.pop(context);
-              _mostrarDetallePolo(context, polo);
-            },
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: guinda.withAlpha(51)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: guinda.withAlpha(26),
-                      borderRadius: BorderRadius.circular(12),
+          ..._polosCercanos.map(
+            (polo) => GestureDetector(
+              onTap: () {
+                Navigator.pop(context);
+                _mostrarDetallePolo(context, polo);
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: guinda.withAlpha(51)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: guinda.withAlpha(26),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.location_city_rounded,
+                        color: guinda,
+                        size: 24,
+                      ),
                     ),
-                    child: const Icon(Icons.location_city_rounded, color: guinda, size: 24),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(polo.nombre, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: textColor)),
-                        const SizedBox(height: 4),
-                        Text(polo.region, style: TextStyle(fontSize: 12, color: subtextColor)),
-                      ],
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            polo.nombre,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: textColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            polo.region,
+                            style: TextStyle(fontSize: 12, color: subtextColor),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: subtextColor),
-                ],
+                    Icon(Icons.chevron_right_rounded, color: subtextColor),
+                  ],
+                ),
               ),
             ),
-          )),
+          ),
       ],
     );
   }
 
-  Widget _buildContenidoEventos(BuildContext context, bool isDark, Color cardColor, Color textColor, Color subtextColor, Color borderColor) {
+  Widget _buildContenidoEventos(
+    BuildContext context,
+    bool isDark,
+    Color cardColor,
+    Color textColor,
+    Color subtextColor,
+    Color borderColor,
+  ) {
     // Módulo aún no implementado - mostrar mensaje
     return Container(
       padding: const EdgeInsets.all(32),
@@ -1867,12 +1907,20 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
               color: Colors.teal.withAlpha(26),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.event_rounded, color: Colors.teal, size: 48),
+            child: const Icon(
+              Icons.event_rounded,
+              color: Colors.teal,
+              size: 48,
+            ),
           ),
           const SizedBox(height: 24),
           Text(
             'Próximamente',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textColor),
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
@@ -1888,42 +1936,262 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
   // ════════════════════════════════════════════════════════════════════════════
   // DIÁLOGOS Y MODALES AUXILIARES
   // ════════════════════════════════════════════════════════════════════════════
-  
+
   // Datos de municipios por estado
   static const Map<String, List<String>> _municipiosPorEstado = {
-    'Aguascalientes': ['Aguascalientes', 'Jesús María', 'Calvillo', 'Rincón de Romos', 'Pabellon de Arteaga'],
-    'Baja California': ['Tijuana', 'Mexicali', 'Ensenada', 'Tecate', 'Rosarito'],
-    'Baja California Sur': ['La Paz', 'Los Cabos', 'Comondú', 'Loreto', 'Mulegé'],
+    'Aguascalientes': [
+      'Aguascalientes',
+      'Jesús María',
+      'Calvillo',
+      'Rincón de Romos',
+      'Pabellon de Arteaga',
+    ],
+    'Baja California': [
+      'Tijuana',
+      'Mexicali',
+      'Ensenada',
+      'Tecate',
+      'Rosarito',
+    ],
+    'Baja California Sur': [
+      'La Paz',
+      'Los Cabos',
+      'Comondú',
+      'Loreto',
+      'Mulegé',
+    ],
     'Campeche': ['Campeche', 'Carmen', 'Champotón', 'Calakmul', 'Hopelchén'],
-    'Chiapas': ['Tuxtla Gutiérrez', 'San Cristóbal de las Casas', 'Tapachula', 'Comitán', 'Palenque'],
+    'Chiapas': [
+      'Tuxtla Gutiérrez',
+      'San Cristóbal de las Casas',
+      'Tapachula',
+      'Comitán',
+      'Palenque',
+    ],
     'Chihuahua': ['Chihuahua', 'Juárez', 'Cuauhtémoc', 'Delicias', 'Parral'],
-    'Ciudad de México': ['Cuauhtémoc', 'Miguel Hidalgo', 'Benito Juárez', 'Coyoacán', 'Tlalpan', 'Iztapalapa', 'Gustavo A. Madero', 'Azcapotzalco'],
+    'Ciudad de México': [
+      'Cuauhtémoc',
+      'Miguel Hidalgo',
+      'Benito Juárez',
+      'Coyoacán',
+      'Tlalpan',
+      'Iztapalapa',
+      'Gustavo A. Madero',
+      'Azcapotzalco',
+    ],
     'Coahuila': ['Saltillo', 'Torreón', 'Monclova', 'Piedras Negras', 'Acuna'],
-    'Colima': ['Colima', 'Manzanillo', 'Tecomán', 'Villa de Álvarez', 'Armería'],
-    'Durango': ['Durango', 'Gómez Palacio', 'Lerdo', 'Santiago Papasquiaro', 'Canatlán'],
-    'Estado de México': ['Toluca', 'Ecatepec', 'Naucalpan', 'Nezahualcóyotl', 'Tlalnepantla', 'Cuautitlán Izcalli', 'Metepec'],
-    'Guanajuato': ['León', 'Irapuato', 'Celaya', 'Salamanca', 'Guanajuato', 'Silao', 'San Miguel de Allende'],
+    'Colima': [
+      'Colima',
+      'Manzanillo',
+      'Tecomán',
+      'Villa de Álvarez',
+      'Armería',
+    ],
+    'Durango': [
+      'Durango',
+      'Gómez Palacio',
+      'Lerdo',
+      'Santiago Papasquiaro',
+      'Canatlán',
+    ],
+    'Estado de México': [
+      'Toluca',
+      'Ecatepec',
+      'Naucalpan',
+      'Nezahualcóyotl',
+      'Tlalnepantla',
+      'Cuautitlán Izcalli',
+      'Metepec',
+    ],
+    'Guanajuato': [
+      'León',
+      'Irapuato',
+      'Celaya',
+      'Salamanca',
+      'Guanajuato',
+      'Silao',
+      'San Miguel de Allende',
+    ],
     'Guerrero': ['Acapulco', 'Chilpancingo', 'Iguala', 'Zihuatanejo', 'Taxco'],
     'Hidalgo': ['Pachuca', 'Tulancingo', 'Tula', 'Tepeji', 'Tizayuca'],
-    'Jalisco': ['Guadalajara', 'Zapopan', 'Tlaquepaque', 'Tonalá', 'Puerto Vallarta', 'Tlajomulco'],
-    'Michoacán': ['Morelia', 'Uruapan', 'Lázaro Cárdenas', 'Zamora', 'Pátzcuaro'],
+    'Jalisco': [
+      'Guadalajara',
+      'Zapopan',
+      'Tlaquepaque',
+      'Tonalá',
+      'Puerto Vallarta',
+      'Tlajomulco',
+    ],
+    'Michoacán': [
+      'Morelia',
+      'Uruapan',
+      'Lázaro Cárdenas',
+      'Zamora',
+      'Pátzcuaro',
+    ],
     'Morelos': ['Cuernavaca', 'Jiutepec', 'Cuautla', 'Temixco', 'Yautepec'],
-    'Nayarit': ['Tepic', 'Bahía de Banderas', 'Compostela', 'San Blas', 'Tuxpan'],
-    'Nuevo León': ['Monterrey', 'San Pedro Garza García', 'San Nicolás', 'Guadalupe', 'Apodaca', 'Santa Catarina'],
-    'Oaxaca': ['Oaxaca de Juárez', 'Salina Cruz', 'Juchitán', 'Tuxtepec', 'Huatulco'],
-    'Puebla': ['Puebla', 'Tehuacán', 'San Martín Texmelucan', 'Atlixco', 'Cholula'],
-    'Querétaro': ['Querétaro', 'San Juan del Río', 'El Marqués', 'Corregidora', 'Tequisquiapan'],
-    'Quintana Roo': ['Cancún', 'Playa del Carmen', 'Chetumal', 'Cozumel', 'Tulum'],
-    'San Luis Potosí': ['San Luis Potosí', 'Ciudad Valles', 'Soledad de Graciano Sánchez', 'Matehuala', 'Ríoverde'],
+    'Nayarit': [
+      'Tepic',
+      'Bahía de Banderas',
+      'Compostela',
+      'San Blas',
+      'Tuxpan',
+    ],
+    'Nuevo León': [
+      'Monterrey',
+      'San Pedro Garza García',
+      'San Nicolás',
+      'Guadalupe',
+      'Apodaca',
+      'Santa Catarina',
+    ],
+    'Oaxaca': [
+      'Oaxaca de Juárez',
+      'Salina Cruz',
+      'Juchitán',
+      'Tuxtepec',
+      'Huatulco',
+    ],
+    'Puebla': [
+      'Puebla',
+      'Tehuacán',
+      'San Martín Texmelucan',
+      'Atlixco',
+      'Cholula',
+    ],
+    'Querétaro': [
+      'Querétaro',
+      'San Juan del Río',
+      'El Marqués',
+      'Corregidora',
+      'Tequisquiapan',
+    ],
+    'Quintana Roo': [
+      'Cancún',
+      'Playa del Carmen',
+      'Chetumal',
+      'Cozumel',
+      'Tulum',
+    ],
+    'San Luis Potosí': [
+      'San Luis Potosí',
+      'Ciudad Valles',
+      'Soledad de Graciano Sánchez',
+      'Matehuala',
+      'Ríoverde',
+    ],
     'Sinaloa': ['Culiacán', 'Mazatlán', 'Los Mochis', 'Guasave', 'Guamúchil'],
-    'Sonora': ['Hermosillo', 'Ciudad Obregón', 'Nogales', 'San Luis Río Colorado', 'Guaymas', 'Puerto Peñasco', 'Navojoa'],
+    'Sonora': [
+      'Hermosillo',
+      'Ciudad Obregón',
+      'Nogales',
+      'San Luis Río Colorado',
+      'Guaymas',
+      'Puerto Peñasco',
+      'Navojoa',
+    ],
     'Tabasco': ['Villahermosa', 'Cárdenas', 'Comalcalco', 'Macuspana', 'Teapa'],
-    'Tamaulipas': ['Reynosa', 'Matamoros', 'Nuevo Laredo', 'Tampico', 'Ciudad Victoria', 'Altamira'],
-    'Tlaxcala': ['Tlaxcala', 'Apizaco', 'Huamantla', 'Chiautempan', 'Calpulalpan'],
-    'Veracruz': ['Veracruz', 'Xalapa', 'Coatzacoalcos', 'Poza Rica', 'Córdoba', 'Boca del Río'],
+    'Tamaulipas': [
+      'Reynosa',
+      'Matamoros',
+      'Nuevo Laredo',
+      'Tampico',
+      'Ciudad Victoria',
+      'Altamira',
+    ],
+    'Tlaxcala': [
+      'Tlaxcala',
+      'Apizaco',
+      'Huamantla',
+      'Chiautempan',
+      'Calpulalpan',
+    ],
+    'Veracruz': [
+      'Veracruz',
+      'Xalapa',
+      'Coatzacoalcos',
+      'Poza Rica',
+      'Córdoba',
+      'Boca del Río',
+    ],
     'Yucatán': ['Mérida', 'Valladolid', 'Tizimín', 'Progreso', 'Kanasín'],
     'Zacatecas': ['Zacatecas', 'Fresnillo', 'Guadalupe', 'Jerez', 'Río Grande'],
   };
+
+  void _mostrarSelectorUbicacion(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF2A2A2A) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subtextColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+    final screenSize = MediaQuery.of(context).size;
+    final isWide = screenSize.width > 800;
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Cerrar',
+      barrierColor: Colors.black.withAlpha(150),
+      transitionDuration: const Duration(milliseconds: 300),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.9, end: 1.0).animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            ),
+            child: child,
+          ),
+        );
+      },
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return _SelectorUbicacionDialog(
+          isDark: isDark,
+          cardColor: cardColor,
+          textColor: textColor,
+          subtextColor: subtextColor,
+          isWide: isWide,
+          screenSize: screenSize,
+          estadoActual: _estadoUsuario,
+          municipioActual: _municipioUsuario,
+          municipiosPorEstado: _municipiosPorEstado,
+          onUbicacionSeleccionada: (estado, municipio) {
+            setState(() {
+              _estadoUsuario = estado;
+              _municipioUsuario = municipio;
+              // Actualizar descripción según el municipio
+              _descripcionMunicipio = _getDescripcionMunicipio(
+                municipio,
+                estado,
+              );
+            });
+          },
+        );
+      },
+    );
+  }
+
+  String _getDescripcionMunicipio(String municipio, String estado) {
+    // Descripciones personalizadas para algunos municipios importantes
+    final descripciones = {
+      'Puerto Peñasco':
+          'Destino turístico del noroeste mexicano, conocido por sus playas y desarrollo industrial sostenible.',
+      'Monterrey':
+          'Centro industrial y financiero del norte de México, con gran actividad económica.',
+      'Guadalajara':
+          'Capital tecnológica de México, centro cultural e industrial del occidente.',
+      'Cancún':
+          'Principal destino turístico internacional de México en el Caribe.',
+      'Tijuana':
+          'Ciudad fronteriza con gran actividad maquiladora y comercial.',
+      'Querétaro': 'Polo de desarrollo industrial y aeroespacial en el Bajío.',
+      'León': 'Capital del calzado y la manufactura de cuero en México.',
+      'Puebla': 'Centro industrial automotriz y ciudad histórica.',
+      'Mérida': 'Ciudad blanca, centro cultural y económico del sureste.',
+    };
+    return descripciones[municipio] ??
+        'Municipio de $estado con oportunidades de desarrollo en la región.';
+  }
 
   void _mostrarDetallePolo(BuildContext context, PoloMarker polo) {
     final theme = Theme.of(context);
@@ -1949,24 +2217,58 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
           child: Column(
             children: [
               const SizedBox(height: 12),
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade400, borderRadius: BorderRadius.circular(2))),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
                 child: Row(
                   children: [
                     Container(
-                      width: 54, height: 54,
-                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [guinda, Color(0xFF8B2346)]), borderRadius: BorderRadius.circular(14)),
-                      child: Center(child: Text('${polo.id}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white))),
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [guinda, Color(0xFF8B2346)],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${polo.id}',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(polo.nombre, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor), maxLines: 2, overflow: TextOverflow.ellipsis),
+                          Text(
+                            polo.nombre,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           const SizedBox(height: 4),
-                          Text('${polo.estado} • ${polo.region}', style: TextStyle(fontSize: 13, color: subtextColor)),
+                          Text(
+                            '${polo.estado} • ${polo.region}',
+                            style: TextStyle(fontSize: 13, color: subtextColor),
+                          ),
                         ],
                       ),
                     ),
@@ -1974,8 +2276,17 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                       onPressed: () => Navigator.pop(context),
                       icon: Container(
                         padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(color: isDark ? Colors.grey.shade800 : Colors.grey.shade100, borderRadius: BorderRadius.circular(10)),
-                        child: Icon(Icons.close_rounded, color: subtextColor, size: 20),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.grey.shade800
+                              : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: subtextColor,
+                          size: 20,
+                        ),
                       ),
                     ),
                   ],
@@ -1987,10 +2298,50 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     children: [
-                      if (polo.vocacion.isNotEmpty) _buildInfoCard(Icons.lightbulb_rounded, dorado, 'Vocación', polo.vocacion, isDark, textColor, subtextColor, borderColor),
-                      if (polo.sectoresClave.isNotEmpty) _buildInfoCard(Icons.business_rounded, const Color(0xFF2563EB), 'Sectores Clave', polo.sectoresClave.join(', '), isDark, textColor, subtextColor, borderColor),
-                      if (polo.infraestructura.isNotEmpty) _buildInfoCard(Icons.construction_rounded, Colors.orange, 'Infraestructura', polo.infraestructura, isDark, textColor, subtextColor, borderColor),
-                      if (polo.empleoEstimado.isNotEmpty) _buildInfoCard(Icons.groups_rounded, verde, 'Empleo Estimado', polo.empleoEstimado, isDark, textColor, subtextColor, borderColor),
+                      if (polo.vocacion.isNotEmpty)
+                        _buildInfoCard(
+                          Icons.lightbulb_rounded,
+                          dorado,
+                          'Vocación',
+                          polo.vocacion,
+                          isDark,
+                          textColor,
+                          subtextColor,
+                          borderColor,
+                        ),
+                      if (polo.sectoresClave.isNotEmpty)
+                        _buildInfoCard(
+                          Icons.business_rounded,
+                          const Color(0xFF2563EB),
+                          'Sectores Clave',
+                          polo.sectoresClave.join(', '),
+                          isDark,
+                          textColor,
+                          subtextColor,
+                          borderColor,
+                        ),
+                      if (polo.infraestructura.isNotEmpty)
+                        _buildInfoCard(
+                          Icons.construction_rounded,
+                          Colors.orange,
+                          'Infraestructura',
+                          polo.infraestructura,
+                          isDark,
+                          textColor,
+                          subtextColor,
+                          borderColor,
+                        ),
+                      if (polo.empleoEstimado.isNotEmpty)
+                        _buildInfoCard(
+                          Icons.groups_rounded,
+                          verde,
+                          'Empleo Estimado',
+                          polo.empleoEstimado,
+                          isDark,
+                          textColor,
+                          subtextColor,
+                          borderColor,
+                        ),
                       const SizedBox(height: 20),
                     ],
                   ),
@@ -1998,7 +2349,10 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
               ),
               Container(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-                decoration: BoxDecoration(color: cardColor, border: Border(top: BorderSide(color: borderColor))),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  border: Border(top: BorderSide(color: borderColor)),
+                ),
                 child: Row(
                   children: [
                     Expanded(
@@ -2009,7 +2363,15 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                         },
                         icon: const Icon(Icons.rate_review_rounded, size: 20),
                         label: const Text('Dar mi opinión'),
-                        style: ElevatedButton.styleFrom(backgroundColor: guinda, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), elevation: 0),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: guinda,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 0,
+                        ),
                       ),
                     ),
                   ],
@@ -2022,7 +2384,16 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     );
   }
 
-  Widget _buildInfoCard(IconData icon, Color iconColor, String title, String content, bool isDark, Color textColor, Color subtextColor, Color borderColor) {
+  Widget _buildInfoCard(
+    IconData icon,
+    Color iconColor,
+    String title,
+    String content,
+    bool isDark,
+    Color textColor,
+    Color subtextColor,
+    Color borderColor,
+  ) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 14),
@@ -2037,7 +2408,10 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: iconColor.withAlpha(26), borderRadius: BorderRadius.circular(14)),
+            decoration: BoxDecoration(
+              color: iconColor.withAlpha(26),
+              borderRadius: BorderRadius.circular(14),
+            ),
             child: Icon(icon, color: iconColor, size: 24),
           ),
           const SizedBox(width: 16),
@@ -2045,9 +2419,24 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: subtextColor)),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: subtextColor,
+                  ),
+                ),
                 const SizedBox(height: 6),
-                Text(content, style: TextStyle(fontSize: 15, color: textColor, fontWeight: FontWeight.w600, height: 1.5)),
+                Text(
+                  content,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: textColor,
+                    fontWeight: FontWeight.w600,
+                    height: 1.5,
+                  ),
+                ),
               ],
             ),
           ),
@@ -2056,15 +2445,12 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     );
   }
 
-  void _mostrarEncuestaGeneral() {
-    if (_polosCercanos.isNotEmpty) {
-      _showEncuestaDialog(_polosCercanos.first);
-    }
-  }
-
   void _showEncuestaDialog(PoloMarker polo) {
     final poloData = PolosData.getPoloByStringId(polo.idString);
-    int poloId = poloData?.id ?? PolosDatabase.findPoloIdByName(polo.nombre, polo.estado) ?? 1;
+    int poloId =
+        poloData?.id ??
+        PolosDatabase.findPoloIdByName(polo.nombre, polo.estado) ??
+        1;
 
     EncuestaPoloScreen.show(
       context,
@@ -2079,12 +2465,17 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
               children: [
                 Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
                 SizedBox(width: 12),
-                Text('¡Opinión registrada!', style: TextStyle(fontWeight: FontWeight.w500)),
+                Text(
+                  '¡Opinión registrada!',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
               ],
             ),
             backgroundColor: const Color(0xFF16A34A),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       },
@@ -2121,7 +2512,8 @@ class _SelectorUbicacionDialog extends StatefulWidget {
   });
 
   @override
-  State<_SelectorUbicacionDialog> createState() => _SelectorUbicacionDialogState();
+  State<_SelectorUbicacionDialog> createState() =>
+      _SelectorUbicacionDialogState();
 }
 
 class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
@@ -2140,9 +2532,9 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
   List<String> get _itemsFiltrados {
     final items = _paso == 1 ? _estados : _municipios;
     if (_busqueda.isEmpty) return items;
-    return items.where((item) => 
-      item.toLowerCase().contains(_busqueda.toLowerCase())
-    ).toList();
+    return items
+        .where((item) => item.toLowerCase().contains(_busqueda.toLowerCase()))
+        .toList();
   }
 
   @override
@@ -2188,9 +2580,7 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
                 // Buscador
                 _buildSearchBar(),
                 // Lista de opciones
-                Flexible(
-                  child: _buildLista(),
-                ),
+                Flexible(child: _buildLista()),
               ],
             ),
           ),
@@ -2220,7 +2610,11 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
               color: guinda.withAlpha(widget.isDark ? 80 : 40),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.location_on_rounded, color: guinda, size: 26),
+            child: const Icon(
+              Icons.location_on_rounded,
+              color: guinda,
+              size: 26,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -2228,7 +2622,9 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _paso == 1 ? 'Selecciona tu estado' : 'Selecciona tu municipio',
+                  _paso == 1
+                      ? 'Selecciona tu estado'
+                      : 'Selecciona tu municipio',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -2237,13 +2633,8 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _paso == 1 
-                    ? 'Paso 1 de 2' 
-                    : 'Estado: $_estadoSeleccionado',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: widget.subtextColor,
-                  ),
+                  _paso == 1 ? 'Paso 1 de 2' : 'Estado: $_estadoSeleccionado',
+                  style: TextStyle(fontSize: 13, color: widget.subtextColor),
                 ),
               ],
             ),
@@ -2264,10 +2655,16 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
                 child: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: widget.isDark ? Colors.white.withAlpha(15) : Colors.black.withAlpha(8),
+                    color: widget.isDark
+                        ? Colors.white.withAlpha(15)
+                        : Colors.black.withAlpha(8),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.arrow_back_rounded, color: widget.subtextColor, size: 22),
+                  child: Icon(
+                    Icons.arrow_back_rounded,
+                    color: widget.subtextColor,
+                    size: 22,
+                  ),
                 ),
               ),
             ),
@@ -2280,10 +2677,16 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: widget.isDark ? Colors.white.withAlpha(15) : Colors.black.withAlpha(8),
+                  color: widget.isDark
+                      ? Colors.white.withAlpha(15)
+                      : Colors.black.withAlpha(8),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.close_rounded, color: widget.subtextColor, size: 22),
+                child: Icon(
+                  Icons.close_rounded,
+                  color: widget.subtextColor,
+                  size: 22,
+                ),
               ),
             ),
           ),
@@ -2303,7 +2706,11 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
               height: 3,
               margin: const EdgeInsets.symmetric(horizontal: 8),
               decoration: BoxDecoration(
-                color: _paso >= 2 ? guinda : (widget.isDark ? Colors.grey.shade700 : Colors.grey.shade300),
+                color: _paso >= 2
+                    ? guinda
+                    : (widget.isDark
+                          ? Colors.grey.shade700
+                          : Colors.grey.shade300),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -2321,19 +2728,21 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: activo ? guinda : (widget.isDark ? Colors.grey.shade700 : Colors.grey.shade300),
+            color: activo
+                ? guinda
+                : (widget.isDark ? Colors.grey.shade700 : Colors.grey.shade300),
             shape: BoxShape.circle,
           ),
           child: Center(
             child: activo && _paso > numero
-              ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
-              : Text(
-                  '$numero',
-                  style: TextStyle(
-                    color: activo ? Colors.white : widget.subtextColor,
-                    fontWeight: FontWeight.bold,
+                ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+                : Text(
+                    '$numero',
+                    style: TextStyle(
+                      color: activo ? Colors.white : widget.subtextColor,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
           ),
         ),
         const SizedBox(height: 6),
@@ -2360,21 +2769,26 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
           hintStyle: TextStyle(color: widget.subtextColor.withAlpha(150)),
           prefixIcon: Icon(Icons.search_rounded, color: widget.subtextColor),
           suffixIcon: _busqueda.isNotEmpty
-            ? IconButton(
-                onPressed: () {
-                  _searchController.clear();
-                  setState(() => _busqueda = '');
-                },
-                icon: Icon(Icons.clear_rounded, color: widget.subtextColor),
-              )
-            : null,
+              ? IconButton(
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _busqueda = '');
+                  },
+                  icon: Icon(Icons.clear_rounded, color: widget.subtextColor),
+                )
+              : null,
           filled: true,
-          fillColor: widget.isDark ? Colors.white.withAlpha(10) : Colors.grey.shade100,
+          fillColor: widget.isDark
+              ? Colors.white.withAlpha(10)
+              : Colors.grey.shade100,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
         style: TextStyle(color: widget.textColor),
       ),
@@ -2383,7 +2797,7 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
 
   Widget _buildLista() {
     final items = _itemsFiltrados;
-    
+
     if (items.isEmpty) {
       return Center(
         child: Padding(
@@ -2391,7 +2805,11 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.search_off_rounded, size: 48, color: widget.subtextColor.withAlpha(100)),
+              Icon(
+                Icons.search_off_rounded,
+                size: 48,
+                color: widget.subtextColor.withAlpha(100),
+              ),
               const SizedBox(height: 16),
               Text(
                 'No se encontraron resultados',
@@ -2408,10 +2826,11 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
-        final isSelected = _paso == 1 
-          ? item == widget.estadoActual 
-          : item == widget.municipioActual && _estadoSeleccionado == widget.estadoActual;
-        
+        final isSelected = _paso == 1
+            ? item == widget.estadoActual
+            : item == widget.municipioActual &&
+                  _estadoSeleccionado == widget.estadoActual;
+
         // Contar polos en el estado (solo para paso 1)
         int polosCount = 0;
         if (_paso == 1) {
@@ -2421,9 +2840,11 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Material(
-            color: isSelected 
-              ? guinda.withAlpha(widget.isDark ? 40 : 20) 
-              : (widget.isDark ? Colors.white.withAlpha(5) : Colors.grey.shade50),
+            color: isSelected
+                ? guinda.withAlpha(widget.isDark ? 40 : 20)
+                : (widget.isDark
+                      ? Colors.white.withAlpha(5)
+                      : Colors.grey.shade50),
             borderRadius: BorderRadius.circular(14),
             child: InkWell(
               onTap: () {
@@ -2441,15 +2862,20 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
               },
               borderRadius: BorderRadius.circular(14),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: isSelected 
-                          ? guinda.withAlpha(40) 
-                          : (widget.isDark ? Colors.grey.shade800 : Colors.grey.shade200),
+                        color: isSelected
+                            ? guinda.withAlpha(40)
+                            : (widget.isDark
+                                  ? Colors.grey.shade800
+                                  : Colors.grey.shade200),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -2464,14 +2890,19 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
                         item,
                         style: TextStyle(
                           fontSize: 15,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w500,
                           color: isSelected ? guinda : widget.textColor,
                         ),
                       ),
                     ),
                     if (_paso == 1 && polosCount > 0)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: verde.withAlpha(26),
                           borderRadius: BorderRadius.circular(8),
@@ -2495,7 +2926,11 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
                         ),
                       ),
                     if (isSelected && _paso == 2)
-                      const Icon(Icons.check_circle_rounded, color: guinda, size: 22),
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: guinda,
+                        size: 22,
+                      ),
                   ],
                 ),
               ),
@@ -2503,6 +2938,238 @@ class _SelectorUbicacionDialogState extends State<_SelectorUbicacionDialog> {
           ),
         );
       },
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// WIDGET PARA DIÁLOGO DE MÓDULO CON TUTORIAL
+// ════════════════════════════════════════════════════════════════════════════════
+class _ModuleDialog extends StatefulWidget {
+  final String titulo;
+  final IconData icono;
+  final Color color;
+  final Widget Function(BuildContext, bool, Color, Color, Color, Color)
+  contenidoBuilder;
+  final bool isDark;
+  final Color cardColor;
+  final Color textColor;
+  final Color subtextColor;
+  final bool isWide;
+  final Size screenSize;
+  final String moduleName;
+
+  const _ModuleDialog({
+    required this.titulo,
+    required this.icono,
+    required this.color,
+    required this.contenidoBuilder,
+    required this.isDark,
+    required this.cardColor,
+    required this.textColor,
+    required this.subtextColor,
+    required this.isWide,
+    required this.screenSize,
+    required this.moduleName,
+  });
+
+  @override
+  State<_ModuleDialog> createState() => _ModuleDialogState();
+}
+
+class _ModuleDialogState extends State<_ModuleDialog> {
+  bool _showTutorial = false;
+  int _tutorialStep = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkTutorialStatus();
+  }
+
+  Future<void> _checkTutorialStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'seen_module_${widget.moduleName.toLowerCase()}_tutorial';
+    bool seen = prefs.getBool(key) ?? false;
+
+    if (!seen) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        setState(() {
+          _showTutorial = true;
+          _tutorialStep = 1;
+        });
+      }
+    }
+  }
+
+  void _nextTutorialStep() {
+    if (_tutorialStep < 2) {
+      setState(() => _tutorialStep++);
+    } else {
+      _closeTutorial();
+    }
+  }
+
+  void _closeTutorial() async {
+    setState(() => _showTutorial = false);
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'seen_module_${widget.moduleName.toLowerCase()}_tutorial';
+    await prefs.setBool(key, true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        margin: EdgeInsets.symmetric(
+          horizontal: widget.isWide ? widget.screenSize.width * 0.15 : 20,
+          vertical: widget.isWide ? 40 : 60,
+        ),
+        constraints: BoxConstraints(
+          maxWidth: widget.isWide ? 700 : widget.screenSize.width - 40,
+          maxHeight: widget.screenSize.height - (widget.isWide ? 80 : 120),
+        ),
+        decoration: BoxDecoration(
+          color: widget.cardColor,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: widget.color.withAlpha(40),
+              blurRadius: 40,
+              offset: const Offset(0, 20),
+              spreadRadius: 0,
+            ),
+            BoxShadow(
+              color: Colors.black.withAlpha(25),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: Material(
+            color: Colors.transparent,
+            child: Stack(
+              children: [
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header con gradiente
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(24, 24, 16, 20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            widget.color.withAlpha(widget.isDark ? 60 : 25),
+                            widget.color.withAlpha(widget.isDark ? 30 : 10),
+                          ],
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: widget.color.withAlpha(
+                                widget.isDark ? 80 : 40,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: widget.color.withAlpha(60),
+                              ),
+                            ),
+                            child: Icon(
+                              widget.icono,
+                              color: widget.color,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 18),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.titulo,
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: widget.textColor,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Información actualizada',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: widget.subtextColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () => Navigator.pop(context),
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: widget.isDark
+                                      ? Colors.white.withAlpha(15)
+                                      : Colors.black.withAlpha(8),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  color: widget.textColor,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Contenido scrolleable
+                    Flexible(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.all(24),
+                        child: widget.contenidoBuilder(
+                          context,
+                          widget.isDark,
+                          widget.cardColor,
+                          widget.textColor,
+                          widget.subtextColor,
+                          widget.isDark
+                              ? Colors.white.withAlpha(20)
+                              : Colors.grey.shade200,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Tutorial Overlay
+                if (_showTutorial)
+                  ModuleTutorialOverlay(
+                    moduleName: widget.moduleName,
+                    step: _tutorialStep,
+                    onNext: _nextTutorialStep,
+                    onSkip: _closeTutorial,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

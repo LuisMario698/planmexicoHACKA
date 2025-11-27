@@ -26,7 +26,7 @@ class _MobileBottomNavState extends State<MobileBottomNav> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
       decoration: BoxDecoration(
@@ -34,11 +34,7 @@ class _MobileBottomNavState extends State<MobileBottomNav> {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF7A1E3D),
-            Color(0xFF691C32),
-            Color(0xFF4A1525),
-          ],
+          colors: [Color(0xFF7A1E3D), Color(0xFF691C32), Color(0xFF4A1525)],
         ),
         boxShadow: [
           BoxShadow(
@@ -60,7 +56,7 @@ class _MobileBottomNavState extends State<MobileBottomNav> {
           final item = entry.value;
           final isSelected = index == widget.selectedIndex;
           final isHome = index == 2; // Inicio está en posición 2
-          
+
           return Expanded(
             child: _buildNavItem(item, index, isSelected, isHome, isDark),
           );
@@ -69,7 +65,13 @@ class _MobileBottomNavState extends State<MobileBottomNav> {
     );
   }
 
-  Widget _buildNavItem(NavItem item, int index, bool isSelected, bool isHome, bool isDark) {
+  Widget _buildNavItem(
+    NavItem item,
+    int index,
+    bool isSelected,
+    bool isHome,
+    bool isDark,
+  ) {
     return GestureDetector(
       onTap: () => widget.onItemSelected(index),
       behavior: HitTestBehavior.opaque,
@@ -149,13 +151,16 @@ class _MobileBottomNavState extends State<MobileBottomNav> {
                       ],
                     ),
               border: isSelected
-                  ? Border.all(color: _goldColor.withValues(alpha: 0.3), width: 2)
+                  ? Border.all(
+                      color: _goldColor.withValues(alpha: 0.3),
+                      width: 2,
+                    )
                   : null,
             ),
             child: Padding(
               padding: const EdgeInsets.all(6),
               child: Image.asset(
-                'images/logo_aguila.png',
+                'assets/images/logo_aguila.png',
                 // Bronce cuando está seleccionado, blanco cuando no
                 color: isSelected ? _goldColor : Colors.white,
               ),
@@ -173,16 +178,12 @@ class _MobileBottomNavState extends State<MobileBottomNav> {
       curve: Curves.easeOutCubic,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: isSelected
-            ? Colors.white
-            : Colors.transparent,
+        color: isSelected ? Colors.white : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(
         item.icon,
-        color: isSelected
-            ? _guindaColor
-            : Colors.white.withValues(alpha: 0.7),
+        color: isSelected ? _guindaColor : Colors.white.withValues(alpha: 0.7),
         size: 26,
       ),
     );
