@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/polos_data.dart';
 import 'encuesta_polo_screen.dart';
+import 'registro_screen.dart';
 import '../../service/encuesta_service.dart';
+import '../../service/user_session_service.dart';
 import '../widgets/mi_region_tutorial.dart';
 import '../widgets/module_tutorial_overlay.dart';
 
@@ -20,11 +22,15 @@ class MiRegionScreen extends StatefulWidget {
 }
 
 class _MiRegionScreenState extends State<MiRegionScreen> {
-  // Datos del usuario (simulados - después vendrán de SharedPreferences)
-  String _municipioUsuario = 'Puerto Peñasco';
-  String _estadoUsuario = 'Sonora';
-  String _descripcionMunicipio =
-      'Destino turístico del noroeste mexicano, conocido por sus playas y desarrollo industrial sostenible.';
+  // Servicio de sesión de usuario
+  final UserSessionService _sessionService = UserSessionService();
+  
+  // Getters que obtienen datos del usuario logueado o valores por defecto
+  bool get _isLoggedIn => _sessionService.isLoggedIn;
+  String get _municipioUsuario => _sessionService.currentUser?.ciudad ?? 'Tu Ciudad';
+  String get _estadoUsuario => _sessionService.currentUser?.estado ?? 'Tu Estado';
+  String get _nombreUsuario => _sessionService.currentUser?.primerNombre ?? 'Ciudadano';
+  String get _descripcionMunicipio => _getDescripcionMunicipio();
 
   // Helper para detectar si es pantalla ancha (web/desktop)
   bool _isWideScreen(BuildContext context) {
@@ -310,6 +316,12 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
   }
 
   Widget _buildHeroContentMobile() {
+    // Si no está logueado, mostrar hero de bienvenida con botón de registro
+    if (!_isLoggedIn) {
+      return _buildWelcomeHeroMobile();
+    }
+    
+    // Usuario logueado: mostrar su ubicación
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       child: Column(
@@ -385,27 +397,6 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                   ],
                 ),
               ),
-              // Botón cambiar ubicación
-              Material(
-                color: Colors.white.withAlpha(20),
-                borderRadius: BorderRadius.circular(16),
-                child: InkWell(
-                  onTap: () => _mostrarSelectorUbicacion(context),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withAlpha(30)),
-                    ),
-                    child: const Icon(
-                      Icons.edit_location_alt_rounded,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -450,8 +441,260 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
       ),
     );
   }
+  
+  // Hero de bienvenida para usuarios no registrados (Mobile)
+  Widget _buildWelcomeHeroMobile() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+      child: Column(
+        children: [
+          // Icono de bienvenida
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withAlpha(40),
+                  Colors.white.withAlpha(20),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withAlpha(30)),
+            ),
+            child: const Icon(
+              Icons.waving_hand_rounded,
+              color: dorado,
+              size: 48,
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Texto de bienvenida
+          const Text(
+            '¡Bienvenido a Plan México!',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: -0.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Regístrate para ver información personalizada de tu región',
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.white.withAlpha(200),
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          // Botón de registro
+          Material(
+            color: dorado,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
+              onTap: () => _navegarARegistro(context),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.person_add_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      'Registrarse',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildHeroContentWide() {
+    // Si no está logueado, mostrar hero de bienvenida con botón de registro
+    if (!_isLoggedIn) {
+      return _buildWelcomeHeroWide();
+    }
+    
+    // Usuario logueado: mostrar su ubicación con diseño mejorado
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 1200),
+      margin: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.symmetric(vertical: 36),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Icono de ubicación con efecto glassmorphism
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withAlpha(50),
+                  Colors.white.withAlpha(20),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withAlpha(40)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(30),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.location_on_rounded,
+              color: Colors.white,
+              size: 40,
+            ),
+          ),
+          const SizedBox(width: 28),
+          // Info del municipio
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Ciudad y Estado
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 16,
+                  runSpacing: 10,
+                  children: [
+                    Text(
+                      _municipioUsuario,
+                      style: const TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: -1,
+                        height: 1.1,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [dorado.withAlpha(180), dorado],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: dorado.withAlpha(80),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.flag_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _estadoUsuario,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  _descripcionMunicipio,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.white.withAlpha(200),
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 24),
+          // Stats rápidas
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withAlpha(25)),
+            ),
+            child: Column(
+              children: [
+                _buildQuickStat(Icons.work_rounded, '$_empleosNuevos', 'Empleos'),
+                const SizedBox(height: 14),
+                _buildQuickStat(Icons.school_rounded, '$_cursosDisponibles', 'Cursos'),
+                const SizedBox(height: 14),
+                _buildQuickStat(Icons.location_city_rounded, '${_polosCercanos.length}', 'Polos'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget para stats rápidas en el hero
+  Widget _buildQuickStat(IconData icon, String value, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: dorado, size: 18),
+        const SizedBox(width: 10),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.white.withAlpha(180),
+          ),
+        ),
+      ],
+    );
+  }
+  
+  // Hero de bienvenida para usuarios no registrados (Wide/Web)
+  Widget _buildWelcomeHeroWide() {
     return Container(
       constraints: const BoxConstraints(maxWidth: 1200),
       margin: const EdgeInsets.symmetric(horizontal: 32),
@@ -459,9 +702,9 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Icono grande de ubicación
+          // Icono de bienvenida
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -473,66 +716,31 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
               border: Border.all(color: Colors.white.withAlpha(30)),
             ),
             child: const Icon(
-              Icons.location_on_rounded,
-              color: Colors.white,
-              size: 44,
+              Icons.waving_hand_rounded,
+              color: dorado,
+              size: 52,
             ),
           ),
-          const SizedBox(width: 32),
-          // Info del municipio
+          const SizedBox(width: 40),
+          // Texto de bienvenida
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      _municipioUsuario,
-                      style: const TextStyle(
-                        fontSize: 38,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: -1,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: dorado.withAlpha(60),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: dorado.withAlpha(80)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.flag_rounded,
-                            color: dorado,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _estadoUsuario,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: dorado,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                const Text(
+                  '¡Bienvenido a Plan México!',
+                  style: TextStyle(
+                    fontSize: 38,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: -1,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  _descripcionMunicipio,
+                  'Regístrate para ver información personalizada de empleos, cursos y proyectos en tu región',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 17,
                     color: Colors.white.withAlpha(200),
                     height: 1.5,
                   ),
@@ -540,38 +748,34 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 32),
-          // Botón cambiar ubicación (más visible en web)
+          const SizedBox(width: 40),
+          // Botón de registro
           Material(
-            color: Colors.white.withAlpha(20),
+            color: dorado,
             borderRadius: BorderRadius.circular(18),
             child: InkWell(
-              onTap: () => _mostrarSelectorUbicacion(context),
+              onTap: () => _navegarARegistro(context),
               borderRadius: BorderRadius.circular(18),
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: Colors.white.withAlpha(30)),
+                  horizontal: 32,
+                  vertical: 18,
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.edit_location_alt_rounded,
+                      Icons.person_add_rounded,
                       color: Colors.white,
-                      size: 22,
+                      size: 24,
                     ),
-                    SizedBox(width: 10),
+                    SizedBox(width: 12),
                     Text(
-                      'Cambiar ubicación',
+                      'Registrarse',
                       style: TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
                       ),
                     ),
                   ],
@@ -591,50 +795,62 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
   List<Map<String, dynamic>> _getModulos(BuildContext context) {
     return [
       {
-        'emoji': '💼',
+        'icon': Icons.work_rounded,
         'titulo': 'Empleos',
-        'valor': '$_empleosNuevos nuevos',
+        'valor': '$_empleosNuevos',
+        'unidad': 'nuevos',
         'color': verde,
+        'gradient': [verde, const Color(0xFF059669)],
         'descripcion': 'Oportunidades laborales cerca de ti',
         'onTap': () => _navegarAModulo(context, 'empleos'),
       },
       {
-        'emoji': '📚',
+        'icon': Icons.school_rounded,
         'titulo': 'Cursos',
-        'valor': '$_cursosDisponibles disponibles',
+        'valor': '$_cursosDisponibles',
+        'unidad': 'disponibles',
         'color': const Color(0xFF2563EB),
+        'gradient': [const Color(0xFF2563EB), const Color(0xFF3B82F6)],
         'descripcion': 'Capacitación y talleres',
         'onTap': () => _navegarAModulo(context, 'cursos'),
       },
       {
-        'emoji': '🏗️',
+        'icon': Icons.construction_rounded,
         'titulo': 'Obras',
-        'valor': '+${_avanceObras.toStringAsFixed(0)}% avance',
+        'valor': '+${_avanceObras.toStringAsFixed(0)}%',
+        'unidad': 'avance',
         'color': dorado,
+        'gradient': [dorado, const Color(0xFFD4A853)],
         'descripcion': 'Proyectos en construcción',
         'onTap': () => _navegarAModulo(context, 'obras'),
       },
       {
-        'emoji': '📰',
+        'icon': Icons.newspaper_rounded,
         'titulo': 'Noticias',
-        'valor': '$_noticiasRecientes recientes',
-        'color': Colors.purple,
+        'valor': '$_noticiasRecientes',
+        'unidad': 'recientes',
+        'color': const Color(0xFF9333EA),
+        'gradient': [const Color(0xFF9333EA), const Color(0xFFA855F7)],
         'descripcion': 'Últimas novedades locales',
         'onTap': () => _navegarAModulo(context, 'noticias'),
       },
       {
-        'emoji': '🏭',
+        'icon': Icons.location_city_rounded,
         'titulo': 'Polos',
-        'valor': '${_polosCercanos.length} cercanos',
+        'valor': '${_polosCercanos.length}',
+        'unidad': 'cercanos',
         'color': guinda,
+        'gradient': [guinda, const Color(0xFF8B2346)],
         'descripcion': 'Polos de desarrollo',
         'onTap': () => _navegarAModulo(context, 'polos'),
       },
       {
-        'emoji': '🎓',
+        'icon': Icons.event_rounded,
         'titulo': 'Eventos',
-        'valor': '$_eventosProximos próximos',
-        'color': Colors.teal,
+        'valor': '$_eventosProximos',
+        'unidad': 'próximos',
+        'color': const Color(0xFF0D9488),
+        'gradient': [const Color(0xFF0D9488), const Color(0xFF14B8A6)],
         'descripcion': 'Ferias y conferencias',
         'onTap': () => _navegarAModulo(context, 'eventos'),
       },
@@ -654,97 +870,185 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: EdgeInsets.all(horizontalPadding),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 24),
-          // Título de sección
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: guinda.withAlpha(20),
-                  borderRadius: BorderRadius.circular(12),
+          const SizedBox(height: 28),
+          
+          // Header de sección con diseño premium
+          Container(
+            padding: EdgeInsets.all(isWide ? 24 : 18),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark 
+                    ? [const Color(0xFF1E1E2E), const Color(0xFF252536)]
+                    : [Colors.white, const Color(0xFFFAFAFC)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white.withAlpha(10) : guinda.withAlpha(15),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: guinda.withAlpha(isDark ? 15 : 10),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
                 ),
-                child: const Icon(
-                  Icons.dashboard_rounded,
-                  color: guinda,
-                  size: 22,
+              ],
+            ),
+            child: Row(
+              children: [
+                // Icono decorativo
+                Container(
+                  padding: EdgeInsets.all(isWide ? 14 : 12),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [guinda, Color(0xFF8B2346)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: guinda.withAlpha(60),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.explore_rounded,
+                    color: Colors.white,
+                    size: isWide ? 26 : 22,
+                  ),
+                ),
+                SizedBox(width: isWide ? 18 : 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Explora Tu Región',
+                        style: TextStyle(
+                          fontSize: isWide ? 24 : 18,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        isWide 
+                            ? 'Accede a servicios, oportunidades y proyectos en tu comunidad'
+                            : 'Servicios y oportunidades cerca de ti',
+                        style: TextStyle(
+                          fontSize: isWide ? 14 : 12,
+                          color: subtextColor,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+
+          // Cards destacadas (Empleos y Cursos)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildFeaturedCard(
+                  modulo: modulos[0],
+                  isDark: isDark,
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtextColor: subtextColor,
+                  isLarge: true,
                 ),
               ),
-              const SizedBox(width: 14),
-              Text(
-                'Mi Región Hoy',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                  letterSpacing: -0.5,
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildFeaturedCard(
+                  modulo: modulos[1],
+                  isDark: isDark,
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtextColor: subtextColor,
+                  isLarge: true,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Accede a toda la información de tu comunidad',
-            style: TextStyle(fontSize: 14, color: subtextColor),
+          
+          const SizedBox(height: 12),
+
+          // Segunda fila (Obras y Noticias)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildFeaturedCard(
+                  modulo: modulos[2],
+                  isDark: isDark,
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtextColor: subtextColor,
+                  isLarge: false,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildFeaturedCard(
+                  modulo: modulos[3],
+                  isDark: isDark,
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtextColor: subtextColor,
+                  isLarge: false,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
-          // Grid de módulos responsivo
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final screenWidth = constraints.maxWidth;
-              final spacing = screenWidth > 600 ? 16.0 : 12.0;
+          
+          const SizedBox(height: 12),
 
-              // Calcular columnas según el ancho disponible
-              int columns;
-              if (screenWidth > 900) {
-                columns = 4;
-              } else if (screenWidth > 650) {
-                columns = 3;
-              } else if (screenWidth > 400) {
-                columns = 3;
-              } else {
-                columns = 2;
-              }
-
-              final cardWidth =
-                  (screenWidth - (spacing * (columns - 1))) / columns;
-              // Altura más compacta para cards cuadradas
-              final cardHeight = cardWidth < 130
-                  ? cardWidth * 1.15
-                  : cardWidth < 180
-                  ? cardWidth * 1.0
-                  : cardWidth * 0.9;
-
-              return Wrap(
-                spacing: spacing,
-                runSpacing: spacing,
-                children: modulos.map((modulo) {
-                  return SizedBox(
-                    width: cardWidth,
-                    height: cardHeight,
-                    child: _buildModuloCardResponsive(
-                      emoji: modulo['emoji'] as String,
-                      titulo: modulo['titulo'] as String,
-                      valor: modulo['valor'] as String,
-                      descripcion: modulo['descripcion'] as String,
-                      color: modulo['color'] as Color,
-                      onTap: modulo['onTap'] as VoidCallback,
-                      isDark: isDark,
-                      cardColor: cardColor,
-                      textColor: textColor,
-                      subtextColor: subtextColor,
-                      cardWidth: cardWidth,
-                    ),
-                  );
-                }).toList(),
-              );
-            },
+          // Tercera fila (Polos y Eventos)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildFeaturedCard(
+                  modulo: modulos[4],
+                  isDark: isDark,
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtextColor: subtextColor,
+                  isLarge: false,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildFeaturedCard(
+                  modulo: modulos[5],
+                  isDark: isDark,
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtextColor: subtextColor,
+                  isLarge: false,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 32),
+          
+          const SizedBox(height: 28),
+          
           // Pregunta del Día
           _buildPreguntaDelDia(isDark, cardColor, textColor, subtextColor),
           const SizedBox(height: 100),
@@ -753,178 +1057,171 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     );
   }
 
-  Widget _buildModuloCardResponsive({
-    required String emoji,
-    required String titulo,
-    required String valor,
-    required String descripcion,
-    required Color color,
-    required VoidCallback onTap,
+  Widget _buildFeaturedCard({
+    required Map<String, dynamic> modulo,
     required bool isDark,
     required Color cardColor,
     required Color textColor,
     required Color subtextColor,
-    required double cardWidth,
+    required bool isLarge,
   }) {
-    // Tamaños responsivos según el ancho de la card
-    final isCompact = cardWidth < 160;
-    final isSmall = cardWidth < 200;
-
-    final emojiSize = isCompact
-        ? 22.0
-        : isSmall
-        ? 26.0
-        : 28.0;
-    final emojiPadding = isCompact ? 8.0 : 10.0;
-    final titleSize = isCompact
-        ? 14.0
-        : isSmall
-        ? 15.0
-        : 17.0;
-    final descSize = isCompact
-        ? 10.0
-        : isSmall
-        ? 11.0
-        : 12.0;
-    final badgeSize = isCompact
-        ? 9.0
-        : isSmall
-        ? 10.0
-        : 11.0;
-    final cardPadding = isCompact
-        ? 12.0
-        : isSmall
-        ? 14.0
-        : 16.0;
-    final borderRadius = isCompact ? 16.0 : 20.0;
-    final buttonPaddingH = isCompact ? 8.0 : 12.0;
-    final buttonPaddingV = isCompact ? 6.0 : 8.0;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(borderRadius),
-        child: Container(
-          padding: EdgeInsets.all(cardPadding),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(borderRadius),
-            border: Border.all(
-              color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-            ),
-            boxShadow: isDark
-                ? null
-                : [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(8),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header: Emoji + Badge
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(emojiPadding),
-                    decoration: BoxDecoration(
-                      color: color.withAlpha(isDark ? 40 : 20),
-                      borderRadius: BorderRadius.circular(isCompact ? 10 : 14),
-                    ),
-                    child: Text(emoji, style: TextStyle(fontSize: emojiSize)),
+    final color = modulo['color'] as Color;
+    final gradient = modulo['gradient'] as List<Color>;
+    
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calcular tamaños responsivos basados en el ancho disponible
+        final cardWidth = constraints.maxWidth;
+        final isCompact = cardWidth < 160;
+        final iconSize = isCompact ? 20.0 : (isLarge ? 24.0 : 22.0);
+        final iconPadding = isCompact ? 10.0 : 12.0;
+        final statSize = isCompact ? 22.0 : (isLarge ? 28.0 : 24.0);
+        final titleSize = isCompact ? 15.0 : (isLarge ? 18.0 : 16.0);
+        final cardPadding = isCompact ? 14.0 : 18.0;
+        
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: modulo['onTap'] as VoidCallback,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: EdgeInsets.all(cardPadding),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? Colors.white.withAlpha(8) : color.withAlpha(20),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withAlpha(isDark ? 25 : 15),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isCompact ? 6 : 10,
-                        vertical: isCompact ? 4 : 6,
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header con icono y estadística
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Icono con gradiente
+                      Container(
+                        padding: EdgeInsets.all(iconPadding),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: gradient,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withAlpha(60),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          modulo['icon'] as IconData,
+                          color: Colors.white,
+                          size: iconSize,
+                        ),
                       ),
-                      decoration: BoxDecoration(
-                        color: color.withAlpha(isDark ? 40 : 20),
-                        borderRadius: BorderRadius.circular(isCompact ? 8 : 10),
+                      const Spacer(),
+                      // Estadística
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            modulo['valor'] as String,
+                            style: TextStyle(
+                              fontSize: statSize,
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            modulo['unidad'] as String,
+                            style: TextStyle(
+                              fontSize: isCompact ? 10 : 11,
+                              color: color.withAlpha(180),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        valor,
-                        style: TextStyle(
-                          fontSize: badgeSize,
-                          fontWeight: FontWeight.w600,
+                    ],
+                  ),
+                  
+                  SizedBox(height: isCompact ? 14 : 18),
+                  
+                  // Título
+                  Text(
+                    modulo['titulo'] as String,
+                    style: TextStyle(
+                      fontSize: titleSize,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  // Descripción
+                  Text(
+                    modulo['descripcion'] as String,
+                    style: TextStyle(
+                      fontSize: isCompact ? 10 : 12,
+                      color: subtextColor,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  SizedBox(height: isCompact ? 10 : 14),
+                  
+                  // Botón explorar
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isCompact ? 10 : 12,
+                      vertical: isCompact ? 6 : 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: color.withAlpha(isDark ? 35 : 18),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          isCompact ? 'Ver' : 'Explorar',
+                          style: TextStyle(
+                            fontSize: isCompact ? 10 : 12,
+                            fontWeight: FontWeight.w600,
+                            color: color,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          size: isCompact ? 12 : 14,
                           color: color,
                         ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const Spacer(),
-              // Título
-              Text(
-                titulo,
-                style: TextStyle(
-                  fontSize: titleSize,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                  height: 1.2,
-                ),
-                maxLines: isCompact ? 1 : 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              SizedBox(height: isCompact ? 2 : 4),
-              // Descripción
-              if (!isCompact)
-                Text(
-                  descripcion,
-                  style: TextStyle(
-                    fontSize: descSize,
-                    color: subtextColor,
-                    height: 1.3,
-                  ),
-                  maxLines: isSmall ? 1 : 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              SizedBox(height: isCompact ? 6 : 10),
-              // Botón Ver más
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: buttonPaddingH,
-                  vertical: buttonPaddingV,
-                ),
-                decoration: BoxDecoration(
-                  color: color.withAlpha(isDark ? 40 : 15),
-                  borderRadius: BorderRadius.circular(isCompact ? 8 : 10),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      isCompact ? 'Ver' : 'Ver más',
-                      style: TextStyle(
-                        fontSize: isCompact ? 10 : 12,
-                        fontWeight: FontWeight.w600,
-                        color: color,
-                      ),
-                    ),
-                    SizedBox(width: isCompact ? 2 : 4),
-                    Icon(
-                      Icons.arrow_forward_rounded,
-                      size: isCompact ? 12 : 14,
-                      color: color,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -938,32 +1235,44 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [guinda.withAlpha(51), guinda.withAlpha(26)]
-              : [guinda.withAlpha(20), guinda.withAlpha(8)],
-        ),
+        color: cardColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: guinda.withAlpha(51)),
+        border: Border.all(
+          color: isDark ? Colors.white.withAlpha(15) : Colors.grey.withAlpha(30),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: guinda.withAlpha(isDark ? 15 : 10),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header con título
+          // Header con título mejorado
           Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: dorado.withAlpha(51),
-                  borderRadius: BorderRadius.circular(14),
+                  gradient: LinearGradient(
+                    colors: [dorado.withAlpha(180), dorado],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: dorado.withAlpha(60),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: const Icon(
-                  Icons.lightbulb_rounded,
-                  color: dorado,
-                  size: 28,
+                  Icons.chat_bubble_rounded,
+                  color: Colors.white,
+                  size: 24,
                 ),
               ),
               const SizedBox(width: 16),
@@ -990,36 +1299,53 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          // Pregunta
+          // Pregunta con diseño mejorado
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withAlpha(10) : Colors.white,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [guinda.withAlpha(25), guinda.withAlpha(15)]
+                    : [guinda.withAlpha(12), guinda.withAlpha(6)],
+              ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: guinda.withAlpha(30)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('💬', style: TextStyle(fontSize: 24)),
-                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: guinda.withAlpha(20),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.format_quote_rounded,
+                    color: guinda,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Text(
                     _preguntaActual,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.w500,
                       color: textColor,
-                      height: 1.4,
+                      height: 1.5,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          // Campo de respuesta
+          const SizedBox(height: 18),
+          // Campo de respuesta mejorado
           if (!_respuestaEnviada) ...[
             TextField(
               controller: _respuestaController,
@@ -1028,25 +1354,25 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                 hintText: 'Escribe tu respuesta aquí...',
                 hintStyle: TextStyle(color: subtextColor.withAlpha(150)),
                 filled: true,
-                fillColor: isDark ? Colors.white.withAlpha(10) : Colors.white,
+                fillColor: isDark ? Colors.white.withAlpha(8) : Colors.grey.withAlpha(15),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: guinda.withAlpha(50)),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: guinda.withAlpha(50)),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: const BorderSide(color: guinda, width: 2),
                 ),
-                contentPadding: const EdgeInsets.all(16),
+                contentPadding: const EdgeInsets.all(18),
               ),
               style: TextStyle(color: textColor, fontSize: 15),
             ),
             const SizedBox(height: 16),
-            // Botón de enviar
+            // Botón de enviar mejorado
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -1055,7 +1381,6 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                     setState(() {
                       _respuestaEnviada = true;
                     });
-                    // Solo de ejemplo, no envía nada
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: const Row(
@@ -1147,88 +1472,380 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Título de sección
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: guinda.withAlpha(20),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(
-                Icons.dashboard_rounded,
-                color: guinda,
-                size: 26,
-              ),
+        // Header premium con gradiente
+        Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDark 
+                  ? [const Color(0xFF1E1E2E), const Color(0xFF252536)]
+                  : [Colors.white, const Color(0xFFFAFAFC)],
             ),
-            const SizedBox(width: 16),
-            Text(
-              'Mi Región Hoy',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-                letterSpacing: -0.5,
-              ),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: isDark ? Colors.white.withAlpha(10) : guinda.withAlpha(15),
             ),
-          ],
+            boxShadow: [
+              BoxShadow(
+                color: guinda.withAlpha(isDark ? 25 : 15),
+                blurRadius: 40,
+                offset: const Offset(0, 15),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Icono decorativo premium
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [guinda, Color(0xFF8B2346)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: guinda.withAlpha(100),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.explore_rounded,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Explora Tu Región',
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Descubre servicios, oportunidades y proyectos disponibles en tu comunidad',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: subtextColor,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              // Badge de estado
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [verde.withAlpha(30), verde.withAlpha(15)],
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: verde.withAlpha(50)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: verde,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: verde.withAlpha(150),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Actualizado hoy',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: verde,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          'Accede a toda la información de tu comunidad',
-          style: TextStyle(fontSize: 15, color: subtextColor),
-        ),
-        const SizedBox(height: 24),
-        // Grid de módulos responsivo para web - usar GridView para mejor distribución
+        const SizedBox(height: 32),
+        
+        // Grid de módulos - 3 columnas en web
         LayoutBuilder(
           builder: (context, constraints) {
             final screenWidth = constraints.maxWidth;
-            final spacing = 16.0;
+            const spacing = 20.0;
+            const columns = 3;
+            final cardWidth = (screenWidth - (spacing * (columns - 1))) / columns;
 
-            // Más columnas en pantallas anchas
-            int columns;
-            if (screenWidth > 700) {
-              columns = 3;
-            } else if (screenWidth > 450) {
-              columns = 2;
-            } else {
-              columns = 2;
-            }
-
-            final cardWidth =
-                (screenWidth - (spacing * (columns - 1))) / columns;
-            // Cards más cuadradas y compactas
-            final cardHeight = cardWidth < 180
-                ? cardWidth * 0.95
-                : cardWidth * 0.85;
-
-            return Wrap(
-              spacing: spacing,
-              runSpacing: spacing,
-              children: modulos.map((modulo) {
-                return SizedBox(
-                  width: cardWidth,
-                  height: cardHeight,
-                  child: _buildModuloCardResponsive(
-                    emoji: modulo['emoji'] as String,
-                    titulo: modulo['titulo'] as String,
-                    valor: modulo['valor'] as String,
-                    descripcion: modulo['descripcion'] as String,
-                    color: modulo['color'] as Color,
-                    onTap: modulo['onTap'] as VoidCallback,
-                    isDark: isDark,
-                    cardColor: cardColor,
-                    textColor: textColor,
-                    subtextColor: subtextColor,
-                    cardWidth: cardWidth,
-                  ),
-                );
-              }).toList(),
+            return Column(
+              children: [
+                // Primera fila - Cards grandes
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildWebModuleCard(
+                        modulo: modulos[0],
+                        isDark: isDark,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        subtextColor: subtextColor,
+                        height: 200,
+                      ),
+                    ),
+                    const SizedBox(width: spacing),
+                    Expanded(
+                      child: _buildWebModuleCard(
+                        modulo: modulos[1],
+                        isDark: isDark,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        subtextColor: subtextColor,
+                        height: 200,
+                      ),
+                    ),
+                    const SizedBox(width: spacing),
+                    Expanded(
+                      child: _buildWebModuleCard(
+                        modulo: modulos[2],
+                        isDark: isDark,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        subtextColor: subtextColor,
+                        height: 200,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: spacing),
+                // Segunda fila
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildWebModuleCard(
+                        modulo: modulos[3],
+                        isDark: isDark,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        subtextColor: subtextColor,
+                        height: 180,
+                      ),
+                    ),
+                    const SizedBox(width: spacing),
+                    Expanded(
+                      child: _buildWebModuleCard(
+                        modulo: modulos[4],
+                        isDark: isDark,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        subtextColor: subtextColor,
+                        height: 180,
+                      ),
+                    ),
+                    const SizedBox(width: spacing),
+                    Expanded(
+                      child: _buildWebModuleCard(
+                        modulo: modulos[5],
+                        isDark: isDark,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        subtextColor: subtextColor,
+                        height: 180,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             );
           },
         ),
       ],
+    );
+  }
+
+  // Card de módulo para Web - Diseño premium
+  Widget _buildWebModuleCard({
+    required Map<String, dynamic> modulo,
+    required bool isDark,
+    required Color cardColor,
+    required Color textColor,
+    required Color subtextColor,
+    required double height,
+  }) {
+    final color = modulo['color'] as Color;
+    final gradient = modulo['gradient'] as List<Color>;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: modulo['onTap'] as VoidCallback,
+        borderRadius: BorderRadius.circular(24),
+        hoverColor: color.withAlpha(10),
+        splashColor: color.withAlpha(20),
+        child: Container(
+          height: height,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isDark ? Colors.white.withAlpha(8) : color.withAlpha(25),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: color.withAlpha(isDark ? 25 : 18),
+                blurRadius: 30,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header con icono y estadística
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Icono con gradiente
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: gradient,
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withAlpha(100),
+                          blurRadius: 15,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      modulo['icon'] as IconData,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  const Spacer(),
+                  // Estadística grande
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        modulo['valor'] as String,
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                          height: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: color.withAlpha(20),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          modulo['unidad'] as String,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: color,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              
+              const Spacer(),
+              
+              // Título
+              Text(
+                modulo['titulo'] as String,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                modulo['descripcion'] as String,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: subtextColor,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Botón explorar con hover effect
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [color.withAlpha(25), color.withAlpha(15)],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: color.withAlpha(30)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Explorar',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 18,
+                      color: color,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -1256,6 +1873,258 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
         _mostrarModuloEventos(context);
         break;
     }
+  }
+
+  // Mostrar diálogo de beneficios antes de ir al registro
+  void _navegarARegistro(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final isWide = MediaQuery.of(context).size.width > 600;
+    
+    showDialog(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.symmetric(
+          horizontal: isWide ? 100 : 24,
+          vertical: 40,
+        ),
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: isWide ? 500 : double.infinity,
+          ),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Icono decorativo
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [guinda, Color(0xFF8B2346)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: guinda.withOpacity(0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.person_add_rounded,
+                      color: Colors.white,
+                      size: 40,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Título
+                  Text(
+                    '¡Únete a Plan México!',
+                    style: TextStyle(
+                      fontSize: isWide ? 26 : 22,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // Descripción
+                  Text(
+                    'Regístrate para acceder a contenido personalizado de tu región y muchos beneficios más.',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: isDark 
+                          ? Colors.white.withOpacity(0.7) 
+                          : const Color(0xFF666666),
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 28),
+                  
+                  // Lista de beneficios
+                  _buildBeneficiosRegistro(isDark),
+                  const SizedBox(height: 28),
+                  
+                  // Botones
+                  Row(
+                    children: [
+                      // Botón Cancelar
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: isDark ? Colors.white24 : Colors.grey.shade300,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancelar',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white70 : Colors.grey.shade600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Botón Registrarme
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop(); // Cerrar el diálogo
+                            // Navegar al registro y esperar resultado
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => RegistroScreen(
+                                  onRegistroExitoso: () {
+                                    // El RegistroScreen se encarga de hacer pop
+                                    // Solo actualizamos el estado
+                                    if (mounted) {
+                                      setState(() {});
+                                    }
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: guinda,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 4,
+                            shadowColor: guinda.withOpacity(0.4),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.arrow_forward_rounded, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Registrarme',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Widget para mostrar la lista de beneficios
+  Widget _buildBeneficiosRegistro(bool isDark) {
+    final beneficios = [
+      {'icon': Icons.location_on_rounded, 'text': 'Información de tu región', 'color': verde},
+      {'icon': Icons.work_rounded, 'text': 'Ofertas de empleo cercanas', 'color': const Color(0xFF2563EB)},
+      {'icon': Icons.school_rounded, 'text': 'Cursos y capacitaciones', 'color': const Color(0xFF9333EA)},
+      {'icon': Icons.emoji_events_rounded, 'text': 'Logros y recompensas', 'color': dorado},
+      {'icon': Icons.notifications_rounded, 'text': 'Alertas personalizadas', 'color': Colors.teal},
+    ];
+
+    return Column(
+      children: beneficios.map((beneficio) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: (beneficio['color'] as Color).withOpacity(isDark ? 0.15 : 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  beneficio['icon'] as IconData,
+                  color: beneficio['color'] as Color,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  beneficio['text'] as String,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: isDark ? Colors.white.withOpacity(0.85) : const Color(0xFF333333),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.check_circle_rounded,
+                color: verde.withOpacity(0.7),
+                size: 20,
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // Obtener descripción del municipio basada en la ubicación
+  String _getDescripcionMunicipio() {
+    if (!_isLoggedIn) {
+      return 'Regístrate para ver información de tu región';
+    }
+    // Descripción genérica basada en el estado
+    final descripciones = {
+      'Sonora': 'Destino turístico del noroeste mexicano, conocido por sus playas y desarrollo industrial sostenible.',
+      'Jalisco': 'Centro cultural y económico del occidente de México, cuna del tequila y el mariachi.',
+      'Nuevo León': 'Polo industrial y de innovación del norte de México.',
+      'Ciudad de México': 'Capital del país y centro político, cultural y económico.',
+      'Estado de México': 'Estado más poblado del país, con gran diversidad económica y cultural.',
+      'Yucatán': 'Tierra de la cultura maya, con rica historia y gastronomía única.',
+      'Quintana Roo': 'Paraíso turístico del Caribe mexicano.',
+      'Puebla': 'Ciudad patrimonio con rica tradición gastronómica y arquitectónica.',
+      'Guanajuato': 'Corazón industrial y cultural del Bajío mexicano.',
+      'Veracruz': 'Puerto histórico con rica cultura afromestiza y tradición jarocha.',
+    };
+    return descripciones[_estadoUsuario] ?? 
+        'Descubre las oportunidades de desarrollo en $_municipioUsuario, $_estadoUsuario.';
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -1932,252 +2801,6 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
       ),
     );
   }
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // DIÁLOGOS Y MODALES AUXILIARES
-  // ════════════════════════════════════════════════════════════════════════════
-
-  // Datos de municipios por estado
-  static const Map<String, List<String>> _municipiosPorEstado = {
-    'Aguascalientes': [
-      'Aguascalientes',
-      'Jesús María',
-      'Calvillo',
-      'Rincón de Romos',
-      'Pabellon de Arteaga',
-    ],
-    'Baja California': [
-      'Tijuana',
-      'Mexicali',
-      'Ensenada',
-      'Tecate',
-      'Rosarito',
-    ],
-    'Baja California Sur': [
-      'La Paz',
-      'Los Cabos',
-      'Comondú',
-      'Loreto',
-      'Mulegé',
-    ],
-    'Campeche': ['Campeche', 'Carmen', 'Champotón', 'Calakmul', 'Hopelchén'],
-    'Chiapas': [
-      'Tuxtla Gutiérrez',
-      'San Cristóbal de las Casas',
-      'Tapachula',
-      'Comitán',
-      'Palenque',
-    ],
-    'Chihuahua': ['Chihuahua', 'Juárez', 'Cuauhtémoc', 'Delicias', 'Parral'],
-    'Ciudad de México': [
-      'Cuauhtémoc',
-      'Miguel Hidalgo',
-      'Benito Juárez',
-      'Coyoacán',
-      'Tlalpan',
-      'Iztapalapa',
-    ],
-    'Coahuila': ['Saltillo', 'Torreón', 'Monclova', 'Piedras Negras', 'Acuña'],
-    'Colima': [
-      'Colima',
-      'Manzanillo',
-      'Tecomán',
-      'Villa de Álvarez',
-      'Armería',
-    ],
-    'Durango': [
-      'Durango',
-      'Gómez Palacio',
-      'Lerdo',
-      'Santiago Papasquiaro',
-      'Canatlán',
-    ],
-    'Estado de México': [
-      'Toluca',
-      'Ecatepec',
-      'Naucalpan',
-      'Nezahualcóyotl',
-      'Tlalnepantla',
-    ],
-    'Guanajuato': [
-      'León',
-      'Irapuato',
-      'Celaya',
-      'Salamanca',
-      'Guanajuato',
-      'Silao',
-    ],
-    'Guerrero': ['Acapulco', 'Chilpancingo', 'Iguala', 'Zihuatanejo', 'Taxco'],
-    'Hidalgo': ['Pachuca', 'Tulancingo', 'Tula', 'Tepeji', 'Tizayuca'],
-    'Jalisco': [
-      'Guadalajara',
-      'Zapopan',
-      'Tlaquepaque',
-      'Tonalá',
-      'Puerto Vallarta',
-    ],
-    'Michoacán': [
-      'Morelia',
-      'Uruapan',
-      'Lázaro Cárdenas',
-      'Zamora',
-      'Pátzcuaro',
-    ],
-    'Morelos': ['Cuernavaca', 'Jiutepec', 'Cuautla', 'Temixco', 'Yautepec'],
-    'Nayarit': [
-      'Tepic',
-      'Bahía de Banderas',
-      'Compostela',
-      'San Blas',
-      'Tuxpan',
-    ],
-    'Nuevo León': [
-      'Monterrey',
-      'San Pedro Garza García',
-      'San Nicolás',
-      'Guadalupe',
-      'Apodaca',
-    ],
-    'Oaxaca': [
-      'Oaxaca de Juárez',
-      'Salina Cruz',
-      'Juchitán',
-      'Tuxtepec',
-      'Huatulco',
-    ],
-    'Puebla': [
-      'Puebla',
-      'Tehuacán',
-      'San Martín Texmelucan',
-      'Atlixco',
-      'Cholula',
-    ],
-    'Querétaro': [
-      'Querétaro',
-      'San Juan del Río',
-      'El Marqués',
-      'Corregidora',
-      'Tequisquiapan',
-    ],
-    'Quintana Roo': [
-      'Cancún',
-      'Playa del Carmen',
-      'Chetumal',
-      'Cozumel',
-      'Tulum',
-    ],
-    'San Luis Potosí': [
-      'San Luis Potosí',
-      'Ciudad Valles',
-      'Soledad',
-      'Matehuala',
-      'Ríoverde',
-    ],
-    'Sinaloa': ['Culiacán', 'Mazatlán', 'Los Mochis', 'Guasave', 'Guamúchil'],
-    'Sonora': [
-      'Hermosillo',
-      'Ciudad Obregón',
-      'Nogales',
-      'San Luis Río Colorado',
-      'Guaymas',
-      'Puerto Peñasco',
-      'Navojoa',
-    ],
-    'Tabasco': ['Villahermosa', 'Cárdenas', 'Comalcalco', 'Macuspana', 'Teapa'],
-    'Tamaulipas': [
-      'Reynosa',
-      'Matamoros',
-      'Nuevo Laredo',
-      'Tampico',
-      'Ciudad Victoria',
-    ],
-    'Tlaxcala': [
-      'Tlaxcala',
-      'Apizaco',
-      'Huamantla',
-      'Chiautempan',
-      'Calpulalpan',
-    ],
-    'Veracruz': ['Veracruz', 'Xalapa', 'Coatzacoalcos', 'Poza Rica', 'Córdoba'],
-    'Yucatán': ['Mérida', 'Valladolid', 'Tizimín', 'Progreso', 'Kanasín'],
-    'Zacatecas': ['Zacatecas', 'Fresnillo', 'Guadalupe', 'Jerez', 'Río Grande'],
-  };
-
-  void _mostrarSelectorUbicacion(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF2A2A2A) : Colors.white;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final subtextColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
-    final screenSize = MediaQuery.of(context).size;
-    final isWide = screenSize.width > 800;
-
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Cerrar',
-      barrierColor: Colors.black.withAlpha(150),
-      transitionDuration: const Duration(milliseconds: 300),
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(
-          opacity: animation,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.9, end: 1.0).animate(
-              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-            ),
-            child: child,
-          ),
-        );
-      },
-      pageBuilder: (context, animation, secondaryAnimation) {
-        return _SelectorUbicacionDialog(
-          isDark: isDark,
-          cardColor: cardColor,
-          textColor: textColor,
-          subtextColor: subtextColor,
-          isWide: isWide,
-          screenSize: screenSize,
-          estadoActual: _estadoUsuario,
-          municipioActual: _municipioUsuario,
-          municipiosPorEstado: _municipiosPorEstado,
-          onUbicacionSeleccionada: (estado, municipio) {
-            setState(() {
-              _estadoUsuario = estado;
-              _municipioUsuario = municipio;
-              // Actualizar descripción según el municipio
-              _descripcionMunicipio = _getDescripcionMunicipio(
-                municipio,
-                estado,
-              );
-            });
-          },
-        );
-      },
-    );
-  }
-
-  String _getDescripcionMunicipio(String municipio, String estado) {
-    // Descripciones personalizadas para algunos municipios importantes
-    final descripciones = {
-      'Puerto Peñasco':
-          'Destino turístico del noroeste mexicano, conocido por sus playas y desarrollo industrial sostenible.',
-      'Monterrey':
-          'Centro industrial y financiero del norte de México, con gran actividad económica.',
-      'Guadalajara':
-          'Capital tecnológica de México, centro cultural e industrial del occidente.',
-      'Cancún':
-          'Principal destino turístico internacional de México en el Caribe.',
-      'Tijuana':
-          'Ciudad fronteriza con gran actividad maquiladora y comercial.',
-      'Querétaro': 'Polo de desarrollo industrial y aeroespacial en el Bajío.',
-      'León': 'Capital del calzado y la manufactura de cuero en México.',
-      'Puebla': 'Centro industrial automotriz y ciudad histórica.',
-      'Mérida': 'Ciudad blanca, centro cultural y económico del sureste.',
-    };
-    return descripciones[municipio] ??
-        'Municipio de $estado con oportunidades de desarrollo en la región.';
-  }
-
   void _mostrarDetallePolo(BuildContext context, PoloMarker polo) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
