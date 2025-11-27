@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../service/tts_service.dart';
 
 class AjoloteTutorial extends StatefulWidget {
   final List<String> steps;
@@ -34,12 +35,20 @@ class _AjoloteTutorialState extends State<AjoloteTutorial>
       curve: Curves.easeOutBack,
     );
     _controller.forward();
+    _speakCurrentStep();
   }
 
   @override
   void dispose() {
+    TtsService().stop();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _speakCurrentStep() {
+    if (_currentIndex < widget.steps.length) {
+      TtsService().speak(widget.steps[_currentIndex]);
+    }
   }
 
   void _nextStep() {
@@ -47,6 +56,7 @@ class _AjoloteTutorialState extends State<AjoloteTutorial>
       setState(() {
         _currentIndex++;
       });
+      _speakCurrentStep();
     } else {
       _finish();
     }
