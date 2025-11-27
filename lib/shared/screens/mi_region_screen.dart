@@ -20,11 +20,47 @@ class MiRegionScreen extends StatefulWidget {
 }
 
 class _MiRegionScreenState extends State<MiRegionScreen> {
+<<<<<<< HEAD
   // Datos del usuario (simulados - después vendrán de SharedPreferences)
   String _municipioUsuario = 'Puerto Peñasco';
   String _estadoUsuario = 'Sonora';
   String _descripcionMunicipio =
       'Destino turístico del noroeste mexicano, conocido por sus playas y desarrollo industrial sostenible.';
+=======
+  // Servicio de sesión de usuario
+  final UserSessionService _sessionService = UserSessionService();
+
+  // Getters que obtienen datos del usuario logueado o valores por defecto
+  String get _municipioUsuario =>
+      _sessionService.currentUser?.ciudad ?? 'Sin ubicación';
+  String get _estadoUsuario => _sessionService.currentUser?.estado ?? '';
+  String get _descripcionMunicipio => _getDescripcionMunicipio();
+  bool get _isLoggedIn => _sessionService.isLoggedIn;
+
+  String _getDescripcionMunicipio() {
+    if (!_isLoggedIn)
+      return 'Regístrate para ver información personalizada de tu región.';
+    // Descripciones por municipio/ciudad
+    final descripciones = {
+      'Puerto Peñasco':
+          'Destino turístico del noroeste mexicano, conocido por sus playas y desarrollo industrial sostenible.',
+      'Hermosillo':
+          'Capital de Sonora, centro industrial y de servicios del noroeste de México.',
+      'Monterrey':
+          'Centro industrial y financiero del norte de México, conocida como la Sultana del Norte.',
+      'Guadalajara':
+          'Capital de Jalisco, centro tecnológico y cultural del occidente de México.',
+      'Ciudad de México':
+          'Capital del país, centro político, económico y cultural de México.',
+      'Mérida':
+          'Capital de Yucatán, ciudad histórica y puerta de entrada a la cultura maya.',
+      'Tijuana': 'Ciudad fronteriza con gran actividad industrial y comercial.',
+      'Cancún': 'Principal destino turístico del Caribe mexicano.',
+    };
+    return descripciones[_municipioUsuario] ??
+        'Explora las oportunidades de desarrollo en tu región.';
+  }
+>>>>>>> 7395770 (Fix syntax errors and cleanup in mi_region_screen.dart)
 
   // Helper para detectar si es pantalla ancha (web/desktop)
   bool _isWideScreen(BuildContext context) {
@@ -310,6 +346,14 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
   }
 
   Widget _buildHeroContentMobile() {
+<<<<<<< HEAD
+=======
+    // Si no está logueado, mostrar hero de bienvenida con botón registrarse
+    if (!_isLoggedIn) {
+      return _buildWelcomeHeroMobile();
+    }
+
+>>>>>>> 7395770 (Fix syntax errors and cleanup in mi_region_screen.dart)
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       child: Column(
@@ -452,6 +496,14 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
   }
 
   Widget _buildHeroContentWide() {
+<<<<<<< HEAD
+=======
+    // Si no está logueado, mostrar hero de bienvenida con botón registrarse
+    if (!_isLoggedIn) {
+      return _buildWelcomeHeroWide();
+    }
+
+>>>>>>> 7395770 (Fix syntax errors and cleanup in mi_region_screen.dart)
     return Container(
       constraints: const BoxConstraints(maxWidth: 1200),
       margin: const EdgeInsets.symmetric(horizontal: 32),
@@ -540,8 +592,69 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
               ],
             ),
           ),
+<<<<<<< HEAD
           const SizedBox(width: 32),
           // Botón cambiar ubicación (más visible en web)
+=======
+        ],
+      ),
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // HERO DE BIENVENIDA (Usuario no registrado)
+  // ════════════════════════════════════════════════════════════════════════════
+
+  Widget _buildWelcomeHeroMobile() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+      child: Column(
+        children: [
+          // Icono de bienvenida
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withAlpha(40),
+                  Colors.white.withAlpha(15),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withAlpha(30)),
+            ),
+            child: const Icon(
+              Icons.waving_hand_rounded,
+              color: dorado,
+              size: 48,
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Título de bienvenida
+          const Text(
+            '¡Bienvenido a Plan México!',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: -0.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          // Descripción
+          Text(
+            'Regístrate para ver información personalizada sobre empleos, cursos y proyectos en tu región.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white.withAlpha(200),
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          // Botón de registro
+>>>>>>> 7395770 (Fix syntax errors and cleanup in mi_region_screen.dart)
           Material(
             color: Colors.white.withAlpha(20),
             borderRadius: BorderRadius.circular(18),
@@ -558,6 +671,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                   border: Border.all(color: Colors.white.withAlpha(30)),
                 ),
                 child: const Row(
+<<<<<<< HEAD
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
@@ -566,6 +680,110 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
                       size: 22,
                     ),
                     SizedBox(width: 10),
+=======
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.person_add_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    SizedBox(width: 10),
+                    Text(
+                      'Registrarse',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWelcomeHeroWide() {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 1200),
+      margin: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.symmetric(vertical: 48),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Icono de bienvenida
+          Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withAlpha(40),
+                  Colors.white.withAlpha(15),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: Colors.white.withAlpha(30)),
+            ),
+            child: const Icon(
+              Icons.waving_hand_rounded,
+              color: dorado,
+              size: 56,
+            ),
+          ),
+          const SizedBox(width: 40),
+          // Contenido
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '¡Bienvenido a Plan México!',
+                  style: TextStyle(
+                    fontSize: 38,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: -1,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Regístrate para ver información personalizada sobre empleos, cursos y proyectos de desarrollo en tu región.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white.withAlpha(200),
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 40),
+          // Botón de registro
+          Material(
+            color: dorado,
+            borderRadius: BorderRadius.circular(18),
+            child: InkWell(
+              onTap: _navegarARegistro,
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 18,
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.person_add_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    SizedBox(width: 12),
+>>>>>>> 7395770 (Fix syntax errors and cleanup in mi_region_screen.dart)
                     Text(
                       'Cambiar ubicación',
                       style: TextStyle(
@@ -584,6 +802,15 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
     );
   }
 
+<<<<<<< HEAD
+=======
+  void _navegarARegistro() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const RegistroScreen()));
+  }
+
+>>>>>>> 7395770 (Fix syntax errors and cleanup in mi_region_screen.dart)
   // ════════════════════════════════════════════════════════════════════════════
   // PANEL DE MÓDULOS - Grid de botones de navegación
   // ════════════════════════════════════════════════════════════════════════════
@@ -1937,6 +2164,7 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
   // DIÁLOGOS Y MODALES AUXILIARES
   // ════════════════════════════════════════════════════════════════════════════
 
+<<<<<<< HEAD
   // Datos de municipios por estado
   static const Map<String, List<String>> _municipiosPorEstado = {
     'Aguascalientes': [
@@ -2193,6 +2421,8 @@ class _MiRegionScreenState extends State<MiRegionScreen> {
         'Municipio de $estado con oportunidades de desarrollo en la región.';
   }
 
+=======
+>>>>>>> 7395770 (Fix syntax errors and cleanup in mi_region_screen.dart)
   void _mostrarDetallePolo(BuildContext context, PoloMarker polo) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
