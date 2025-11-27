@@ -98,6 +98,9 @@ class _RegistroScreenState extends State<RegistroScreen> {
       
       // Notificar que el registro fue exitoso
       widget.onRegistroExitoso?.call();
+      
+      // Regresar a la pantalla anterior (Perfil) que se refrescará automáticamente
+      Navigator.pop(context);
     }
   }
 

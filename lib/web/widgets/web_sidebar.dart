@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../shared/widgets/responsive_scaffold.dart';
@@ -22,21 +21,18 @@ class WebSidebar extends StatefulWidget {
   State<WebSidebar> createState() => _WebSidebarState();
 }
 
-class _WebSidebarState extends State<WebSidebar> with TickerProviderStateMixin {
+class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateMixin {
   bool _isExpanded = true;
   int? _hoveredIndex;
   
   late AnimationController _expandController;
-  late AnimationController _pulseController;
   late Animation<double> _expandAnimation;
-  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
-    
     _expandController = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 250),
       vsync: this,
     );
     _expandAnimation = CurvedAnimation(
@@ -44,28 +40,16 @@ class _WebSidebarState extends State<WebSidebar> with TickerProviderStateMixin {
       curve: Curves.easeOutCubic,
     );
     _expandController.forward();
-    
-    // Animación de pulso sutil para el item seleccionado
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
   }
 
   @override
   void dispose() {
     _expandController.dispose();
-    _pulseController.dispose();
     super.dispose();
   }
 
   void _toggleExpanded() {
-    setState(() {
-      _isExpanded = !_isExpanded;
-    });
+    setState(() => _isExpanded = !_isExpanded);
     if (_isExpanded) {
       _expandController.forward();
     } else {
@@ -75,44 +59,33 @@ class _WebSidebarState extends State<WebSidebar> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = widget.themeProvider.isDarkMode;
+    
     return AnimatedBuilder(
       animation: _expandAnimation,
       builder: (context, child) {
-        final width = 80.0 + (_expandAnimation.value * 180.0);
+        final width = 64.0 + (_expandAnimation.value * 176.0);
         
         return Container(
           width: width,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF7A1E3D),
-                AppTheme.primaryColor,
-                AppTheme.primaryDark,
-              ],
-              stops: [0.0, 0.3, 1.0],
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [AppTheme.primaryLight, AppTheme.primaryColor, AppTheme.primaryDark],
+              stops: [0.0, 0.5, 1.0],
             ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF691C32).withValues(alpha: 0.5),
-                blurRadius: 20,
-                offset: const Offset(4, 0),
-              ),
-            ],
           ),
           child: Column(
             children: [
-              const SizedBox(height: 28),
-              _buildHeader(),
-              const SizedBox(height: 12),
-              _buildDecorativeLine(),
+              const SizedBox(height: 16),
+              _buildHeader(isDark),
+              const SizedBox(height: 24),
+              Expanded(child: _buildNavItems(isDark)),
+              _buildThemeToggle(isDark),
               const SizedBox(height: 8),
-              Expanded(child: _buildNavItems()),
-              _buildThemeToggle(),
-              const SizedBox(height: 12),
-              _buildFooter(),
-              _buildToggleButton(),
+              _buildToggleButton(isDark),
+              const SizedBox(height: 16),
             ],
           ),
         );
@@ -120,81 +93,52 @@ class _WebSidebarState extends State<WebSidebar> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(bool isDark) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: _isExpanded ? 16 : 12),
       child: Row(
         children: [
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 800),
-            builder: (context, value, child) {
-              return Transform.scale(
-                scale: 0.8 + (value * 0.2),
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Colors.white.withValues(alpha: 0.25),
-                        Colors.white.withValues(alpha: 0.1),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: AppTheme.accentColor.withValues(alpha: 0.6),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.accentColor.withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.account_balance_rounded, 
-                    color: Colors.white, 
-                    size: 26,
-                  ),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Center(
+              child: Text(
+                'PM',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
                 ),
-              );
-            },
+              ),
+            ),
           ),
           if (_expandAnimation.value > 0.5) ...[
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Opacity(
                 opacity: ((_expandAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Plan',
+                    const Text(
+                      'Plan México',
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.white.withValues(alpha: 0.85),
-                        letterSpacing: 1.5,
-                        height: 1.2,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                    ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [Colors.white, AppTheme.accentColor],
-                      ).createShader(bounds),
-                      child: const Text(
-                        'México',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          height: 1.1,
-                        ),
+                    Text(
+                      '2025',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.accentColor,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -207,42 +151,9 @@ class _WebSidebarState extends State<WebSidebar> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildDecorativeLine() {
-    if (_expandAnimation.value < 0.3) return const SizedBox(height: 24);
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: AnimatedBuilder(
-        animation: _pulseAnimation,
-        builder: (context, child) {
-          return Container(
-            height: 2,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(1),
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.accentColor.withValues(alpha: 0.1),
-                  AppTheme.accentColor.withValues(alpha: 0.5 + (_pulseAnimation.value * 0.3)),
-                  AppTheme.accentColor.withValues(alpha: 0.1),
-                ],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.accentColor.withValues(alpha: 0.3 * _pulseAnimation.value),
-                  blurRadius: 8,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildNavItems() {
+  Widget _buildNavItems(bool isDark) {
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       itemCount: widget.items.length,
       itemBuilder: (context, index) {
         final item = widget.items[index];
@@ -250,127 +161,60 @@ class _WebSidebarState extends State<WebSidebar> with TickerProviderStateMixin {
         final isHovered = index == _hoveredIndex;
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.only(bottom: 4),
           child: MouseRegion(
             onEnter: (_) => setState(() => _hoveredIndex = index),
             onExit: (_) => setState(() => _hoveredIndex = null),
+            cursor: SystemMouseCursors.click,
             child: GestureDetector(
               onTap: () => widget.onItemSelected(index),
-              child: AnimatedBuilder(
-                animation: _pulseAnimation,
-                builder: (context, child) {
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOutCubic,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: _isExpanded ? 16 : 0,
-                      vertical: 14,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: EdgeInsets.symmetric(
+                  horizontal: _isExpanded ? 12 : 0,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.white.withValues(alpha: 0.2)
+                      : isHovered
+                          ? Colors.white.withValues(alpha: 0.1)
+                          : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisAlignment: _isExpanded
+                      ? MainAxisAlignment.start
+                      : MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      item.icon,
+                      color: isSelected
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.7),
+                      size: 20,
                     ),
-                    decoration: BoxDecoration(
-                      gradient: isSelected
-                          ? LinearGradient(
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                              colors: [
-                                Colors.white.withValues(alpha: 0.18),
-                                Colors.white.withValues(alpha: 0.08),
-                              ],
-                            )
-                          : isHovered
-                              ? LinearGradient(
-                                  colors: [
-                                    Colors.white.withValues(alpha: 0.1),
-                                    Colors.white.withValues(alpha: 0.05),
-                                  ],
-                                )
-                              : null,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isSelected
-                            ? AppTheme.accentColor.withValues(alpha: 0.5)
-                            : isHovered
-                                ? Colors.white.withValues(alpha: 0.15)
-                                : Colors.transparent,
-                        width: 1.5,
-                      ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: AppTheme.accentColor.withValues(
-                                  alpha: 0.2 + (_pulseAnimation.value * 0.1),
-                                ),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: _isExpanded
-                          ? MainAxisAlignment.start
-                          : MainAxisAlignment.center,
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.all(2),
-                          child: Transform.scale(
-                            scale: isSelected ? 1.1 : (isHovered ? 1.05 : 1.0),
-                            child: Icon(
-                              item.icon,
+                    if (_expandAnimation.value > 0.5) ...[
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Opacity(
+                          opacity: ((_expandAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
+                          child: Text(
+                            item.label,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                               color: isSelected
                                   ? Colors.white
-                                  : Colors.white.withValues(alpha: isHovered ? 0.9 : 0.7),
-                              size: 22,
+                                  : Colors.white.withValues(alpha: 0.7),
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (_expandAnimation.value > 0.5) ...[
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Opacity(
-                              opacity: ((_expandAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
-                              child: Text(
-                                item.label,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : Colors.white.withValues(alpha: isHovered ? 0.95 : 0.8),
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (isSelected) ...[
-                            AnimatedBuilder(
-                              animation: _pulseAnimation,
-                              builder: (context, child) {
-                                return Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.accentColor,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppTheme.accentColor.withValues(
-                                          alpha: 0.5 + (_pulseAnimation.value * 0.3),
-                                        ),
-                                        blurRadius: 6 + (_pulseAnimation.value * 4),
-                                        spreadRadius: 1,
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ],
-                      ],
-                    ),
-                  );
-                },
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -379,107 +223,77 @@ class _WebSidebarState extends State<WebSidebar> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildThemeToggle() {
-    if (_expandAnimation.value < 0.5) return const SizedBox.shrink();
-    
-    return Opacity(
-      opacity: ((_expandAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () => widget.themeProvider.toggleTheme(),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white.withValues(alpha: 0.12),
-                    Colors.white.withValues(alpha: 0.06),
-                  ],
+  Widget _buildThemeToggle(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () => widget.themeProvider.toggleTheme(),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: EdgeInsets.symmetric(
+              horizontal: _isExpanded ? 12 : 0,
+              vertical: 10,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: _isExpanded
+                  ? MainAxisAlignment.start
+                  : MainAxisAlignment.center,
+              children: [
+                Icon(
+                  isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                  color: AppTheme.accentColor,
+                  size: 20,
                 ),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.1),
-                ),
-              ),
-              child: Row(
-                children: [
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(
-                      begin: 0,
-                      end: widget.themeProvider.isDarkMode ? math.pi : 0,
-                    ),
-                    duration: const Duration(milliseconds: 400),
-                    builder: (context, value, child) {
-                      return Transform.rotate(
-                        angle: value,
-                        child: Icon(
-                          widget.themeProvider.isDarkMode
-                              ? Icons.dark_mode_rounded
-                              : Icons.light_mode_rounded,
-                          color: AppTheme.accentColor,
-                          size: 20,
-                        ),
-                      );
-                    },
-                  ),
+                if (_expandAnimation.value > 0.5) ...[
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      widget.themeProvider.isDarkMode ? 'Modo oscuro' : 'Modo claro',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white.withValues(alpha: 0.9),
+                    child: Opacity(
+                      opacity: ((_expandAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
+                      child: Text(
+                        isDark ? 'Oscuro' : 'Claro',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withValues(alpha: 0.8),
+                        ),
                       ),
                     ),
                   ),
-                  Container(
-                    width: 48,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: widget.themeProvider.isDarkMode
-                            ? [const Color(0xFF1E2029), const Color(0xFF262830)]
-                            : [Colors.white.withValues(alpha: 0.3), Colors.white.withValues(alpha: 0.2)],
+                  Opacity(
+                    opacity: ((_expandAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
+                    child: Container(
+                      width: 36,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      borderRadius: BorderRadius.circular(13),
-                      border: Border.all(
-                        color: AppTheme.accentColor.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: AnimatedAlign(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeOutBack,
-                      alignment: widget.themeProvider.isDarkMode
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
-                      child: Container(
-                        width: 22,
-                        height: 22,
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [AppTheme.accentColor, Color(0xFFD4AF37)],
+                      child: AnimatedAlign(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        alignment: isDark
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
+                        child: Container(
+                          width: 16,
+                          height: 16,
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          decoration: const BoxDecoration(
+                            color: AppTheme.accentColor,
+                            shape: BoxShape.circle,
                           ),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.accentColor.withValues(alpha: 0.5),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
                         ),
                       ),
                     ),
                   ),
                 ],
-              ),
+              ],
             ),
           ),
         ),
@@ -487,79 +301,50 @@ class _WebSidebarState extends State<WebSidebar> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildFooter() {
-    if (_expandAnimation.value < 0.5) return const SizedBox.shrink();
-    
-    return Opacity(
-      opacity: ((_expandAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.25),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppTheme.accentColor.withValues(alpha: 0.2),
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.verified_rounded,
-                color: AppTheme.accentColor.withValues(alpha: 0.9),
-                size: 18,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Gobierno de México',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withValues(alpha: 0.8),
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToggleButton() {
+  Widget _buildToggleButton(bool isDark) {
     return Padding(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           onTap: _toggleExpanded,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white.withValues(alpha: 0.15),
-                  Colors.white.withValues(alpha: 0.08),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1),
-              ),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              vertical: 10,
+              horizontal: _isExpanded ? 12 : 0,
             ),
-            child: AnimatedRotation(
-              turns: _isExpanded ? 0 : 0.5,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutBack,
-              child: Icon(
-                Icons.keyboard_double_arrow_left_rounded,
-                color: Colors.white.withValues(alpha: 0.8),
-                size: 20,
-              ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: _isExpanded
+                  ? MainAxisAlignment.start
+                  : MainAxisAlignment.center,
+              children: [
+                AnimatedRotation(
+                  turns: _isExpanded ? 0 : 0.5,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    Icons.chevron_left_rounded,
+                    color: Colors.white.withValues(alpha: 0.6),
+                    size: 20,
+                  ),
+                ),
+                if (_expandAnimation.value > 0.5) ...[
+                  const SizedBox(width: 8),
+                  Opacity(
+                    opacity: ((_expandAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
+                    child: Text(
+                      'Colapsar',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ),

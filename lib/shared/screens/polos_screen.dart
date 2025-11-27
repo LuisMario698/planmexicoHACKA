@@ -1,5 +1,10 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:share_plus/share_plus.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:path_provider/path_provider.dart';
 import '../widgets/mexico_map_widget.dart';
 import '../data/polos_data.dart';
 import 'encuesta_polo_screen.dart';
@@ -9,6 +14,7 @@ import '../widgets/polos_tutorial_overlay.dart'; // Tutorial para el mapa
 import '../widgets/state_tutorial_overlay.dart'; // Tutorial para estados
 import '../widgets/polo_tutorial_overlay.dart'; // Tutorial para polos
 import '../widgets/webview_dialog.dart'; // WebView para explorar polos
+import '../widgets/polo_infografia_widget.dart'; // Infografía para compartir
 
 class PolosScreen extends StatefulWidget {
   const PolosScreen({super.key});
@@ -75,6 +81,9 @@ class _PolosScreenState extends State<PolosScreen>
   late AnimationController _expandController;
   bool _isExpanding = false;
   bool _isCollapsing = false; // Para animación inversa
+
+  // Controller para capturar screenshots
+  final ScreenshotController _screenshotController = ScreenshotController();
 
   // Variables para el tutorial
   bool _showTutorial = false;
@@ -2777,83 +2786,175 @@ class _PolosScreenState extends State<PolosScreen>
     );
   }
 
-  // Método para compartir información del polo
+  // Método para compartir información del polo como imagen
   Future<void> _sharePolo(PoloInfo polo, PoloMarker? poloData) async {
-    // Construir el texto para compartir
-    final buffer = StringBuffer();
-    buffer.writeln('🇲🇽 Plan México - Polo de Desarrollo');
-    buffer.writeln('');
-    buffer.writeln('📍 ${polo.nombre}');
-    buffer.writeln('📌 ${polo.estado}');
-    buffer.writeln('');
-    
-    if (poloData != null) {
-      // Tipo de polo
-      String tipoLabel = '';
-      switch (poloData.tipo) {
-        case 'nuevo':
-          tipoLabel = '🆕 Nuevo Polo';
-          break;
-        case 'en_marcha':
-          tipoLabel = '✅ En Marcha';
-          break;
-        case 'en_proceso':
-          tipoLabel = '⏳ En Proceso';
-          break;
-        case 'tercera_etapa':
-          tipoLabel = '🔄 Tercera Etapa';
-          break;
-        default:
-          tipoLabel = '📋 ${poloData.tipo}';
+    // Mostrar diálogo de carga
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: Color(0xFF691C32)),
+                SizedBox(height: 16),
+                Text('Generando infografía...'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      // Capturar la infografía como imagen
+      final Uint8List? imageBytes = await _screenshotController.captureFromWidget(
+        MediaQuery(
+          data: const MediaQueryData(),
+          child: Material(
+            color: Colors.transparent,
+            child: PoloInfografiaWidget(
+              polo: polo,
+              poloData: poloData,
+            ),
+          ),
+        ),
+        delay: const Duration(milliseconds: 100),
+        pixelRatio: 3.0, // Alta resolución
+      );
+
+      // Cerrar diálogo de carga
+      if (mounted) Navigator.pop(context);
+
+      if (imageBytes == null) {
+        throw Exception('No se pudo generar la imagen');
       }
-      buffer.writeln(tipoLabel);
-      buffer.writeln('');
-      
-      if (poloData.region.isNotEmpty) {
-        buffer.writeln('🌎 Región: ${poloData.region}');
+
+      // Detectar si es móvil o escritorio
+      final isDesktop = MediaQuery.of(context).size.width >= 768;
+      final isMobileDevice = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
+      if (isMobileDevice) {
+        // En móvil: compartir la imagen
+        await _shareImageMobile(imageBytes, polo.nombre);
+      } else if (kIsWeb) {
+        // En web: descargar la imagen
+        await _downloadImageWeb(imageBytes, polo.nombre);
+      } else {
+        // En desktop: guardar la imagen
+        await _saveImageDesktop(imageBytes, polo.nombre);
       }
+    } catch (e) {
+      // Cerrar diálogo de carga si está abierto
+      if (mounted) Navigator.pop(context);
       
-      if (poloData.vocacion.isNotEmpty) {
-        buffer.writeln('🎯 Vocación: ${poloData.vocacion}');
-      }
-      
-      if (poloData.sectoresClave.isNotEmpty) {
-        buffer.writeln('');
-        buffer.writeln('🏭 Sectores Clave:');
-        for (final sector in poloData.sectoresClave) {
-          buffer.writeln('  • $sector');
-        }
-      }
-      
-      if (poloData.infraestructura.isNotEmpty) {
-        buffer.writeln('');
-        buffer.writeln('🏗️ Infraestructura: ${poloData.infraestructura}');
-      }
-      
-      if (poloData.empleoEstimado.isNotEmpty) {
-        buffer.writeln('👥 Empleo: ${poloData.empleoEstimado}');
-      }
-      
-      if (poloData.beneficiosLargoPlazo.isNotEmpty) {
-        buffer.writeln('');
-        buffer.writeln('✨ Beneficios: ${poloData.beneficiosLargoPlazo}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al generar imagen: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
       }
     }
-    
-    buffer.writeln('');
-    buffer.writeln('📲 Conoce más en la app Plan México');
-    buffer.writeln('#PlanMéxico #DesarrolloNacional');
-    
+  }
+
+  // Compartir imagen en móvil
+  Future<void> _shareImageMobile(Uint8List imageBytes, String poloName) async {
     try {
-      await Share.share(
-        buffer.toString(),
-        subject: 'Plan México - ${polo.nombre}',
+      final tempDir = await getTemporaryDirectory();
+      final fileName = 'plan_mexico_${poloName.replaceAll(' ', '_').toLowerCase()}.png';
+      final file = File('${tempDir.path}/$fileName');
+      await file.writeAsBytes(imageBytes);
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: '🇲🇽 Conoce el polo de desarrollo: $poloName\n#PlanMéxico',
+        subject: 'Plan México - $poloName',
       );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Error al compartir'),
+            content: const Text('Error al compartir imagen'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+  }
+
+  // Descargar imagen en web
+  Future<void> _downloadImageWeb(Uint8List imageBytes, String poloName) async {
+    try {
+      // ignore: avoid_web_libraries_in_flutter
+      // En web usamos dart:html para descargar
+      // Por ahora mostramos un mensaje de éxito y usamos share_plus
+      await Share.shareXFiles(
+        [XFile.fromData(imageBytes, name: 'plan_mexico_$poloName.png', mimeType: 'image/png')],
+        text: '🇲🇽 Conoce el polo de desarrollo: $poloName\n#PlanMéxico',
+      );
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('✅ Imagen lista para compartir'),
+            backgroundColor: const Color(0xFF16A34A),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Error al descargar imagen'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+  }
+
+  // Guardar imagen en desktop
+  Future<void> _saveImageDesktop(Uint8List imageBytes, String poloName) async {
+    try {
+      final directory = await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory();
+      final fileName = 'plan_mexico_${poloName.replaceAll(' ', '_').toLowerCase()}_${DateTime.now().millisecondsSinceEpoch}.png';
+      final file = File('${directory.path}/$fileName');
+      await file.writeAsBytes(imageBytes);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Imagen guardada en: ${file.path}'),
+            backgroundColor: const Color(0xFF16A34A),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Error al guardar imagen'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -2881,8 +2982,8 @@ class _PolosScreenState extends State<PolosScreen>
   void _handleExplorarPolo(PoloInfo polo) {
     // URLs de experiencias 3D por polo
     const Map<String, String> poloWebViews = {
-      'cdmx_poligono': 'https://piter-zfgbfaz2r9jjy-z2r9jjy.needle.run/',
-      'edomex_aifa': 'https://piter-zfgbfaz2r9jjy-z2r9jjy.needle.run/',
+      'cdmx_poligono': 'https://aifa-zfgbfa1lsvxu-zxmejh.needle.run/',
+      'edomex_aifa': 'https://aifa-zfgbfa1lsvxu-zxmejh.needle.run/',
     };
 
     // Verificar si el polo tiene una experiencia 3D
