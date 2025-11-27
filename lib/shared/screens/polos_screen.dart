@@ -2804,20 +2804,18 @@ class _PolosScreenState extends State<PolosScreen>
 
     try {
       // Capturar la infografía como imagen
-      final Uint8List? imageBytes = await _screenshotController.captureFromWidget(
-        MediaQuery(
-          data: const MediaQueryData(),
-          child: Material(
-            color: Colors.transparent,
-            child: PoloInfografiaWidget(
-              polo: polo,
-              poloData: poloData,
+      final Uint8List? imageBytes = await _screenshotController
+          .captureFromWidget(
+            MediaQuery(
+              data: const MediaQueryData(),
+              child: Material(
+                color: Colors.transparent,
+                child: PoloInfografiaWidget(polo: polo, poloData: poloData),
+              ),
             ),
-          ),
-        ),
-        delay: const Duration(milliseconds: 100),
-        pixelRatio: 3.0, // Alta resolución
-      );
+            delay: const Duration(milliseconds: 100),
+            pixelRatio: 3.0, // Alta resolución
+          );
 
       // Cerrar diálogo de carga
       if (mounted) Navigator.pop(context);
@@ -2843,14 +2841,16 @@ class _PolosScreenState extends State<PolosScreen>
     } catch (e) {
       // Cerrar diálogo de carga si está abierto
       if (mounted) Navigator.pop(context);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error al generar imagen: $e'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
@@ -2861,7 +2861,8 @@ class _PolosScreenState extends State<PolosScreen>
   Future<void> _shareImageMobile(Uint8List imageBytes, String poloName) async {
     try {
       final tempDir = await getTemporaryDirectory();
-      final fileName = 'plan_mexico_${poloName.replaceAll(' ', '_').toLowerCase()}.png';
+      final fileName =
+          'plan_mexico_${poloName.replaceAll(' ', '_').toLowerCase()}.png';
       final file = File('${tempDir.path}/$fileName');
       await file.writeAsBytes(imageBytes);
 
@@ -2877,7 +2878,9 @@ class _PolosScreenState extends State<PolosScreen>
             content: const Text('Error al compartir imagen'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
@@ -2890,18 +2893,23 @@ class _PolosScreenState extends State<PolosScreen>
       // ignore: avoid_web_libraries_in_flutter
       // En web usamos dart:html para descargar
       // Por ahora mostramos un mensaje de éxito y usamos share_plus
-      await Share.shareXFiles(
-        [XFile.fromData(imageBytes, name: 'plan_mexico_$poloName.png', mimeType: 'image/png')],
-        text: '🇲🇽 Conoce el polo de desarrollo: $poloName\n#PlanMéxico',
-      );
-      
+      await Share.shareXFiles([
+        XFile.fromData(
+          imageBytes,
+          name: 'plan_mexico_$poloName.png',
+          mimeType: 'image/png',
+        ),
+      ], text: '🇲🇽 Conoce el polo de desarrollo: $poloName\n#PlanMéxico');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('✅ Imagen lista para compartir'),
             backgroundColor: const Color(0xFF16A34A),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
@@ -2912,7 +2920,9 @@ class _PolosScreenState extends State<PolosScreen>
             content: const Text('Error al descargar imagen'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
@@ -2922,8 +2932,11 @@ class _PolosScreenState extends State<PolosScreen>
   // Guardar imagen en desktop
   Future<void> _saveImageDesktop(Uint8List imageBytes, String poloName) async {
     try {
-      final directory = await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory();
-      final fileName = 'plan_mexico_${poloName.replaceAll(' ', '_').toLowerCase()}_${DateTime.now().millisecondsSinceEpoch}.png';
+      final directory =
+          await getDownloadsDirectory() ??
+          await getApplicationDocumentsDirectory();
+      final fileName =
+          'plan_mexico_${poloName.replaceAll(' ', '_').toLowerCase()}_${DateTime.now().millisecondsSinceEpoch}.png';
       final file = File('${directory.path}/$fileName');
       await file.writeAsBytes(imageBytes);
 
@@ -2934,7 +2947,9 @@ class _PolosScreenState extends State<PolosScreen>
             backgroundColor: const Color(0xFF16A34A),
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 4),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
             action: SnackBarAction(
               label: 'OK',
               textColor: Colors.white,
@@ -2977,8 +2992,8 @@ class _PolosScreenState extends State<PolosScreen>
   void _handleExplorarPolo(PoloInfo polo) {
     // URLs de experiencias 3D por polo
     const Map<String, String> poloWebViews = {
-      'cdmx_poligono': 'https://aifa-zfgbfa1lsvxu-1x4ghf.needle.run/',
-      'edomex_aifa': 'https://aifa-zfgbfa1lsvxu-1x4ghf.needle.run/',
+      'cdmx_poligono': 'https://aifa-zfgbfa1lsvxu-gnt02.needle.run/',
+      'edomex_aifa': 'https://aifa-zfgbfa1lsvxu-gnt02.needle.run/',
     };
 
     // Verificar si el polo tiene una experiencia 3D
