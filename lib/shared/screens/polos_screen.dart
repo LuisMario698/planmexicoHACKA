@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../widgets/mexico_map_widget.dart';
 import '../data/polos_data.dart';
+import 'encuesta_polo_screen.dart';
+import '../../service/encuesta_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/polos_tutorial_overlay.dart'; // Tutorial para el mapa
+import '../widgets/state_tutorial_overlay.dart'; // Tutorial para estados
+import '../widgets/polo_tutorial_overlay.dart'; // Tutorial para polos
 
 class PolosScreen extends StatefulWidget {
   const PolosScreen({super.key});
@@ -12,6 +18,7 @@ class PolosScreen extends StatefulWidget {
 
 class StatePoloData {
   final int count;
+
   final List<String> descriptions;
 
   const StatePoloData({required this.count, required this.descriptions});
@@ -55,18 +62,38 @@ class StateDetailData {
   });
 }
 
-class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin {
+class _PolosScreenState extends State<PolosScreen>
+    with TickerProviderStateMixin {
   String? _selectedStateCode;
   String? _selectedStateName;
   String? _hoveredStateName;
   PoloInfo? _selectedPolo;
   bool _showDetailedInfo = false;
-  
+
   // Animación de expansión del mini mapa
   late AnimationController _expandController;
   bool _isExpanding = false;
   bool _isCollapsing = false; // Para animación inversa
-  
+
+  // Variables para el tutorial
+  bool _showTutorial = false;
+  late GlobalKey _mapContainerKey;
+  bool _mapUnlocked = false;
+
+  // Variables para el tutorial de estado
+  bool _showStateTutorial = false;
+  late GlobalKey _stateInfoPanelKey;
+  bool _stateUnlocked = false;
+
+  // Variables para el tutorial de polo (múltiples pasos)
+  bool _showPoloTutorial = false;
+  int _poloTutorialStep = 1;
+  late GlobalKey _poloHeaderKey;
+  late GlobalKey _poloSectoresKey;
+  late GlobalKey _explorarButtonKey;
+  late GlobalKey _opinarButtonKey;
+  bool _poloTutorialCompleted = false;
+
   @override
   void initState() {
     super.initState();
@@ -75,8 +102,111 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
       vsync: this,
     );
     _expandController.addListener(() => setState(() {}));
+    _mapContainerKey = GlobalKey();
+    _stateInfoPanelKey = GlobalKey();
+    _poloHeaderKey = GlobalKey();
+    _poloSectoresKey = GlobalKey();
+    _explorarButtonKey = GlobalKey();
+    _opinarButtonKey = GlobalKey();
+    _checkIfShowTutorial();
   }
-  
+
+  Future<void> _checkIfShowTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenTutorial = prefs.getBool('polos_tutorial_seen') ?? false;
+
+    if (mounted && !hasSeenTutorial) {
+      // Esperar a que el widget se dibuje completamente
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          setState(() => _showTutorial = true);
+        }
+      });
+    }
+  }
+
+  Future<void> _completeTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('polos_tutorial_seen', true);
+  }
+
+  Future<void> _checkIfShowStateTutorial(String stateName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenStateTutorial =
+        prefs.getBool('polos_state_tutorial_seen_$stateName') ?? false;
+
+    if (mounted && !hasSeenStateTutorial) {
+      // Esperar a que el widget se dibuje completamente
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          setState(() => _showStateTutorial = true);
+        }
+      });
+    }
+  }
+
+  Future<void> _completeStateTutorial(String stateName) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('polos_state_tutorial_seen_$stateName', true);
+  }
+
+  Future<void> _checkIfShowPoloTutorial(PoloInfo polo) async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenPoloTutorial =
+        prefs.getBool('polos_polo_tutorial_seen_${polo.id}') ?? false;
+
+    if (mounted && !hasSeenPoloTutorial) {
+      // Esperar a que el widget se dibuje completamente
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          setState(() {
+            _showPoloTutorial = true;
+            _poloTutorialStep = 1;
+            _poloTutorialCompleted = false;
+          });
+        }
+      });
+    }
+  }
+
+  void _nextPoloTutorialStep() {
+    if (_poloTutorialStep < 4) {
+      setState(() {
+        _poloTutorialStep++;
+      });
+    } else {
+      // Tutorial completado
+      _completePoloTutorial();
+    }
+  }
+
+  Future<void> _completePoloTutorial() async {
+    if (_selectedPolo != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(
+        'polos_polo_tutorial_seen_${_selectedPolo!.id}',
+        true,
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        _showPoloTutorial = false;
+        _poloTutorialStep = 1;
+        _poloTutorialCompleted = true;
+      });
+    }
+  }
+
+  void _skipPoloTutorial() {
+    if (mounted) {
+      setState(() {
+        _showPoloTutorial = false;
+        _poloTutorialStep = 1;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _expandController.dispose();
@@ -438,27 +568,153 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
               : [const Color(0xFFF8F9FA), const Color(0xFFE9ECEF)],
         ),
       ),
-      child: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(isDesktop ? 32.0 : 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              _buildHeader(isDark, isDesktop),
-              const SizedBox(height: 24),
+      child: Stack(
+        children: [
+          SafeArea(
+            child: Padding(
+              padding: EdgeInsets.all(isDesktop ? 32.0 : 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  _buildHeader(isDark, isDesktop),
+                  const SizedBox(height: 24),
 
-              // Contenido principal
-              Expanded(
-                child: isDesktop
-                    ? _buildDesktopLayout(isDark)
-                    : _buildMobileLayout(isDark),
+                  // Contenido principal
+                  Expanded(
+                    child: isDesktop
+                        ? _buildDesktopLayout(isDark)
+                        : _buildMobileLayout(isDark),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+          // Tutorial Overlay - Mapa
+          if (_showTutorial && !_mapUnlocked) _buildTutorialOverlay(),
+          // Tutorial Overlay - Estado
+          if (_showStateTutorial &&
+              !_stateUnlocked &&
+              _selectedStateName != null)
+            _buildStateTutorialOverlay(),
+          // Tutorial Overlay - Polo
+          if (_showPoloTutorial && _selectedPolo != null)
+            _buildPoloTutorialOverlay(),
+        ],
       ),
     );
+  }
+
+  Widget _buildTutorialOverlay() {
+    return PolosTutorialOverlay(
+      targetRect: _getMapTargetRect(),
+      onTargetTap: () {
+        setState(() => _mapUnlocked = true);
+        // El tutorial se cierra después de desbloquear el mapa
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) {
+            setState(() => _showTutorial = false);
+            _completeTutorial();
+          }
+        });
+      },
+      onSkip: () {
+        setState(() => _showTutorial = false);
+        _completeTutorial();
+      },
+    );
+  }
+
+  Rect _getMapTargetRect() {
+    final RenderBox? renderBox =
+        _mapContainerKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox != null) {
+      final size = renderBox.size;
+      final offset = renderBox.localToGlobal(Offset.zero);
+      return Rect.fromLTWH(offset.dx, offset.dy, size.width, size.height);
+    }
+    // Rect por defecto si no se puede obtener
+    return Rect.fromLTWH(0, 200, 400, 300);
+  }
+
+  Widget _buildStateTutorialOverlay() {
+    return StateTutorialOverlay(
+      targetRect: _getStateInfoPanelRect(),
+      onTargetTap: () {
+        setState(() => _stateUnlocked = true);
+        // El tutorial se cierra después de desbloquear el panel
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted && _selectedStateName != null) {
+            setState(() => _showStateTutorial = false);
+            _completeStateTutorial(_selectedStateName!);
+          }
+        });
+      },
+      onSkip: () {
+        setState(() => _showStateTutorial = false);
+        if (_selectedStateName != null) {
+          _completeStateTutorial(_selectedStateName!);
+        }
+      },
+    );
+  }
+
+  Rect _getStateInfoPanelRect() {
+    final RenderBox? renderBox =
+        _stateInfoPanelKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox != null) {
+      final size = renderBox.size;
+      final offset = renderBox.localToGlobal(Offset.zero);
+      return Rect.fromLTWH(offset.dx, offset.dy, size.width, size.height);
+    }
+    // Rect por defecto si no se puede obtener
+    return Rect.fromLTWH(0, 300, 400, 300);
+  }
+
+  Widget _buildPoloTutorialOverlay() {
+    Rect? targetRect;
+
+    // Determinar qué elemento mostrar según el paso
+    switch (_poloTutorialStep) {
+      case 1:
+        // Paso 1: Información general (sin target específico)
+        return PoloTutorialOverlay(
+          step: 1,
+          targetRect: null,
+          onNext: _nextPoloTutorialStep,
+          onSkip: _skipPoloTutorial,
+        );
+      case 2:
+        // Paso 2: Sectores clave
+        targetRect = _getPoloElementRect(_poloSectoresKey);
+      case 3:
+        // Paso 3: Botón Explorar
+        targetRect = _getPoloElementRect(_explorarButtonKey);
+      case 4:
+        // Paso 4: Botón Opinar
+        targetRect = _getPoloElementRect(_opinarButtonKey);
+      default:
+        return const SizedBox.shrink();
+    }
+
+    return PoloTutorialOverlay(
+      step: _poloTutorialStep,
+      targetRect: targetRect,
+      onNext: _nextPoloTutorialStep,
+      onSkip: _skipPoloTutorial,
+    );
+  }
+
+  Rect _getPoloElementRect(GlobalKey key) {
+    final RenderBox? renderBox =
+        key.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox != null) {
+      final size = renderBox.size;
+      final offset = renderBox.localToGlobal(Offset.zero);
+      return Rect.fromLTWH(offset.dx, offset.dy, size.width, size.height);
+    }
+    // Rect por defecto si no se puede obtener
+    return Rect.fromLTWH(0, 400, 300, 60);
   }
 
   Widget _buildHeader(bool isDark, bool isDesktop) {
@@ -542,7 +798,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
     if (_isCollapsing) {
       return _buildCollapsingMapAnimation(isDark);
     }
-    
+
     // Si hay un polo seleccionado, mostrar layout scrolleable con mini preview
     if (_selectedPolo != null) {
       return SingleChildScrollView(
@@ -560,7 +816,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
           ],
         ),
       );
-    } 
+    }
     // Si hay un estado seleccionado (pero no polo), mostrar mapa del estado + info scrolleable
     else if (_selectedStateName != null) {
       return SingleChildScrollView(
@@ -569,10 +825,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
           mainAxisSize: MainAxisSize.min,
           children: [
             // Mapa del estado (altura fija) - usa showOnlySelected para evitar animación de México
-            SizedBox(
-              height: 350,
-              child: _buildStateOnlyMapContainer(isDark),
-            ),
+            SizedBox(height: 350, child: _buildStateOnlyMapContainer(isDark)),
             const SizedBox(height: 16),
             // Panel de información del estado desplegado
             _buildStateInfoPanel(isDark),
@@ -590,10 +843,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
           mainAxisSize: MainAxisSize.min,
           children: [
             // Mapa con altura fija
-            SizedBox(
-              height: 380,
-              child: _buildMapContainer(isDark),
-            ),
+            SizedBox(height: 380, child: _buildMapContainer(isDark)),
             const SizedBox(height: 16),
             // Panel inicial expandido (leyenda + sectores)
             _buildInitialInfoPanel(isDark),
@@ -604,7 +854,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
       );
     }
   }
-  
+
   // Contenedor del mapa que solo muestra el estado seleccionado (sin animación de México)
   Widget _buildStateOnlyMapContainer(bool isDark) {
     return Container(
@@ -642,6 +892,8 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
               _selectedPolo = polo;
               _showDetailedInfo = false;
             });
+            // Mostrar tutorial del polo si aún no lo ha visto
+            _checkIfShowPoloTutorial(polo);
           },
           onBackToMap: () {
             setState(() {
@@ -658,18 +910,20 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
       ),
     );
   }
-  
+
   // Animación de expansión del mini mapa - transición simple y fluida
   Widget _buildExpandingMapAnimation(bool isDark) {
     // Usar curva suave
-    final curvedProgress = Curves.easeOutCubic.transform(_expandController.value);
-    
+    final curvedProgress = Curves.easeOutCubic.transform(
+      _expandController.value,
+    );
+
     // Solo animar la altura del contenedor y opacidad
     final mapHeight = 110.0 + (curvedProgress * 240.0); // 110 -> 350
     final panelOpacity = Curves.easeIn.transform(
-      ((_expandController.value - 0.4) / 0.6).clamp(0.0, 1.0)
+      ((_expandController.value - 0.4) / 0.6).clamp(0.0, 1.0),
     );
-    
+
     return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
       child: Column(
@@ -708,33 +962,34 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                     _selectedPolo = polo;
                     _isExpanding = false;
                   });
+                  // Mostrar tutorial del polo si aún no lo ha visto
+                  _checkIfShowPoloTutorial(polo);
                 },
                 onBackToMap: () {},
                 onStateHover: (_) {},
               ),
             ),
           ),
-          
+
           // Panel de información del estado (aparece con fade)
           const SizedBox(height: 16),
-          Opacity(
-            opacity: panelOpacity,
-            child: _buildStateInfoPanel(isDark),
-          ),
+          Opacity(opacity: panelOpacity, child: _buildStateInfoPanel(isDark)),
           const SizedBox(height: 20),
         ],
       ),
     );
   }
-  
+
   // Animación de colapso - transición inversa (de estado a mini preview)
   Widget _buildCollapsingMapAnimation(bool isDark) {
     // Usar curva suave inversa
-    final curvedProgress = Curves.easeInCubic.transform(_expandController.value);
-    
+    final curvedProgress = Curves.easeInCubic.transform(
+      _expandController.value,
+    );
+
     // Animar la altura del contenedor de forma inversa
     final mapHeight = 110.0 + (curvedProgress * 240.0); // 350 -> 110
-    
+
     return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
       child: Column(
@@ -830,7 +1085,9 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF1A1A2E),
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -838,9 +1095,9 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                             'Código: ${_selectedStateCode ?? 'N/A'}',
                             style: TextStyle(
                               fontSize: 13,
-                              color: isDark 
-                                ? Colors.white.withValues(alpha: 0.6) 
-                                : const Color(0xFF6B7280),
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.6)
+                                  : const Color(0xFF6B7280),
                             ),
                           ),
                         ],
@@ -872,14 +1129,14 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                   width: 90,
                   height: 90,
                   decoration: BoxDecoration(
-                    color: isDark 
-                      ? const Color(0xFF262830) 
-                      : const Color(0xFFF3F4F6),
+                    color: isDark
+                        ? const Color(0xFF262830)
+                        : const Color(0xFFF3F4F6),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isDark 
-                        ? const Color(0xFF3A3D47) 
-                        : const Color(0xFFE5E7EB),
+                      color: isDark
+                          ? const Color(0xFF3A3D47)
+                          : const Color(0xFFE5E7EB),
                     ),
                   ),
                   child: ClipRRect(
@@ -930,6 +1187,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
 
   Widget _buildMapContainer(bool isDark) {
     return Container(
+      key: _mapContainerKey,
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E2029) : Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -955,13 +1213,20 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                   _selectedStateName = name.isEmpty ? null : name;
                   _selectedPolo = null;
                   _showDetailedInfo = false;
+                  _stateUnlocked = false; // Reset estado del tutorial
                 });
+                // Mostrar tutorial del estado si aún no lo ha visto
+                if (name.isNotEmpty) {
+                  _checkIfShowStateTutorial(name);
+                }
               },
               onPoloSelected: (polo) {
                 setState(() {
                   _selectedPolo = polo;
                   _showDetailedInfo = false;
                 });
+                // Mostrar tutorial del polo si aún no lo ha visto
+                _checkIfShowPoloTutorial(polo);
               },
               onBackToMap: () {},
               onStateHover: (stateName) {
@@ -1103,7 +1368,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Fila 1: En marcha | A licitar o en proceso
           Row(
             children: [
@@ -1185,9 +1450,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF262830)
-                  : const Color(0xFFF8F9FA),
+              color: isDark ? const Color(0xFF262830) : const Color(0xFFF8F9FA),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isDark
@@ -1207,9 +1470,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: isDark
-                            ? Colors.white
-                            : const Color(0xFF1A1A2E),
+                        color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                       ),
                     ),
                   ),
@@ -1329,15 +1590,19 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
   // Versión de PoloInfo sin scroll interno
   Widget _buildPoloInfoNoScroll(bool isDark) {
     final polo = _selectedPolo!;
-    
+
     // Obtener información adicional del polo desde PolosData
     final poloData = PolosData.getPoloByStringId(polo.id);
-    
+
     // Colores del tema del programa
     final cardColor = isDark ? const Color(0xFF262830) : Colors.white;
-    final surfaceColor = isDark ? const Color(0xFF1E2029) : const Color(0xFFF8F9FA);
-    final borderColor = isDark ? const Color(0xFF3A3D47) : const Color(0xFFE5E7EB);
-    
+    final surfaceColor = isDark
+        ? const Color(0xFF1E2029)
+        : const Color(0xFFF8F9FA);
+    final borderColor = isDark
+        ? const Color(0xFF3A3D47)
+        : const Color(0xFFE5E7EB);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1407,7 +1672,9 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF1A1A2E),
+                        color: isDark
+                            ? const Color(0xFFF5F5F5)
+                            : const Color(0xFF1A1A2E),
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -1415,7 +1682,9 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                       _showDetailedInfo ? 'Información detallada' : polo.estado,
                       style: TextStyle(
                         fontSize: 13,
-                        color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF6B7280),
+                        color: isDark
+                            ? const Color(0xFFA0A0A0)
+                            : const Color(0xFF6B7280),
                       ),
                     ),
                   ],
@@ -1424,15 +1693,27 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
             ],
           ),
         ),
-        
+
         // Contenido (sin scroll, se despliega completo)
         Padding(
           padding: const EdgeInsets.only(top: 16),
-          child: _showDetailedInfo 
-              ? _buildDetailedContent(isDark, poloData, polo, cardColor, borderColor)
-              : _buildSummaryContent(isDark, poloData, polo, cardColor, borderColor),
+          child: _showDetailedInfo
+              ? _buildDetailedContent(
+                  isDark,
+                  poloData,
+                  polo,
+                  cardColor,
+                  borderColor,
+                )
+              : _buildSummaryContent(
+                  isDark,
+                  poloData,
+                  polo,
+                  cardColor,
+                  borderColor,
+                ),
         ),
-        
+
         // Botones
         Container(
           padding: const EdgeInsets.only(top: 16),
@@ -1447,11 +1728,14 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
           child: Row(
             children: [
               Expanded(
-                child: _buildActionButton(
-                  icon: Icons.explore_rounded,
-                  label: 'Explorar',
-                  color: const Color(0xFF691C32),
-                  onTap: () => _openLocation(polo.latitud, polo.longitud),
+                child: Container(
+                  key: _explorarButtonKey,
+                  child: _buildActionButton(
+                    icon: Icons.explore_rounded,
+                    label: 'Explorar',
+                    color: const Color(0xFF691C32),
+                    onTap: () => _openLocation(polo.latitud, polo.longitud),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -1465,11 +1749,14 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _buildActionButton(
-                  icon: Icons.rate_review_rounded,
-                  label: 'Opinar',
-                  color: const Color(0xFF2563EB),
-                  onTap: () => _showFeedbackDialog(),
+                child: Container(
+                  key: _opinarButtonKey,
+                  child: _buildActionButton(
+                    icon: Icons.rate_review_rounded,
+                    label: 'Opinar',
+                    color: const Color(0xFF2563EB),
+                    onTap: () => _showFeedbackDialog(),
+                  ),
                 ),
               ),
             ],
@@ -1481,15 +1768,19 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
 
   Widget _buildPoloInfo(bool isDark) {
     final polo = _selectedPolo!;
-    
+
     // Obtener información adicional del polo desde PolosData
     final poloData = PolosData.getPoloByStringId(polo.id);
-    
+
     // Colores del tema del programa
     final cardColor = isDark ? const Color(0xFF262830) : Colors.white;
-    final surfaceColor = isDark ? const Color(0xFF1E2029) : const Color(0xFFF8F9FA);
-    final borderColor = isDark ? const Color(0xFF3A3D47) : const Color(0xFFE5E7EB);
-    
+    final surfaceColor = isDark
+        ? const Color(0xFF1E2029)
+        : const Color(0xFFF8F9FA);
+    final borderColor = isDark
+        ? const Color(0xFF3A3D47)
+        : const Color(0xFFE5E7EB);
+
     return Column(
       children: [
         // Header fijo
@@ -1559,7 +1850,9 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF1A1A2E),
+                        color: isDark
+                            ? const Color(0xFFF5F5F5)
+                            : const Color(0xFF1A1A2E),
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -1567,7 +1860,9 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                       _showDetailedInfo ? 'Información detallada' : polo.estado,
                       style: TextStyle(
                         fontSize: 13,
-                        color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF6B7280),
+                        color: isDark
+                            ? const Color(0xFFA0A0A0)
+                            : const Color(0xFF6B7280),
                       ),
                     ),
                   ],
@@ -1576,17 +1871,29 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
             ],
           ),
         ),
-        
+
         // Contenido scrolleable
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.only(top: 16),
-            child: _showDetailedInfo 
-                ? _buildDetailedContent(isDark, poloData, polo, cardColor, borderColor)
-                : _buildSummaryContent(isDark, poloData, polo, cardColor, borderColor),
+            child: _showDetailedInfo
+                ? _buildDetailedContent(
+                    isDark,
+                    poloData,
+                    polo,
+                    cardColor,
+                    borderColor,
+                  )
+                : _buildSummaryContent(
+                    isDark,
+                    poloData,
+                    polo,
+                    cardColor,
+                    borderColor,
+                  ),
           ),
         ),
-        
+
         // Botones fijos en la parte inferior
         Container(
           padding: const EdgeInsets.only(top: 16),
@@ -1602,11 +1909,14 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
           child: Row(
             children: [
               Expanded(
-                child: _buildActionButton(
-                  icon: Icons.explore_rounded,
-                  label: 'Explorar',
-                  color: const Color(0xFF691C32),
-                  onTap: () => _openLocation(polo.latitud, polo.longitud),
+                child: Container(
+                  key: _explorarButtonKey,
+                  child: _buildActionButton(
+                    icon: Icons.explore_rounded,
+                    label: 'Explorar',
+                    color: const Color(0xFF691C32),
+                    onTap: () => _openLocation(polo.latitud, polo.longitud),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -1620,11 +1930,14 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _buildActionButton(
-                  icon: Icons.rate_review_rounded,
-                  label: 'Opinar',
-                  color: const Color(0xFF2563EB),
-                  onTap: () => _showFeedbackDialog(),
+                child: Container(
+                  key: _opinarButtonKey,
+                  child: _buildActionButton(
+                    icon: Icons.rate_review_rounded,
+                    label: 'Opinar',
+                    color: const Color(0xFF2563EB),
+                    onTap: () => _showFeedbackDialog(),
+                  ),
                 ),
               ),
             ],
@@ -1635,7 +1948,13 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
   }
 
   // Contenido resumido (vista inicial) - Mini Dashboard
-  Widget _buildSummaryContent(bool isDark, PoloMarker? poloData, PoloInfo polo, Color cardColor, Color borderColor) {
+  Widget _buildSummaryContent(
+    bool isDark,
+    PoloMarker? poloData,
+    PoloInfo polo,
+    Color cardColor,
+    Color borderColor,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1655,7 +1974,10 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                 });
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFFBC955C), Color(0xFFD4AF37)],
@@ -1692,16 +2014,22 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
           gradientColors: [const Color(0xFF16A34A), const Color(0xFF15803D)],
         ),
         const SizedBox(height: 10),
-        
+
         // Card Sectores - Naranja
-        _buildDashboardCardHorizontal(
-          icon: Icons.factory_rounded,
-          title: 'Sectores Clave',
-          value: (poloData?.sectoresClave ?? ['Industrial', 'Tecnológico']).take(3).map((s) => s.split('(').first.trim()).join(', '),
-          gradientColors: [const Color(0xFFF59E0B), const Color(0xFFD97706)],
+        Container(
+          key: _poloSectoresKey,
+          child: _buildDashboardCardHorizontal(
+            icon: Icons.factory_rounded,
+            title: 'Sectores Clave',
+            value: (poloData?.sectoresClave ?? ['Industrial', 'Tecnológico'])
+                .take(3)
+                .map((s) => s.split('(').first.trim())
+                .join(', '),
+            gradientColors: [const Color(0xFFF59E0B), const Color(0xFFD97706)],
+          ),
         ),
         const SizedBox(height: 10),
-        
+
         // Card Infraestructura - Azul
         _buildDashboardCardHorizontal(
           icon: Icons.construction_rounded,
@@ -1710,7 +2038,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
           gradientColors: [const Color(0xFF2563EB), const Color(0xFF1D4ED8)],
         ),
         const SizedBox(height: 10),
-        
+
         // Card Beneficios - Morado
         _buildDashboardCardHorizontal(
           icon: Icons.trending_up_rounded,
@@ -1732,7 +2060,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final iconColor = gradientColors[0]; // El icono mantiene su color
-    
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -1759,11 +2087,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
               color: iconColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              icon,
-              size: 22,
-              color: iconColor,
-            ),
+            child: Icon(icon, size: 22, color: iconColor),
           ),
           const SizedBox(width: 14),
           // Contenido
@@ -1776,7 +2100,9 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
-                    color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF6B7280),
+                    color: isDark
+                        ? const Color(0xFFA0A0A0)
+                        : const Color(0xFF6B7280),
                     letterSpacing: 0.3,
                   ),
                 ),
@@ -1842,11 +2168,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                 color: Colors.white.withValues(alpha: 0.25),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                icon,
-                size: 20,
-                color: Colors.white,
-              ),
+              child: Icon(icon, size: 20, color: Colors.white),
             ),
             const Spacer(),
             // Título
@@ -1884,10 +2206,15 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
     required List<String> sectores,
   }) {
     // Obtener los primeros 3 sectores y formatear
-    final sectoresTexto = sectores.take(3).map((sector) {
-      final sectorCorto = sector.split('(').first.trim();
-      return sectorCorto.length > 15 ? '${sectorCorto.substring(0, 12)}...' : sectorCorto;
-    }).join(', ');
+    final sectoresTexto = sectores
+        .take(3)
+        .map((sector) {
+          final sectorCorto = sector.split('(').first.trim();
+          return sectorCorto.length > 15
+              ? '${sectorCorto.substring(0, 12)}...'
+              : sectorCorto;
+        })
+        .join(', ');
 
     return SizedBox(
       height: _dashboardCardHeight,
@@ -1956,7 +2283,13 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
   }
 
   // Contenido detallado (al presionar "Saber más")
-  Widget _buildDetailedContent(bool isDark, PoloMarker? poloData, PoloInfo polo, Color cardColor, Color borderColor) {
+  Widget _buildDetailedContent(
+    bool isDark,
+    PoloMarker? poloData,
+    PoloInfo polo,
+    Color cardColor,
+    Color borderColor,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1974,7 +2307,9 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF1A1A2E),
+                color: isDark
+                    ? const Color(0xFFF5F5F5)
+                    : const Color(0xFF1A1A2E),
                 height: 1.4,
               ),
             ),
@@ -2014,7 +2349,9 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                           sector,
                           style: TextStyle(
                             fontSize: 13,
-                            color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF4B5563),
+                            color: isDark
+                                ? const Color(0xFFA0A0A0)
+                                : const Color(0xFF4B5563),
                             height: 1.3,
                           ),
                         ),
@@ -2041,7 +2378,9 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
               poloData!.infraestructura,
               style: TextStyle(
                 fontSize: 13,
-                color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF4B5563),
+                color: isDark
+                    ? const Color(0xFFA0A0A0)
+                    : const Color(0xFF4B5563),
                 height: 1.4,
               ),
             ),
@@ -2084,7 +2423,9 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
               poloData!.beneficiosLargoPlazo,
               style: TextStyle(
                 fontSize: 13,
-                color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF4B5563),
+                color: isDark
+                    ? const Color(0xFFA0A0A0)
+                    : const Color(0xFF4B5563),
                 height: 1.4,
               ),
             ),
@@ -2105,7 +2446,9 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
               poloData?.descripcion ?? polo.descripcion,
               style: TextStyle(
                 fontSize: 13,
-                color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF4B5563),
+                color: isDark
+                    ? const Color(0xFFA0A0A0)
+                    : const Color(0xFF4B5563),
                 height: 1.4,
               ),
             ),
@@ -2153,7 +2496,9 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF6B7280),
+                    color: isDark
+                        ? const Color(0xFFA0A0A0)
+                        : const Color(0xFF6B7280),
                     letterSpacing: 0.3,
                   ),
                 ),
@@ -2163,7 +2508,9 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF1A1A2E),
+                    color: isDark
+                        ? const Color(0xFFF5F5F5)
+                        : const Color(0xFF1A1A2E),
                     height: 1.3,
                   ),
                 ),
@@ -2175,14 +2522,18 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
     );
   }
 
-  Widget _buildInfoCard(bool isDark, {
+  Widget _buildInfoCard(
+    bool isDark, {
     required Widget child,
     Color? cardColor,
     Color? borderColor,
   }) {
-    final bgColor = cardColor ?? (isDark ? const Color(0xFF262830) : Colors.white);
-    final border = borderColor ?? (isDark ? const Color(0xFF3A3D47) : const Color(0xFFE5E7EB));
-    
+    final bgColor =
+        cardColor ?? (isDark ? const Color(0xFF262830) : Colors.white);
+    final border =
+        borderColor ??
+        (isDark ? const Color(0xFF3A3D47) : const Color(0xFFE5E7EB));
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -2203,22 +2554,27 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
     Color? cardColor,
     Color? borderColor,
   }) {
-    final bgColor = cardColor ?? (isDark ? const Color(0xFF262830) : Colors.white);
-    final border = borderColor ?? (isDark ? const Color(0xFF3A3D47) : const Color(0xFFE5E7EB));
-    
+    final bgColor =
+        cardColor ?? (isDark ? const Color(0xFF262830) : Colors.white);
+    final border =
+        borderColor ??
+        (isDark ? const Color(0xFF3A3D47) : const Color(0xFFE5E7EB));
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: border),
-        boxShadow: isDark ? [] : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2239,7 +2595,9 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF6B7280),
+                  color: isDark
+                      ? const Color(0xFFA0A0A0)
+                      : const Color(0xFF6B7280),
                   letterSpacing: 0.3,
                 ),
               ),
@@ -2256,7 +2614,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
     String label;
     Color badgeColor;
     IconData icon;
-    
+
     switch (tipo) {
       case 'estrategico':
         label = 'Estratégico';
@@ -2273,7 +2631,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
         badgeColor = color ?? const Color(0xFF2563EB);
         icon = Icons.fiber_new_rounded;
     }
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -2303,8 +2661,8 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: isDark 
-            ? Colors.white.withValues(alpha: 0.1) 
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.1)
             : const Color(0xFF691C32).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
@@ -2312,8 +2670,8 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.map_rounded, 
-            size: 14, 
+            Icons.map_rounded,
+            size: 14,
             color: isDark ? Colors.white70 : const Color(0xFF691C32),
           ),
           const SizedBox(width: 6),
@@ -2377,13 +2735,44 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
   }
 
   void _showFeedbackDialog() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Próximamente: Sistema de opiniones'),
-        backgroundColor: const Color(0xFF691C32),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+    if (_selectedPolo == null) return;
+
+    final polo = _selectedPolo!;
+    final poloData = PolosData.getPoloByStringId(polo.id);
+
+    // Obtener el ID numérico del polo para la base de datos
+    int poloId =
+        poloData?.id ??
+        PolosDatabase.findPoloIdByName(polo.nombre, polo.estado) ??
+        1; // Fallback a 1 si no se encuentra
+
+    // Usar el método estático que maneja web vs móvil
+    EncuestaPoloScreen.show(
+      context,
+      poloId: poloId,
+      poloNombre: polo.nombre,
+      poloEstado: polo.estado,
+      poloDescripcion: poloData?.descripcion ?? polo.descripcion,
+      onEncuestaEnviada: () {
+        // Mostrar confirmación
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Text('¡Opinión registrada con éxito!'),
+              ],
+            ),
+            backgroundColor: const Color(0xFF16A34A),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      },
     );
   }
 
@@ -2564,9 +2953,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF262830)
-                    : Colors.white,
+                color: isDark ? const Color(0xFF262830) : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: isDark
@@ -2726,9 +3113,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
         border: Border.all(
           color: isSelected
               ? color
-              : (isDark
-                    ? const Color(0xFF3A3D47)
-                    : const Color(0xFFE5E7EB)),
+              : (isDark ? const Color(0xFF3A3D47) : const Color(0xFFE5E7EB)),
           width: isSelected ? 2 : 1,
         ),
         boxShadow: isSelected
@@ -2855,6 +3240,7 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
     }
 
     return Container(
+      key: _stateInfoPanelKey,
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -3505,14 +3891,10 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF262830)
-            : const Color(0xFFF8F9FA),
+        color: isDark ? const Color(0xFF262830) : const Color(0xFFF8F9FA),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark
-              ? const Color(0xFF3A3D47)
-              : const Color(0xFFE5E7EB),
+          color: isDark ? const Color(0xFF3A3D47) : const Color(0xFFE5E7EB),
         ),
       ),
       child: Column(
@@ -3571,14 +3953,10 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF262830)
-            : const Color(0xFFF8F9FA),
+        color: isDark ? const Color(0xFF262830) : const Color(0xFFF8F9FA),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark
-              ? const Color(0xFF3A3D47)
-              : const Color(0xFFE5E7EB),
+          color: isDark ? const Color(0xFF3A3D47) : const Color(0xFFE5E7EB),
         ),
       ),
       child: Row(

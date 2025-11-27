@@ -6,6 +6,7 @@ import '../screens/home_screen.dart';
 import '../screens/polos_screen.dart';
 import '../screens/inversiones_screen.dart';
 import '../screens/asistente_screen.dart';
+import '../screens/mi_region_screen.dart';
 import '../screens/voice_chat_widget.dart';
 import '../screens/perfil_screen.dart';
 import '../screens/encuestas_screen.dart';
@@ -20,19 +21,40 @@ class ResponsiveScaffold extends StatefulWidget {
 }
 
 class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
-  int _selectedIndex = 2; // Inicio está en posición 2 ahora
+  int _selectedIndex = 2; // Inicio está en posición 2 para móvil
 
+  // Orden para móvil (bottom nav) - Inicio en el centro
   final List<NavItem> _navItems = const [
     NavItem(icon: Icons.smart_toy_rounded, label: 'Asistente'),
     NavItem(icon: Icons.trending_up_rounded, label: 'Inversiones'),
     NavItem(icon: Icons.home_rounded, label: 'Inicio'),
     NavItem(icon: Icons.hub_rounded, label: 'Polos'),
-    NavItem(icon: Icons.poll_rounded, label: 'Encuestas'),
+    NavItem(icon: Icons.location_on_rounded, label: 'Mi Región'),
+  ];
+
+  // Orden para web (sidebar) - Inicio arriba
+  // Mapeo: webIndex -> mobileIndex
+  static const List<int> _webToMobileIndex = [2, 3, 1, 0, 4]; // Inicio, Polos, Inversiones, Asistente, Mi Región
+  static const List<int> _mobileToWebIndex = [3, 2, 0, 1, 4]; // Mapeo inverso
+
+  List<NavItem> get _webNavItems => [
+    _navItems[2], // Inicio
+    _navItems[3], // Polos
+    _navItems[1], // Inversiones
+    _navItems[0], // Asistente
+    _navItems[4], // Mi Región
   ];
 
   void _onItemSelected(int index) {
     setState(() => _selectedIndex = index);
   }
+
+  void _onWebItemSelected(int webIndex) {
+    // Convertir índice web a índice móvil
+    setState(() => _selectedIndex = _webToMobileIndex[webIndex]);
+  }
+
+  int get _webSelectedIndex => _mobileToWebIndex[_selectedIndex];
 
   Widget _buildContent(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -157,9 +179,9 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
             Row(
               children: [
                 WebSidebar(
-                  items: _navItems,
-                  selectedIndex: _selectedIndex,
-                  onItemSelected: _onItemSelected,
+                  items: _webNavItems,
+                  selectedIndex: _webSelectedIndex,
+                  onItemSelected: _onWebItemSelected,
                   themeProvider: widget.themeProvider,
                 ),
                 Expanded(child: _buildContent(context)),
