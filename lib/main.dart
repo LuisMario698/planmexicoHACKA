@@ -2,8 +2,22 @@ import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'shared/widgets/responsive_scaffold.dart';
+import 'app_config.dart';
+import 'service/encuesta_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicializar Supabase si está configurado
+  if (SupabaseConfig.isConfigured) {
+    await EncuestaService.initialize(
+      supabaseUrl: SupabaseConfig.supabaseUrl,
+      supabaseAnonKey: SupabaseConfig.supabaseAnonKey,
+    );
+  } else {
+    debugPrint('⚠️ Supabase no configurado. Edita lib/app_config.dart con tus credenciales.');
+  }
+  
   runApp(const MainApp());
 }
 
