@@ -427,6 +427,7 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
                           isDark: isDark,
                           hoverAnimations: _stateHoverAnimations,
                           highlightedStates: widget.highlightedStates,
+                          zoomScale: _currentZoom,
                         ),
                       ),
                     ),
@@ -767,14 +768,21 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
     BuildContext context,
     MexicoState state,
     Size size,
-    bool isDark,
-  ) {
+    bool isDark, {
+    double zoomScale = 1.0,
+  }) {
     // Obtener los polos del estado
     final polos = PolosData.getPolosByEstado(state.code).isNotEmpty
         ? PolosData.getPolosByEstado(state.code)
         : PolosData.getPolosByEstado(state.name);
 
     if (polos.isEmpty) return [];
+
+    // Escala inversa al zoom para que los marcadores se vean del mismo tamaño
+    final markerScale = (1.0 / zoomScale).clamp(0.5, 1.0);
+    final baseSize = 40.0 * markerScale;
+    final innerSize = 28.0 * markerScale;
+    final iconSize = 16.0 * markerScale;
 
     // Calcular bounds del estado para posicionar los marcadores
     double minX = double.infinity;
@@ -821,8 +829,8 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
       final isSelected = widget.selectedPoloId == polo.idString;
 
       return Positioned(
-        left: markerX - 20,
-        top: markerY - 20,
+        left: markerX - baseSize / 2,
+        top: markerY - baseSize / 2,
         child: GestureDetector(
           onTap: () {
             // Crear información del polo desde PoloMarker
@@ -844,20 +852,20 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutBack,
-              transform: Matrix4.translationValues(0, isSelected ? -8 : 0, 0),
+              transform: Matrix4.translationValues(0, isSelected ? -8 * markerScale : 0, 0),
               child: AnimatedScale(
                 duration: const Duration(milliseconds: 250),
                 scale: isSelected ? 1.3 : 1.0,
                 child: Container(
-                  width: 40,
-                  height: 40,
+                  width: baseSize,
+                  height: baseSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.white,
                     border: isSelected
                         ? Border.all(
                             color: const Color(0xFFBC955C),
-                            width: 3,
+                            width: 3 * markerScale,
                           )
                         : null,
                     boxShadow: [
@@ -865,23 +873,23 @@ class _MexicoMapWidgetState extends State<MexicoMapWidget>
                         color: isSelected
                             ? const Color(0xFFBC955C).withValues(alpha: 0.5)
                             : Colors.black.withValues(alpha: 0.3),
-                        blurRadius: isSelected ? 16 : 8,
-                        offset: Offset(0, isSelected ? 6 : 2),
+                        blurRadius: (isSelected ? 16 : 8) * markerScale,
+                        offset: Offset(0, (isSelected ? 6 : 2) * markerScale),
                       ),
                     ],
                   ),
                   child: Center(
                     child: Container(
-                      width: 28,
-                      height: 28,
+                      width: innerSize,
+                      height: innerSize,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: polo.color,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.location_on,
                         color: Colors.white,
-                        size: 16,
+                        size: iconSize,
                       ),
                     ),
                   ),
@@ -1247,6 +1255,7 @@ class MexicoMapPainter extends CustomPainter {
   final bool isDark;
   final Map<String, Animation<double>> hoverAnimations;
   final List<String>? highlightedStates;
+  final double zoomScale;
 
   MexicoMapPainter({
     required this.states,
@@ -1259,6 +1268,7 @@ class MexicoMapPainter extends CustomPainter {
     required this.isDark,
     required this.hoverAnimations,
     this.highlightedStates,
+    this.zoomScale = 1.0,
   });
 
   @override
@@ -1370,15 +1380,17 @@ class MexicoMapPainter extends CustomPainter {
     final markerX = (markerGeoX - minX) * scale + offsetX;
     final markerY = size.height - ((markerGeoY - minY) * scale + offsetY);
 
-    // Tamaño pequeño para el mapa completo
-    final markerSize = 6.0;
+    // Tamaño pequeño para el mapa completo, escalado inversamente al zoom
+    final markerScale = (1.0 / zoomScale).clamp(0.4, 1.0);
+    final markerSize = 6.0 * markerScale;
+    final borderWidth = 2.0 * markerScale;
 
     // Sombra del marcador
     final shadowPaint = Paint()
       ..color = Colors.black.withValues(alpha: 0.3)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 2 * markerScale);
     canvas.drawCircle(
-      Offset(markerX + 1, markerY + 1),
+      Offset(markerX + 1 * markerScale, markerY + 1 * markerScale),
       markerSize,
       shadowPaint,
     );
@@ -1387,7 +1399,7 @@ class MexicoMapPainter extends CustomPainter {
     final borderPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(markerX, markerY), markerSize + 2, borderPaint);
+    canvas.drawCircle(Offset(markerX, markerY), markerSize + borderWidth, borderPaint);
 
     // Círculo interior (punto de color)
     final markerPaint = Paint()
