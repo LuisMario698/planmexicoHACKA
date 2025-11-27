@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../widgets/mexico_map_widget.dart';
 import '../data/polos_data.dart';
+import 'encuesta_polo_screen.dart';
+import '../../service/encuesta_service.dart';
 
 class PolosScreen extends StatefulWidget {
   const PolosScreen({super.key});
@@ -2354,13 +2356,41 @@ class _PolosScreenState extends State<PolosScreen> with TickerProviderStateMixin
   }
 
   void _showFeedbackDialog() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Próximamente: Sistema de opiniones'),
-        backgroundColor: const Color(0xFF691C32),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+    if (_selectedPolo == null) return;
+    
+    final polo = _selectedPolo!;
+    final poloData = PolosData.getPoloByStringId(polo.id);
+    
+    // Obtener el ID numérico del polo para la base de datos
+    int poloId = poloData?.id ?? 
+        PolosDatabase.findPoloIdByName(polo.nombre, polo.estado) ?? 
+        1; // Fallback a 1 si no se encuentra
+    
+    // Usar el método estático que maneja web vs móvil
+    EncuestaPoloScreen.show(
+      context,
+      poloId: poloId,
+      poloNombre: polo.nombre,
+      poloEstado: polo.estado,
+      poloDescripcion: poloData?.descripcion ?? polo.descripcion,
+      onEncuestaEnviada: () {
+        // Mostrar confirmación
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Text('¡Opinión registrada con éxito!'),
+              ],
+            ),
+            backgroundColor: const Color(0xFF16A34A),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      },
     );
   }
 
