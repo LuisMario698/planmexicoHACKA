@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../web/widgets/web_sidebar.dart';
 import '../../mobile/widgets/mobile_bottom_nav.dart';
@@ -514,7 +513,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold>
 
   Widget _buildVoiceOption(BuildContext context, bool isDark) {
     final ttsService = TtsService();
-    
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -602,9 +601,9 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold>
     final ttsService = TtsService();
     final voices = await ttsService.getVoices();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     if (!context.mounted) return;
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -651,29 +650,38 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold>
                       itemCount: voices.length,
                       itemBuilder: (context, index) {
                         final voice = voices[index];
-                        final isSelected = ttsService.currentVoiceName == voice['displayName'];
+                        final isSelected =
+                            ttsService.currentVoiceName == voice['displayName'];
                         final isMexican = voice['locale']!.contains('MX');
-                        
+
                         return ListTile(
                           leading: Container(
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: isMexican 
+                              color: isMexican
                                   ? const Color(0xFF691C32).withOpacity(0.1)
                                   : Colors.grey.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Icon(
                               isMexican ? Icons.flag : Icons.language,
-                              color: isMexican ? const Color(0xFF691C32) : Colors.grey,
+                              color: isMexican
+                                  ? const Color(0xFF691C32)
+                                  : Colors.grey,
                             ),
                           ),
                           title: Text(
-                            voice['displayName'] ?? voice['name'] ?? 'Desconocido',
+                            voice['displayName'] ??
+                                voice['name'] ??
+                                'Desconocido',
                             style: TextStyle(
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              color: isSelected ? const Color(0xFF691C32) : null,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: isSelected
+                                  ? const Color(0xFF691C32)
+                                  : null,
                             ),
                           ),
                           subtitle: Text(
@@ -681,16 +689,25 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold>
                             style: const TextStyle(fontSize: 12),
                           ),
                           trailing: isSelected
-                              ? const Icon(Icons.check_circle, color: Color(0xFF691C32))
+                              ? const Icon(
+                                  Icons.check_circle,
+                                  color: Color(0xFF691C32),
+                                )
                               : IconButton(
                                   icon: const Icon(Icons.play_circle_outline),
                                   onPressed: () {
-                                    ttsService.setVoice(voice['name']!, voice['locale']!);
+                                    ttsService.setVoice(
+                                      voice['name']!,
+                                      voice['locale']!,
+                                    );
                                     ttsService.speak('Hola, esta es mi voz');
                                   },
                                 ),
                           onTap: () {
-                            ttsService.setVoice(voice['name']!, voice['locale']!);
+                            ttsService.setVoice(
+                              voice['name']!,
+                              voice['locale']!,
+                            );
                             ttsService.speak('Hola, esta es mi voz');
                             Navigator.pop(context);
                           },
@@ -712,47 +729,14 @@ class NavItem {
   const NavItem({required this.icon, required this.label});
 }
 
-class AjoloteVideoFab extends StatefulWidget {
+class AjoloteVideoFab extends StatelessWidget {
   final VoidCallback onTap;
   const AjoloteVideoFab({super.key, required this.onTap});
 
   @override
-  State<AjoloteVideoFab> createState() => _AjoloteVideoFabState();
-}
-
-class _AjoloteVideoFabState extends State<AjoloteVideoFab> {
-  late VideoPlayerController _controller;
-  bool _initialized = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = VideoPlayerController.asset('assets/images/cubo_si.mp4')
-      ..initialize().then((_) {
-        if (mounted) {
-          setState(() {
-            _initialized = true;
-          });
-          _controller.setLooping(false); // No loop, se detiene al final
-          _controller.setVolume(0); // Silenciar para permitir autoplay en web
-          _controller.play().catchError((e) {
-            // Ignorar error de autoplay en navegadores
-            debugPrint('Video autoplay blocked: $e');
-          });
-        }
-      });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: onTap,
       child: Container(
         width: 70,
         height: 70,
@@ -766,21 +750,12 @@ class _AjoloteVideoFabState extends State<AjoloteVideoFab> {
             ),
           ],
         ),
-        child: _initialized
-            ? ClipOval(
-                child: FittedBox(
-                  fit: BoxFit.cover,
-                  child: SizedBox(
-                    width: _controller.value.size.width,
-                    height: _controller.value.size.height,
-                    child: VideoPlayer(_controller),
-                  ),
-                ),
-              )
-            : const SizedBox(
-                width: 70,
-                height: 70,
-              ), // Placeholder transparente mientras carga
+        child: ClipOval(
+          child: Image.asset(
+            'assets/images/Ajolote_cubo.gif',
+            fit: BoxFit.cover,
+          ),
+        ),
       ),
     );
   }

@@ -22,10 +22,11 @@ class WebSidebar extends StatefulWidget {
   State<WebSidebar> createState() => _WebSidebarState();
 }
 
-class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateMixin {
+class _WebSidebarState extends State<WebSidebar>
+    with SingleTickerProviderStateMixin {
   bool _isExpanded = true;
   int? _hoveredIndex;
-  
+
   late AnimationController _expandController;
   late Animation<double> _expandAnimation;
 
@@ -61,19 +62,23 @@ class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     final isDark = widget.themeProvider.isDarkMode;
-    
+
     return AnimatedBuilder(
       animation: _expandAnimation,
       builder: (context, child) {
         final width = 64.0 + (_expandAnimation.value * 176.0);
-        
+
         return Container(
           width: width,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [AppTheme.primaryLight, AppTheme.primaryColor, AppTheme.primaryDark],
+              colors: [
+                AppTheme.primaryLight,
+                AppTheme.primaryColor,
+                AppTheme.primaryDark,
+              ],
               stops: [0.0, 0.5, 1.0],
             ),
           ),
@@ -181,8 +186,8 @@ class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateM
                   color: isSelected
                       ? Colors.white.withValues(alpha: 0.2)
                       : isHovered
-                          ? Colors.white.withValues(alpha: 0.1)
-                          : Colors.transparent,
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -201,12 +206,17 @@ class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateM
                       const SizedBox(width: 12),
                       Expanded(
                         child: Opacity(
-                          opacity: ((_expandAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
+                          opacity: ((_expandAnimation.value - 0.5) * 2).clamp(
+                            0.0,
+                            1.0,
+                          ),
                           child: Text(
                             item.label,
                             style: TextStyle(
                               fontSize: 13,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
                               color: isSelected
                                   ? Colors.white
                                   : Colors.white.withValues(alpha: 0.7),
@@ -228,7 +238,7 @@ class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateM
 
   Widget _buildVoiceSelector(bool isDark) {
     final ttsService = TtsService();
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: MouseRegion(
@@ -259,12 +269,15 @@ class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateM
                   const SizedBox(width: 12),
                   Expanded(
                     child: Opacity(
-                      opacity: ((_expandAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
+                      opacity: ((_expandAnimation.value - 0.5) * 2).clamp(
+                        0.0,
+                        1.0,
+                      ),
                       child: ListenableBuilder(
                         listenable: ttsService,
                         builder: (context, _) {
                           return Text(
-                            ttsService.currentVoiceName.length > 12 
+                            ttsService.currentVoiceName.length > 12
                                 ? '${ttsService.currentVoiceName.substring(0, 12)}...'
                                 : ttsService.currentVoiceName,
                             style: TextStyle(
@@ -290,9 +303,9 @@ class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateM
   void _showVoiceDialog(BuildContext context) async {
     final ttsService = TtsService();
     final voices = await ttsService.getVoices();
-    
+
     if (!context.mounted) return;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -312,9 +325,10 @@ class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateM
                   itemCount: voices.length,
                   itemBuilder: (context, index) {
                     final voice = voices[index];
-                    final isSelected = ttsService.currentVoiceName == voice['displayName'];
+                    final isSelected =
+                        ttsService.currentVoiceName == voice['displayName'];
                     final isMexican = voice['locale']!.contains('MX');
-                    
+
                     return ListTile(
                       leading: Icon(
                         isMexican ? Icons.flag : Icons.language,
@@ -323,7 +337,9 @@ class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateM
                       title: Text(
                         voice['displayName'] ?? voice['name'] ?? 'Desconocido',
                         style: TextStyle(
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                           color: isSelected ? AppTheme.primaryColor : null,
                         ),
                       ),
@@ -332,7 +348,10 @@ class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateM
                         style: const TextStyle(fontSize: 12),
                       ),
                       trailing: isSelected
-                          ? const Icon(Icons.check_circle, color: AppTheme.primaryColor)
+                          ? const Icon(
+                              Icons.check_circle,
+                              color: AppTheme.primaryColor,
+                            )
                           : null,
                       onTap: () {
                         ttsService.setVoice(voice['name']!, voice['locale']!);
@@ -385,7 +404,10 @@ class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateM
                   const SizedBox(width: 12),
                   Expanded(
                     child: Opacity(
-                      opacity: ((_expandAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
+                      opacity: ((_expandAnimation.value - 0.5) * 2).clamp(
+                        0.0,
+                        1.0,
+                      ),
                       child: Text(
                         isDark ? 'Oscuro' : 'Claro',
                         style: TextStyle(
@@ -397,7 +419,10 @@ class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateM
                     ),
                   ),
                   Opacity(
-                    opacity: ((_expandAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
+                    opacity: ((_expandAnimation.value - 0.5) * 2).clamp(
+                      0.0,
+                      1.0,
+                    ),
                     child: Container(
                       width: 36,
                       height: 20,
@@ -444,9 +469,7 @@ class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateM
               vertical: 10,
               horizontal: _isExpanded ? 12 : 0,
             ),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-            ),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(10)),
             child: Row(
               mainAxisAlignment: _isExpanded
                   ? MainAxisAlignment.start
@@ -464,7 +487,10 @@ class _WebSidebarState extends State<WebSidebar> with SingleTickerProviderStateM
                 if (_expandAnimation.value > 0.5) ...[
                   const SizedBox(width: 8),
                   Opacity(
-                    opacity: ((_expandAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
+                    opacity: ((_expandAnimation.value - 0.5) * 2).clamp(
+                      0.0,
+                      1.0,
+                    ),
                     child: Text(
                       'Colapsar',
                       style: TextStyle(
