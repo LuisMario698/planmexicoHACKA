@@ -20,6 +20,8 @@ class MiRegionTutorialOverlay extends StatefulWidget {
 }
 
 class _MiRegionTutorialOverlayState extends State<MiRegionTutorialOverlay> {
+  final TtsService _tts = TtsService();
+
   @override
   void initState() {
     super.initState();
@@ -36,7 +38,7 @@ class _MiRegionTutorialOverlayState extends State<MiRegionTutorialOverlay> {
 
   @override
   void dispose() {
-    TtsService().stop();
+    _tts.stopImmediately();
     super.dispose();
   }
 
@@ -58,62 +60,76 @@ class _MiRegionTutorialOverlayState extends State<MiRegionTutorialOverlay> {
       default:
         message = 'Explora todas las funcionalidades disponibles.';
     }
-    TtsService().speak(message);
+    _tts.speak(message);
+  }
+
+  void _handleSkip() {
+    _tts.stopImmediately();
+    widget.onSkip?.call();
+  }
+
+  void _handleNext() {
+    _tts.stop();
+    widget.onNext?.call();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Tutorial general centrado (sin resaltar elementos específicos)
+    final screenSize = MediaQuery.of(context).size;
+    final isDesktop = screenSize.width >= 768;
+
     return Stack(
       children: [
         // Fondo oscuro
-        Positioned.fill(child: Container(color: Colors.black.withOpacity(0.7))),
+        Positioned.fill(child: Container(color: Colors.black.withOpacity(0.75))),
 
         // Contenido centrado
         Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(isDesktop ? 40 : 20),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
+              constraints: BoxConstraints(maxWidth: isDesktop ? 500 : 400),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Ajolote animado
                   Image.asset(
                     'assets/images/ajolote.gif',
-                    width: 120,
-                    height: 120,
+                    width: isDesktop ? 140 : 120,
+                    height: isDesktop ? 140 : 120,
                     fit: BoxFit.contain,
                     gaplessPlayback: true,
                     errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
+                      return Icon(
                         Icons.smart_toy,
-                        size: 80,
+                        size: isDesktop ? 100 : 80,
                         color: Colors.white,
                       );
                     },
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: isDesktop ? 24 : 20),
 
                   // Tarjeta de mensaje
-                  _buildMessageCard(context),
+                  _buildMessageCard(context, isDesktop),
 
-                  const SizedBox(height: 20),
+                  SizedBox(height: isDesktop ? 24 : 20),
 
                   // Botones de acción
                   Row(
                     children: [
                       Expanded(
                         child: TextButton(
-                          onPressed: widget.onSkip,
+                          onPressed: _handleSkip,
                           style: TextButton.styleFrom(
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            padding: EdgeInsets.symmetric(
+                              vertical: isDesktop ? 14 : 12,
+                            ),
                           ),
-                          child: const Text(
+                          child: Text(
                             'Omitir',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: isDesktop ? 17 : 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -122,19 +138,21 @@ class _MiRegionTutorialOverlayState extends State<MiRegionTutorialOverlay> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: widget.onNext,
+                          onPressed: _handleNext,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF691C32),
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            padding: EdgeInsets.symmetric(
+                              vertical: isDesktop ? 14 : 12,
+                            ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                           child: Text(
                             widget.step < 3 ? 'Siguiente' : 'Entendido',
-                            style: const TextStyle(
-                              fontSize: 16,
+                            style: TextStyle(
+                              fontSize: isDesktop ? 17 : 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -151,11 +169,14 @@ class _MiRegionTutorialOverlayState extends State<MiRegionTutorialOverlay> {
         // Botón cerrar superior
         Positioned(
           top: 40,
-          right: 20,
+          right: isDesktop ? 40 : 20,
           child: SafeArea(
             child: IconButton(
-              onPressed: widget.onSkip,
+              onPressed: _handleSkip,
               icon: const Icon(Icons.close, color: Colors.white, size: 28),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.black26,
+              ),
             ),
           ),
         ),
@@ -163,7 +184,7 @@ class _MiRegionTutorialOverlayState extends State<MiRegionTutorialOverlay> {
     );
   }
 
-  Widget _buildMessageCard(BuildContext context) {
+  Widget _buildMessageCard(BuildContext context, bool isDesktop) {
     String title = '';
     String message = '';
 
@@ -189,15 +210,15 @@ class _MiRegionTutorialOverlayState extends State<MiRegionTutorialOverlay> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isDesktop ? 28 : 24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -206,44 +227,38 @@ class _MiRegionTutorialOverlayState extends State<MiRegionTutorialOverlay> {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 20,
+            style: TextStyle(
+              fontSize: isDesktop ? 24 : 20,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF691C32),
+              color: const Color(0xFF691C32),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: isDesktop ? 16 : 12),
           Text(
             message,
-            style: const TextStyle(
-              fontSize: 16,
+            style: TextStyle(
+              fontSize: isDesktop ? 17 : 16,
               height: 1.5,
-              color: Color(0xFF333333),
+              color: const Color(0xFF333333),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: isDesktop ? 20 : 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(3, (index) {
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: widget.step == index + 1 ? 28 : 12,
+                height: 12,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFBC955C).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  color: widget.step == index + 1
+                      ? const Color(0xFF691C32)
+                      : Colors.grey[300],
+                  borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text(
-                  'Paso ${widget.step} de 3',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF8C6E36),
-                  ),
-                ),
-              ),
-            ],
+              );
+            }),
           ),
         ],
       ),
