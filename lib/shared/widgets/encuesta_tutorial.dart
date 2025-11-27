@@ -17,84 +17,9 @@ class EncuestaTutorialOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    if (step == 1) {
-      return _buildGeneralTutorial(context);
-    }
-
-    final bool showAbove = (step == 2 || step == 3)
-        ? true
-        : (screenHeight - targetRect!.bottom) < 250;
-
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: CustomPaint(painter: _HolePainter(targetRect: targetRect!)),
-        ),
-        Positioned.fill(
-          child: GestureDetector(
-            onTap: () {},
-            behavior: HitTestBehavior.opaque,
-            child: Stack(
-              children: [
-                Positioned.fromRect(
-                  rect: targetRect!,
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: Container(color: Colors.transparent),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        Positioned(
-          top: showAbove ? null : (targetRect!.bottom + 20),
-          bottom: showAbove ? (screenHeight - targetRect!.top + 20) : null,
-          left: 20,
-          right: 20,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (showAbove) ...[
-                _buildMessageCard(context),
-                const SizedBox(height: 10),
-              ],
-              Image.asset(
-                'assets/images/ajolote.gif',
-                width: 105,
-                height: 105,
-                fit: BoxFit.contain,
-                gaplessPlayback: true,
-              ),
-              if (!showAbove) ...[
-                const SizedBox(height: 10),
-                _buildMessageCard(context),
-              ],
-            ],
-          ),
-        ),
-        Positioned(
-          top: 40,
-          right: 20,
-          child: SafeArea(
-            child: TextButton(
-              onPressed: onSkip,
-              child: const Text(
-                'Omitir',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
+    // Todos los pasos del tutorial de encuesta se muestran como general
+    // (sin resaltar elementos específicos) para evitar problemas de posicionamiento
+    return _buildGeneralTutorial(context);
   }
 
   Widget _buildGeneralTutorial(BuildContext context) {
@@ -302,50 +227,4 @@ class EncuestaTutorialOverlay extends StatelessWidget {
         return '';
     }
   }
-}
-
-/// CustomPainter para crear el efecto de agujero
-class _HolePainter extends CustomPainter {
-  final Rect targetRect;
-
-  _HolePainter({required this.targetRect});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final backgroundPath = Path()
-      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    final holePath = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          targetRect.inflate(8),
-          const Radius.circular(12),
-        ),
-      );
-
-    final finalPath = Path.combine(
-      PathOperation.difference,
-      backgroundPath,
-      holePath,
-    );
-
-    canvas.drawPath(
-      finalPath,
-      Paint()
-        ..color = Colors.black.withOpacity(0.7)
-        ..style = PaintingStyle.fill,
-    );
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(targetRect.inflate(8), const Radius.circular(12)),
-      Paint()
-        ..color = const Color(0xFF691C32).withOpacity(0.6)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_HolePainter oldDelegate) =>
-      targetRect != oldDelegate.targetRect;
 }

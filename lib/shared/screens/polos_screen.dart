@@ -133,7 +133,7 @@ class _PolosScreenState extends State<PolosScreen>
   Future<void> _checkIfShowStateTutorial(String stateName) async {
     final prefs = await SharedPreferences.getInstance();
     final hasSeenStateTutorial =
-        prefs.getBool('polos_state_tutorial_seen_$stateName') ?? false;
+        prefs.getBool('polos_state_tutorial_seen') ?? false;
 
     if (mounted && !hasSeenStateTutorial) {
       // Esperar a que el widget se dibuje completamente
@@ -147,13 +147,13 @@ class _PolosScreenState extends State<PolosScreen>
 
   Future<void> _completeStateTutorial(String stateName) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('polos_state_tutorial_seen_$stateName', true);
+    await prefs.setBool('polos_state_tutorial_seen', true);
   }
 
   Future<void> _checkIfShowPoloTutorial(PoloInfo polo) async {
     final prefs = await SharedPreferences.getInstance();
     final hasSeenPoloTutorial =
-        prefs.getBool('polos_polo_tutorial_seen_${polo.id}') ?? false;
+        prefs.getBool('polos_polo_tutorial_seen') ?? false;
 
     if (mounted && !hasSeenPoloTutorial) {
       // Esperar a que el widget se dibuje completamente
@@ -181,13 +181,8 @@ class _PolosScreenState extends State<PolosScreen>
   }
 
   Future<void> _completePoloTutorial() async {
-    if (_selectedPolo != null) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(
-        'polos_polo_tutorial_seen_${_selectedPolo!.id}',
-        true,
-      );
-    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('polos_polo_tutorial_seen', true);
 
     if (mounted) {
       setState(() {
@@ -2785,7 +2780,7 @@ class _PolosScreenState extends State<PolosScreen>
     buffer.writeln('📍 ${polo.nombre}');
     buffer.writeln('📌 ${polo.estado}');
     buffer.writeln('');
-    
+
     if (poloData != null) {
       // Tipo de polo
       String tipoLabel = '';
@@ -2807,15 +2802,15 @@ class _PolosScreenState extends State<PolosScreen>
       }
       buffer.writeln(tipoLabel);
       buffer.writeln('');
-      
+
       if (poloData.region.isNotEmpty) {
         buffer.writeln('🌎 Región: ${poloData.region}');
       }
-      
+
       if (poloData.vocacion.isNotEmpty) {
         buffer.writeln('🎯 Vocación: ${poloData.vocacion}');
       }
-      
+
       if (poloData.sectoresClave.isNotEmpty) {
         buffer.writeln('');
         buffer.writeln('🏭 Sectores Clave:');
@@ -2823,26 +2818,26 @@ class _PolosScreenState extends State<PolosScreen>
           buffer.writeln('  • $sector');
         }
       }
-      
+
       if (poloData.infraestructura.isNotEmpty) {
         buffer.writeln('');
         buffer.writeln('🏗️ Infraestructura: ${poloData.infraestructura}');
       }
-      
+
       if (poloData.empleoEstimado.isNotEmpty) {
         buffer.writeln('👥 Empleo: ${poloData.empleoEstimado}');
       }
-      
+
       if (poloData.beneficiosLargoPlazo.isNotEmpty) {
         buffer.writeln('');
         buffer.writeln('✨ Beneficios: ${poloData.beneficiosLargoPlazo}');
       }
     }
-    
+
     buffer.writeln('');
     buffer.writeln('📲 Conoce más en la app Plan México');
     buffer.writeln('#PlanMéxico #DesarrolloNacional');
-    
+
     try {
       await Share.share(
         buffer.toString(),
@@ -2855,7 +2850,9 @@ class _PolosScreenState extends State<PolosScreen>
             content: const Text('Error al compartir'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
